@@ -51,9 +51,16 @@ struct TimerView: View {
 
             }
             Spacer()
+            if timerViewModel.isActive {
+                StopTimerView(action: {
+                    timerViewModel.stopTimer()
+                })
+            } else {
+                StartTimerView(action: {
+                    timerViewModel.startTimer()
+                })
+            }
         }
-        StartTimerView(isActive: $isTimeActive, timerViewModel: timerViewModel)
-        StopTimerView(isActive: $isTimeActive, timerViewModel: timerViewModel)
     }
 }
 
