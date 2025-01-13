@@ -13,7 +13,8 @@ protocol ButtonViewProtocol {
     var lightColor: Color { get }   // 光沢色
     var shadowColor: Color { get }  // 影の色
     var radius: CGFloat { get }     // ボタンの角丸 
-    func toggleState()
+    var action: () -> Void { get }
+    
 }
 
 extension ButtonViewProtocol {
@@ -42,22 +43,13 @@ struct StartTimerView: View, ButtonViewProtocol {
     var lightColor = Color(red: 0.54, green: 0.41, blue: 0.95)
     var shadowColor = Color(red: 0.25, green: 0.17, blue: 0.75)
     var radius: CGFloat = 25
-    @Binding var isActive: Bool
-    @ObservedObject var timerViewModel: TimerViewModel
+    var action: () -> Void
     
     var body: some View {
-        if !isActive {
-            Button(action: {
-                toggleState()
-                timerViewModel.startCountdown()
-            }) {
-                buttonTextView
-                    .background(buttonStyle)
-            }
+        Button(action: action) {
+            buttonTextView
+                .background(buttonStyle)
         }
-    }
-    func toggleState() {
-        isActive.toggle()  // 状態の切り替え
     }
 }
 
@@ -67,22 +59,13 @@ struct StopTimerView: View, ButtonViewProtocol {
     var lightColor = Color(red: 0.95, green: 0.41, blue: 0.54)
     var shadowColor = Color(red: 0.75, green: 0.17, blue: 0.25)
     var radius: CGFloat = 25
-    @Binding var isActive: Bool
-    @ObservedObject var timerViewModel: TimerViewModel
+    var action: () -> Void
     
     var body: some View {
-        if isActive {
-            Button(action: {
-                toggleState()
-                timerViewModel.stopCountdown()
-            }) {
-                buttonTextView
-                    .background(buttonStyle)
-            }
+        Button(action: action) {
+            buttonTextView
+                .background(buttonStyle)
         }
-    }
-    func toggleState() {
-        isActive.toggle()  // 状態の切り替え
     }
 }
 
@@ -92,21 +75,13 @@ struct SetTimerView: View, ButtonViewProtocol {
     var lightColor = Color(red: 0.54, green: 0.41, blue: 0.95)
     var shadowColor = Color(red: 0.25, green: 0.17, blue: 0.75)
     var radius: CGFloat = 25
-    @Binding var isActive: Bool
-    @Binding var timerViewModel: TimerViewModel
+    var action: () -> Void
     
     var body: some View {
-        if isActive {
-            Button(action: {
-                toggleState()
-            }) {
-                buttonTextView
-                    .background(buttonStyle)
-            }
+        Button(action: action) {
+            buttonTextView
+                .background(buttonStyle)
         }
-    }
-    func toggleState() {
-        isActive.toggle()  // 状態の切り替え
     }
 }
 //#Preview {
