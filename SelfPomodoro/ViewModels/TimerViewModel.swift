@@ -17,9 +17,12 @@ class TimerViewModel: ObservableObject {
     @Published var totalTaskDuration: String
     @Published var totalRestDuration: String
     
+    @Published var isActive: Bool = false
+    @Published var isSet: Bool = false
+    
     private var cancellable: AnyCancellable?
-    private let taskDuration: Int = 25*60 // タスクの時間（秒）
-    private let restDuration: Int = 5*60 // 休憩の時間（秒）
+    private let taskDuration: Int = 10 // タスクの時間（秒）
+    private let restDuration: Int = 10 // 休憩の時間（秒）
     
     init(totalRounds: Int) {
         let initialTimer = TimerModel(round: 1, totalRounds: totalRounds)
@@ -31,6 +34,21 @@ class TimerViewModel: ObservableObject {
         self.totalRestDuration = Self.formatTime(restDuration)
         self.timeRemaining = taskDuration
         self.formattedTime = Self.formatTime(taskDuration)
+    }
+    
+    func startTimer(){
+        isActive = true
+        startCountdown()
+    }
+    
+    func stopTimer(){
+        isActive = false
+        stopCountdown()
+    }
+    
+    func setTimer(){
+        isSet = true
+        reset()
     }
     
     func startCountdown() {
