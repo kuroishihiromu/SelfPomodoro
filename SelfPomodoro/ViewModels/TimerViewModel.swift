@@ -30,10 +30,10 @@ class TimerViewModel: ObservableObject {
         self.state = initialTimer.state
         self.round = initialTimer.round
         self.totalRounds = initialTimer.totalRounds
-        self.totalTaskDuration = Self.formatTime(taskDuration)
-        self.totalRestDuration = Self.formatTime(restDuration)
+        self.totalTaskDuration = TimerModel.formatTime(taskDuration)
+        self.totalRestDuration = TimerModel.formatTime(restDuration)
         self.timeRemaining = taskDuration
-        self.formattedTime = Self.formatTime(taskDuration)
+        self.formattedTime = TimerModel.formatTime(taskDuration)
     }
     
     func startTimer(){
@@ -67,11 +67,11 @@ class TimerViewModel: ObservableObject {
     private func updateTimer() {
         if timeRemaining > 0 {
             timeRemaining -= 1
-            formattedTime = Self.formatTime(timeRemaining)
+            formattedTime = TimerModel.formatTime(timeRemaining)
         } else {
             nextState()
             timeRemaining = state == .task ? taskDuration : restDuration
-            formattedTime = Self.formatTime(timeRemaining)
+            formattedTime = TimerModel.formatTime(timeRemaining)
         }
     }
     
@@ -83,13 +83,7 @@ class TimerViewModel: ObservableObject {
     func reset() {
         timer.reset()
         updatePublishedProperties()
-        formattedTime = Self.formatTime(taskDuration)
-    }
-    
-    private static func formatTime(_ seconds: Int) -> String {
-        let minutes = seconds / 60
-        let remainingSeconds = seconds % 60
-        return String(format: "%02d:%02d", minutes, remainingSeconds)
+        formattedTime = TimerModel.formatTime(taskDuration)
     }
     
     private func updatePublishedProperties() {
