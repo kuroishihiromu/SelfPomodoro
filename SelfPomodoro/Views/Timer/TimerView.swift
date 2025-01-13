@@ -12,10 +12,21 @@ struct TimerView: View {
     @State private var isTimeActive = false
     
     let bgColor = Color.init(red:0.90, green: 0.92, blue: 0.98)
-    let buttonColor = Color.init(red: 0.38, green: 0.28, blue: 0.86)
-    let lightColor = Color.init(red: 0.54, green: 0.41, blue: 0.95)
-    let shadowColor = Color.init(red: 0.25, green: 0.17, blue: 0.75)
-    
+
+    private var taskColor: (circle: Color, light: Color, shadow: Color) {
+        return timerViewModel.state == .task
+            ? (Color(red: 0.38, green: 0.28, blue: 0.86),   // タスク時のcircle色
+               Color(red: 0.54, green: 0.41, blue: 0.95),   // タスク時のlight色
+               Color(red: 0.25, green: 0.17, blue: 0.75))   // タスク時のshadow色
+            : (Color(red: 0.38, green: 0.85, blue: 0.28),   // 休憩時のcircle色
+               Color(red: 0.54, green: 0.95, blue: 0.41),   // 休憩時のlight色
+               Color(red: 0.25, green: 0.75, blue: 0.17))   // 休憩時のshadow色
+    }
+
+    private var circleColor: Color { taskColor.circle }
+    private var lightColor: Color { taskColor.light }
+    private var shadowColor: Color { taskColor.shadow }
+
     var body: some View {
         VStack {
             Spacer()
@@ -36,17 +47,18 @@ struct TimerView: View {
                                 .shadow(.inner(color: lightColor, radius: 6, x: 4, y: 4))
                                 .shadow(.inner(color: shadowColor, radius: 6, x: -2, y: -2))
                             )
-                            .foregroundColor(buttonColor)
-                            .shadow(color: buttonColor, radius: 20, y: 10)
+                            .foregroundColor(circleColor)
+                            .shadow(color: circleColor, radius: 20, y: 10)
                     )
             }
+            .padding(.bottom, 50)
             HStack{
                 Text("\(timerViewModel.round)")
-                    .font(.system(size: 30, weight: .bold))
+                    .font(.system(size: 40, weight: .bold))
                     .foregroundColor(.black)
 
                 Text("/ \(timerViewModel.totalRounds)")
-                    .font(.system(size: 20, weight: .semibold))
+                    .font(.system(size: 30, weight: .semibold))
                     .foregroundColor(.black)
 
             }
