@@ -24,16 +24,17 @@ class TimerViewModel: ObservableObject {
     private let taskDuration: Int = 10 // タスクの時間（秒）
     private let restDuration: Int = 10 // 休憩の時間（秒）
     
-    init(totalRounds: Int) {
-        let initialTimer = TimerModel(round: 1, totalRounds: totalRounds)
+    init(totalRounds: Int, taskDuration: Int=10, restDuration: Int = 10) {
+        let initialTimer = TimerModel(round: 1, totalRounds: totalRounds, taskDuration: taskDuration, restDuration: restDuration)
         self.timer = initialTimer
         self.state = initialTimer.state
         self.round = initialTimer.round
         self.totalRounds = initialTimer.totalRounds
         self.totalTaskDuration = TimerModel.formatTime(taskDuration)
         self.totalRestDuration = TimerModel.formatTime(restDuration)
-        self.timeRemaining = taskDuration
-        self.formattedTime = TimerModel.formatTime(taskDuration)
+        let initialTimeRemaining = initialTimer.getCurrentDuration()
+        self.timeRemaining = initialTimeRemaining
+        self.formattedTime = TimerModel.formatTime(initialTimeRemaining)
     }
     
     func startTimer(){
@@ -83,7 +84,7 @@ class TimerViewModel: ObservableObject {
     func reset() {
         timer.reset()
         updatePublishedProperties()
-        formattedTime = TimerModel.formatTime(taskDuration)
+        formattedTime = TimerModel.formatTime(timeRemaining)
     }
     
     private func updatePublishedProperties() {

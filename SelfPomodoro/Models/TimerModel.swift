@@ -16,6 +16,8 @@ struct TimerModel {
     var state: TimerState = .task  // 初期状態を Task に設定
     var round: Int     // 現在のラウンド数
     var totalRounds: Int  // 最大ラウンド数
+    var taskDuration: Int
+    var restDuration: Int
     
     mutating func nextState() {
         // タイマーの状態を切り替え
@@ -30,6 +32,10 @@ struct TimerModel {
         if round > totalRounds {
             reset()
         }
+    }
+    
+    func getCurrentDuration() -> Int {
+        return state == .task ? taskDuration : restDuration
     }
     
     mutating func reset() {
