@@ -8,28 +8,49 @@
 import SwiftUI
 
 struct HomeView: View {
-    @State private var showSettings = false  // モーダル表示の有無を管理する状態変数
+    @State private var showSettings = false
 
     var body: some View {
         ZStack {
             VStack {
                 Spacer()
                 Button(action: {
-                    showSettings = true
+                    withAnimation(.easeInOut(duration: 0.3)) {
+                        showSettings = true
+                    }
                 }) {
                     Text("Start")
                         .font(.largeTitle)
                         .foregroundColor(.white)
                         .padding()
-                        .background(Color(.blue))
+                        .background(Color.blue)
                         .cornerRadius(10)
                 }
                 Spacer()
             }
+
+            if showSettings {
+                // 背景を半透明の黒でオーバーレイ
+                Color.black.opacity(0.4)
+                    .ignoresSafeArea()
+                    .onTapGesture {
+                        withAnimation(.easeInOut(duration: 0.3)) {
+                            showSettings = false
+                        }
+                    }
+
+                // 中央に配置するカスタムモーダル
+                TimerSettingsView()
+                    .frame(width: 300, height: 400)
+                    .background(Color.white)
+                    .cornerRadius(20)
+                    .shadow(radius: 10)
+                // スケールとフェードの組み合わせでアニメーション
+                    .transition(AnyTransition.scale.combined(with: .opacity))
+            }
         }
-        .sheet(isPresented: $showSettings) {  // スタートボタンが押されたときにモーダルを表示
-//            TimerSettingsView()
-        }
+        // showSettingsの変化に合わせてアニメーションを適用
+        .animation(.easeInOut(duration: 0.3), value: showSettings)
     }
 }
 
