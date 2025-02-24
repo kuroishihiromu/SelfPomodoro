@@ -21,10 +21,12 @@ class TimerViewModel: ObservableObject {
     @Published var isSet: Bool = false
     
     private var cancellable: AnyCancellable?
-    private let taskDuration: Int = 10 // タスクの時間（秒）
-    private let restDuration: Int = 10 // 休憩の時間（秒）
-    
-    init(totalRounds: Int, taskDuration: Int=10, restDuration: Int = 10) {
+    private let initialTaskDuration: Int // タスクの時間（秒）
+    private let initialRestDuration: Int // 休憩の時間（秒）
+
+    init(totalRounds: Int, taskDuration: Int = 10, restDuration: Int = 10) {
+        self.initialTaskDuration = taskDuration
+        self.initialRestDuration = restDuration
         let initialTimer = TimerModel(round: 1, totalRounds: totalRounds, taskDuration: taskDuration, restDuration: restDuration)
         self.timer = initialTimer
         self.state = initialTimer.state
@@ -71,7 +73,7 @@ class TimerViewModel: ObservableObject {
             formattedTime = TimerModel.formatTime(timeRemaining)
         } else {
             nextState()
-            timeRemaining = state == .task ? taskDuration : restDuration
+            timeRemaining = state == .task ? initialTaskDuration : initialRestDuration
             formattedTime = TimerModel.formatTime(timeRemaining)
         }
     }

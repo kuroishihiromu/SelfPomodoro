@@ -14,13 +14,13 @@ struct TimerSettingsView: View {
     @State private var navigateToCycle = false
 
     var body: some View {
-        NavigationView {
+        NavigationStack {
             VStack(spacing: 20) {
+                Spacer()
                 Text("タイマー設定")
                     .font(.title)
                     .padding(.top)
                 Spacer()
-                // 各Pickerを横並びに配置するHStack
                 HStack(spacing: 20) {
                     // タスク時間用のPicker
                     VStack {
@@ -61,30 +61,22 @@ struct TimerSettingsView: View {
                         .frame(width: 100, height: 100)
                     }
                 }
-
                 Spacer()
-
-//                // NavigationLinkでCycleViewに遷移（TimerViewModelに各値をセット）
-//                NavigationLink(
-//                    destination: CycleView(timerViewModel: TimerViewModel(
-//                        totalRounds: selectedRounds,
-//                        taskDuration: selectedTaskMinutes * 60,
-//                        restDuration: selectedRestMinutes * 60
-//                    )),
-//                    isActive: $navigateToCycle
-//                ) {
-//                    EmptyView()
-//                }
-
-                // 「Let's Task」ボタン
                 LetsTaskView(action: {
                     navigateToCycle = true
                 })
                 .padding(.horizontal)
+                Spacer()
             }
             .padding()
             .navigationBarTitleDisplayMode(.inline)
-            Spacer()
+            .navigationDestination(isPresented: $navigateToCycle) {
+                CycleView(timerViewModel: TimerViewModel(
+                    totalRounds: selectedRounds,
+                    taskDuration: selectedTaskMinutes * 60,
+                    restDuration: selectedRestMinutes * 60
+                ))
+            }
         }
     }
 }
