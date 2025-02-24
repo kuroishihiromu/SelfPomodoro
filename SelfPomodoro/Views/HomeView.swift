@@ -30,7 +30,7 @@ struct HomeView: View {
             }
 
             if showSettings {
-                // 背景を半透明の黒でオーバーレイ
+                // 背景が薄暗くなるように設定
                 Color.black.opacity(0.4)
                     .ignoresSafeArea()
                     .onTapGesture {
@@ -39,17 +39,18 @@ struct HomeView: View {
                         }
                     }
 
-                // 中央に配置するカスタムモーダル
-                TimerSettingsView()
-                    .frame(width: 300, height: 400)
-                    .background(Color.white)
-                    .cornerRadius(20)
-                    .shadow(radius: 10)
-                // スケールとフェードの組み合わせでアニメーション
-                    .transition(AnyTransition.scale.combined(with: .opacity))
+                // GeometryReaderを利用して画面サイズに合わせたモーダルのサイズにする
+                GeometryReader { geometry in
+                    TimerSettingsView()
+                        .frame(width: geometry.size.width * 0.9, height: geometry.size.height * 0.5)
+                        .background(Color.white)
+                        .cornerRadius(20)
+                        .shadow(radius: 10)
+                        .transition(AnyTransition.scale.combined(with: .opacity))
+                        .position(x: geometry.size.width / 2, y: geometry.size.height / 2)
+                }
             }
         }
-        // showSettingsの変化に合わせてアニメーションを適用
         .animation(.easeInOut(duration: 0.3), value: showSettings)
     }
 }
