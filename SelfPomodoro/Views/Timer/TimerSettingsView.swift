@@ -16,7 +16,6 @@ struct TimerSettingsView: View {
     var body: some View {
         NavigationView {
             VStack(spacing: 20) {
-                Spacer()
                 Text("タイマー設定")
                     .font(.title)
                     .padding(.top)
@@ -78,17 +77,9 @@ struct TimerSettingsView: View {
 //                }
 
                 // 「Let's Task」ボタン
-                Button(action: {
+                LetsTaskView(action: {
                     navigateToCycle = true
-                }) {
-                    Text("Let's Task")
-                        .font(.headline)
-                        .foregroundColor(.white)
-                        .padding()
-                        .frame(maxWidth: .infinity)
-                        .background(Color.blue)
-                        .cornerRadius(10)
-                }
+                })
                 .padding(.horizontal)
             }
             .padding()

@@ -14,18 +14,11 @@ struct HomeView: View {
         ZStack {
             VStack {
                 Spacer()
-                Button(action: {
+                StartView(action: {
                     withAnimation(.easeInOut(duration: 0.3)) {
                         showSettings = true
                     }
-                }) {
-                    Text("Start")
-                        .font(.largeTitle)
-                        .foregroundColor(.white)
-                        .padding()
-                        .background(Color.blue)
-                        .cornerRadius(10)
-                }
+                })
                 Spacer()
             }
 
