@@ -6,67 +6,47 @@
 //
 
 import SwiftUI
-import Supabase
 
 struct AuthView: View {
-  @State var email = ""
-  @State var password = ""
-  @State var isLoading = false
-  @State var result: Result<Void, Error>?
+    @StateObject private var viewModel = AuthViewModel()
+    @Environment(\.isAuthenticated) private var isAuthenticated
+    
+    var body: some View {
+        Group {
+            if viewModel.isAuthenticated {
+                HomeView() // 認証成功時に HomeView へ遷移
+            } else {
+                VStack {
+                    TextField("Email", text: $viewModel.email)
+                        .textFieldStyle(RoundedBorderTextFieldStyle())
+                        .padding()
 
-  var body: some View {
-    Form {
-      Section {
-        TextField("Email", text: $email)
-          .textContentType(.emailAddress)
-          .textInputAutocapitalization(.never)
-          .autocorrectionDisabled()
+                    SecureField("Password", text: $viewModel.password)
+                        .textFieldStyle(RoundedBorderTextFieldStyle())
+                        .padding()
 
-        SecureField("Password", text: $password)
-          .textContentType(.password)
-      }
+                    Button("Sign In") {
+                        Task {
+                            await viewModel.signIn()
+                        }
+                    }
+                    .buttonStyle(.borderedProminent)
+                    .padding()
 
-      Section {
-        Button("Sign in") {
-          signInButtonTapped()
+                    Button("Sign Up") {
+                        Task {
+                            await viewModel.signUp()
+                        }
+                    }
+                    .buttonStyle(.bordered)
+                    .padding()
+                }
+            }
         }
-
-        if isLoading {
-          ProgressView()
+        .onAppear {
+            Task {
+                await viewModel.observeAuthChanges()
+            }
         }
-      }
-
-      if let result {
-        Section {
-          switch result {
-          case .success:
-            Text("Signed in successfully.")
-          case .failure(let error):
-            Text(error.localizedDescription).foregroundStyle(.red)
-          }
-        }
-      }
     }
-  }
-
-  func signInButtonTapped() {
-    Task {
-      isLoading = true
-      defer { isLoading = false }
-
-      do {
-        try await supabase.auth.signIn(
-          email: email,
-          password: password
-        )
-        result = .success(())
-      } catch {
-        result = .failure(error)
-      }
-    }
-  }
-}
-
-#Preview {
-    AuthView()
 }
