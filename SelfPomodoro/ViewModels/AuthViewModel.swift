@@ -20,7 +20,16 @@ class AuthViewModel: ObservableObject {
     
     init() {
         Task {
+            await checkSession()
             await observeAuthChanges()
+        }
+    }
+    
+    func checkSession() async {
+        if let session = try? await supabase.auth.session {
+            DispatchQueue.main.async {
+                self.isAuthenticated = session != nil
+            }
         }
     }
     
@@ -51,6 +60,21 @@ class AuthViewModel: ObservableObject {
             result = .success(())
         } catch {
             print("SignUp Error:", error.localizedDescription) 
+            result = .failure(error)
+        }
+    }
+    
+    func signOut() async {
+        isLoading = true
+        defer { isLoading = false }
+
+        do {
+            try await supabase.auth.signOut()
+            DispatchQueue.main.async {
+                self.isAuthenticated = false // ✅ ログアウト時に状態を更新
+            }
+            result = .success(())
+        } catch {
             result = .failure(error)
         }
     }

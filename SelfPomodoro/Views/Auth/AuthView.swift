@@ -45,7 +45,7 @@ struct AuthView: View {
         }
         .onAppear {
             Task {
-                await viewModel.observeAuthChanges()
+                await viewModel.checkSession()
             }
         }
     }
