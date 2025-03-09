@@ -6,12 +6,20 @@
 //
 
 import SwiftUI
-
 @main
 struct SelfPomodoroApp: App {
+    @State private var isAuthenticated = false
     var body: some Scene {
         WindowGroup {
-            ContentView()
+            AuthView()
+                .environment(\.isAuthenticated, isAuthenticated)
+                .task {
+                    for await state in supabase.auth.authStateChanges {
+                        if [.initialSession, .signedIn, .signedOut].contains(state.event) {
+                            isAuthenticated = state.session != nil
+                        }
+                    }
+                }
         }
     }
 }
