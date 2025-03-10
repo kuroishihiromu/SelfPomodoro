@@ -37,6 +37,38 @@ extension ButtonViewProtocol {
     }
 }
 
+struct StartView: View, ButtonViewProtocol {
+    var buttonText: String = "Start"
+    var buttonColor: Color = Color(red: 0.38, green: 0.28, blue: 0.86)
+    var lightColor: Color = Color(red: 0.54, green: 0.41, blue: 0.95)
+    var shadowColor: Color = Color(red: 0.25, green: 0.17, blue: 0.75)
+    var radius: CGFloat = 25
+    var action: () -> Void
+
+    var body: some View {
+        Button(action: action) {
+            buttonTextView
+                .background(buttonStyle)
+        }
+    }
+}
+
+struct LetsTaskView: View, ButtonViewProtocol {
+    var buttonText: String = "Let's Task"
+    var buttonColor: Color = Color(red: 0.38, green: 0.28, blue: 0.86)
+    var lightColor: Color = Color(red: 0.54, green: 0.41, blue: 0.95)
+    var shadowColor: Color = Color(red: 0.25, green: 0.17, blue: 0.75)
+    var radius: CGFloat = 25
+    var action: () -> Void
+
+    var body: some View {
+        Button(action: action) {
+            buttonTextView
+                .background(buttonStyle)
+        }
+    }
+}
+
 struct StartTimerView: View, ButtonViewProtocol {
     var buttonText = "Start Timer"
     var buttonColor = Color(red: 0.38, green: 0.28, blue: 0.86)

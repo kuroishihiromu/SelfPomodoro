@@ -8,9 +8,8 @@
 import SwiftUI
 
 struct TimerView: View {
-    @ObservedObject private var timerViewModel = TimerViewModel(totalRounds: 5)
-    @State private var isTimeActive = false
-    
+    @ObservedObject var timerViewModel = TimerViewModel(totalRounds: 5, taskDuration: 1500, restDuration: 300)
+
     let bgColor = Color.init(red:0.90, green: 0.92, blue: 0.98)
 
     private var taskColor: (circle: Color, light: Color, shadow: Color) {
@@ -37,7 +36,7 @@ struct TimerView: View {
             HStack {
                 Text("\(timerViewModel.formattedTime)  /  \(timerViewModel.totalTaskDuration)")
                     .frame(width: 200, height: 200)
-                    .font(.system(size: 20, weight: .semibold, design: .default))
+                    .font(.system(size: 20, weight: .semibold))
                     .foregroundColor(.white)
                     .padding(.horizontal, 35)
                     .padding(.vertical, 20)
