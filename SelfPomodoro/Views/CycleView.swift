@@ -8,14 +8,11 @@
 import SwiftUI
 
 struct CycleView: View {
-    @State private var isTimeActive = false
+    var timerViewModel: TimerViewModel
+
     var body: some View {
-        TimerView()
+        TimerView(timerViewModel: timerViewModel)
 //        StartTimerView(isActive: $isTimeActive)
 //        StopTimerView(isActive: $isTimeActive)
     }
-}
-
-#Preview {
-    CycleView()
 }
