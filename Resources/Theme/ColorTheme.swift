@@ -7,7 +7,7 @@
 
 import SwiftUI
 
-/// `mainColor` を元に `lightColor` と `shadowColor` を算出する
+/// `mainColor` を基準に `lightColor` と `shadowColor` を算出する
 struct AppColorScheme {
     let main: Color
     let light: Color
@@ -15,19 +15,26 @@ struct AppColorScheme {
 
     init(main: Color) {
         self.main = main
-        self.light = main.lightened(by: 0.2)  // 20%明るくする
-        self.shadow = main.darkened(by: 0.2)  // 20%暗くする
+        self.light = main.lightened(by: 0.2)  // 20% 明るくする
+        self.shadow = main.darkened(by: 0.2)  // 20% 暗くする
     }
 }
 
 struct ColorTheme {
-    /// 主要なカラースキーム（main を基準に light, shadow を算出）
-    static let primary = AppColorScheme(main: Color(hex: "#211C84"))  // 背景・大枠
-    static let secondary = AppColorScheme(main: Color(hex: "#4D55CC"))  // 説明・コンテナ
-    static let accent = AppColorScheme(main: Color(hex: "#7A73D1"))  // アクセントカラー
-    static let highlight = AppColorScheme(main: Color(hex: "#B5A8D5"))  // 協調色
+    /// **Elements**
+    static let background = AppColorScheme(main: Color(hex: "#fffffe"))  // 背景
+    static let headline = AppColorScheme(main: Color(hex: "#094067"))  // ヘッドライン（タイトル）
+    static let paragraph = AppColorScheme(main: Color(hex: "#5f6c7b"))  // 段落（本文）
+    static let button = AppColorScheme(main: Color(hex: "#3da9fc"))  // ボタン
+    static let buttonText = AppColorScheme(main: Color(hex: "#fffffe"))  // ボタンテキスト
 
-    static let background = Color(hex: "#E5E7F5")  // アプリ全体の背景色
+    /// **Illustration**
+    static let stroke = AppColorScheme(main: Color(hex: "#094067"))  // 図のアウトライン
+    static let illustrationMain = AppColorScheme(main: Color(hex: "#fffffe"))  // イラストのメイン色
+    static let highlight = AppColorScheme(main: Color(hex: "#3da9fc"))  // 強調色
+    static let secondary = AppColorScheme(main: Color(hex: "#90b4ce"))  // セカンダリーカラー
+    static let tertiary = AppColorScheme(main: Color(hex: "#ef4565"))  // 補助的な色（警告やアラート）
+
 }
 
 extension Color {

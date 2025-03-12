@@ -29,7 +29,7 @@ extension ButtonViewProtocol {
 
 struct StartView: View, ButtonViewProtocol {
     var buttonText: String = "Start"
-    var colorScheme = Color.theme.primary  // `primary` カラーを適用
+    var colorScheme = Color.theme.button  // `primary` カラーを適用
     var radius: CGFloat = 25
     var action: () -> Void
 
@@ -57,7 +57,7 @@ struct LetsTaskView: View, ButtonViewProtocol {
 
 struct StartTimerView: View, ButtonViewProtocol {
     var buttonText = "Start Timer"
-    var colorScheme = Color.theme.accent  // `accent` カラーを適用
+    var colorScheme = Color.theme.button  // `accent` カラーを適用
     var radius: CGFloat = 25
     var action: () -> Void
     
@@ -71,7 +71,7 @@ struct StartTimerView: View, ButtonViewProtocol {
 
 struct StopTimerView: View, ButtonViewProtocol {
     var buttonText = "Stop Timer."
-    var colorScheme = Color.theme.highlight  // `highlight` カラーを適用
+    var colorScheme = Color.theme.tertiary  // `highlight` カラーを適用
     var radius: CGFloat = 25
     var action: () -> Void
     
@@ -85,7 +85,7 @@ struct StopTimerView: View, ButtonViewProtocol {
 
 struct SetTimerView: View, ButtonViewProtocol {
     var buttonText = "Set Timer."
-    var colorScheme = Color.theme.primary  // `primary` カラーを適用
+    var colorScheme = Color.theme.button  // `primary` カラーを適用
     var radius: CGFloat = 25
     var action: () -> Void
     

@@ -13,7 +13,7 @@ struct TimerView: View {
     let bgColor = Color.theme.background
 
     private var timerColor: AppColorScheme {
-        return timerViewModel.state == .task ? Color.theme.primary : Color.theme.secondary
+        return timerViewModel.state == .task ? Color.theme.button : Color.theme.tertiary
     }
 
     private var circleColor: Color { timerColor.main }
