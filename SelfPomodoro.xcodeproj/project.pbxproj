@@ -39,19 +39,29 @@
 /* End PBXFileReference section */
 
 /* Begin PBXFileSystemSynchronizedRootGroup section */
-		433A04372CE4979100E73A8E /* SelfPomodoro */ = {
+		433A04372CE4979100E73A8E /* Sources */ = {
 			isa = PBXFileSystemSynchronizedRootGroup;
-			path = SelfPomodoro;
+			path = Sources;
 			sourceTree = "<group>";
 		};
-		433A04482CE4979200E73A8E /* SelfPomodoroTests */ = {
+		433A04482CE4979200E73A8E /* Tests */ = {
 			isa = PBXFileSystemSynchronizedRootGroup;
-			path = SelfPomodoroTests;
+			path = Tests;
 			sourceTree = "<group>";
 		};
-		433A04522CE4979200E73A8E /* SelfPomodoroUITests */ = {
+		433A04522CE4979200E73A8E /* UITests */ = {
 			isa = PBXFileSystemSynchronizedRootGroup;
-			path = SelfPomodoroUITests;
+			path = UITests;
+			sourceTree = "<group>";
+		};
+		43685E1B2D80868C00F28BA8 /* Documentatioin */ = {
+			isa = PBXFileSystemSynchronizedRootGroup;
+			path = Documentatioin;
+			sourceTree = "<group>";
+		};
+		43685E202D80882100F28BA8 /* Preview Content */ = {
+			isa = PBXFileSystemSynchronizedRootGroup;
+			path = "Preview Content";
 			sourceTree = "<group>";
 		};
 /* End PBXFileSystemSynchronizedRootGroup section */
@@ -90,9 +100,11 @@
 		433A042C2CE4979100E73A8E = {
 			isa = PBXGroup;
 			children = (
-				433A04372CE4979100E73A8E /* SelfPomodoro */,
-				433A04482CE4979200E73A8E /* SelfPomodoroTests */,
-				433A04522CE4979200E73A8E /* SelfPomodoroUITests */,
+				43685E202D80882100F28BA8 /* Preview Content */,
+				43685E1B2D80868C00F28BA8 /* Documentatioin */,
+				433A04372CE4979100E73A8E /* Sources */,
+				433A04482CE4979200E73A8E /* Tests */,
+				433A04522CE4979200E73A8E /* UITests */,
 				439F0F5D2D3506E600C3D3F4 /* Frameworks */,
 				433A04362CE4979100E73A8E /* Products */,
 			);
@@ -131,7 +143,9 @@
 			dependencies = (
 			);
 			fileSystemSynchronizedGroups = (
-				433A04372CE4979100E73A8E /* SelfPomodoro */,
+				433A04372CE4979100E73A8E /* Sources */,
+				43685E1B2D80868C00F28BA8 /* Documentatioin */,
+				43685E202D80882100F28BA8 /* Preview Content */,
 			);
 			name = SelfPomodoro;
 			packageProductDependencies = (
@@ -160,7 +174,7 @@
 				433A04472CE4979200E73A8E /* PBXTargetDependency */,
 			);
 			fileSystemSynchronizedGroups = (
-				433A04482CE4979200E73A8E /* SelfPomodoroTests */,
+				433A04482CE4979200E73A8E /* Tests */,
 			);
 			name = SelfPomodoroTests;
 			packageProductDependencies = (
@@ -183,7 +197,7 @@
 				433A04512CE4979200E73A8E /* PBXTargetDependency */,
 			);
 			fileSystemSynchronizedGroups = (
-				433A04522CE4979200E73A8E /* SelfPomodoroUITests */,
+				433A04522CE4979200E73A8E /* UITests */,
 			);
 			name = SelfPomodoroUITests;
 			packageProductDependencies = (
@@ -427,7 +441,7 @@
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
-				DEVELOPMENT_ASSET_PATHS = "\"SelfPomodoro/Preview Content\"";
+				DEVELOPMENT_ASSET_PATHS = "\"$(SRCROOT)/Preview Content\"";
 				DEVELOPMENT_TEAM = 93KZB66R3J;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
@@ -456,7 +470,7 @@
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
-				DEVELOPMENT_ASSET_PATHS = "\"SelfPomodoro/Preview Content\"";
+				DEVELOPMENT_ASSET_PATHS = "\"$(SRCROOT)/Preview Content\"";
 				DEVELOPMENT_TEAM = 93KZB66R3J;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
