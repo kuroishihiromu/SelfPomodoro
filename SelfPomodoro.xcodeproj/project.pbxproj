@@ -54,11 +54,6 @@
 			path = UITests;
 			sourceTree = "<group>";
 		};
-		43685E1A2D80865700F28BA8 /* Resources */ = {
-			isa = PBXFileSystemSynchronizedRootGroup;
-			path = Resources;
-			sourceTree = "<group>";
-		};
 		43685E1B2D80868C00F28BA8 /* Documentatioin */ = {
 			isa = PBXFileSystemSynchronizedRootGroup;
 			path = Documentatioin;
@@ -107,7 +102,6 @@
 			children = (
 				43685E202D80882100F28BA8 /* Preview Content */,
 				43685E1B2D80868C00F28BA8 /* Documentatioin */,
-				43685E1A2D80865700F28BA8 /* Resources */,
 				433A04372CE4979100E73A8E /* Sources */,
 				433A04482CE4979200E73A8E /* Tests */,
 				433A04522CE4979200E73A8E /* UITests */,
@@ -150,7 +144,6 @@
 			);
 			fileSystemSynchronizedGroups = (
 				433A04372CE4979100E73A8E /* Sources */,
-				43685E1A2D80865700F28BA8 /* Resources */,
 				43685E1B2D80868C00F28BA8 /* Documentatioin */,
 				43685E202D80882100F28BA8 /* Preview Content */,
 			);
