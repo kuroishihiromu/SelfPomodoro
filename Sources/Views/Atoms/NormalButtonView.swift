@@ -2,7 +2,6 @@ import SwiftUI
 
 protocol ButtonViewProtocol {
     var buttonText: String { get }  // ボタンのテキスト
-    var colorScheme: AppColorScheme { get }  // カラースキーム
     var radius: CGFloat { get }     // ボタンの角丸
     var action: () -> Void { get }
 }
@@ -10,12 +9,7 @@ protocol ButtonViewProtocol {
 extension ButtonViewProtocol {
     var buttonStyle: some View {
         RoundedRectangle(cornerRadius: radius)
-            .fill(
-                .shadow(.inner(color: colorScheme.light, radius: 6, x: 4, y: 4))
-                .shadow(.inner(color: colorScheme.shadow, radius: 6, x: -2, y: -2))
-            )
-            .foregroundColor(colorScheme.main)
-            .shadow(color: colorScheme.main, radius: 20, y: 10)
+            .foregroundColor(ColorTheme.black)
     }
     
     var buttonTextView: some View {
@@ -29,8 +23,8 @@ extension ButtonViewProtocol {
 
 struct StartView: View, ButtonViewProtocol {
     var buttonText: String = "Start"
-    var colorScheme = Color.theme.button  // `primary` カラーを適用
-    var radius: CGFloat = 25
+    var colorScheme = ColorTheme.navy
+    var radius: CGFloat = 10
     var action: () -> Void
 
     var body: some View {
@@ -43,8 +37,8 @@ struct StartView: View, ButtonViewProtocol {
 
 struct LetsTaskView: View, ButtonViewProtocol {
     var buttonText: String = "Let's Task"
-    var colorScheme = Color.theme.secondary  // `secondary` カラーを適用
-    var radius: CGFloat = 25
+    var colorScheme = ColorTheme.navy
+    var radius: CGFloat = 10
     var action: () -> Void
 
     var body: some View {
@@ -57,8 +51,8 @@ struct LetsTaskView: View, ButtonViewProtocol {
 
 struct StartTimerView: View, ButtonViewProtocol {
     var buttonText = "Start Timer"
-    var colorScheme = Color.theme.button  // `accent` カラーを適用
-    var radius: CGFloat = 25
+    var colorScheme = ColorTheme.skyBlue
+    var radius: CGFloat = 10
     var action: () -> Void
     
     var body: some View {
@@ -71,8 +65,8 @@ struct StartTimerView: View, ButtonViewProtocol {
 
 struct StopTimerView: View, ButtonViewProtocol {
     var buttonText = "Stop Timer."
-    var colorScheme = Color.theme.tertiary  // `highlight` カラーを適用
-    var radius: CGFloat = 25
+    var colorScheme = ColorTheme.navy
+    var radius: CGFloat = 10
     var action: () -> Void
     
     var body: some View {
@@ -85,8 +79,8 @@ struct StopTimerView: View, ButtonViewProtocol {
 
 struct SetTimerView: View, ButtonViewProtocol {
     var buttonText = "Set Timer."
-    var colorScheme = Color.theme.button  // `primary` カラーを適用
-    var radius: CGFloat = 25
+    var colorScheme = ColorTheme.black
+    var radius: CGFloat = 10
     var action: () -> Void
     
     var body: some View {

@@ -7,68 +7,34 @@
 
 import SwiftUI
 
-/// `mainColor` を基準に `lightColor` と `shadowColor` を算出する
-struct AppColorScheme {
-    let main: Color
-    let light: Color
-    let shadow: Color
-
-    init(main: Color) {
-        self.main = main
-        self.light = main.lightened(by: 0.2)  // 20% 明るくする
-        self.shadow = main.darkened(by: 0.2)  // 20% 暗くする
-    }
-}
-
 struct ColorTheme {
-    /// **Elements**
-    static let background = AppColorScheme(main: Color(hex: "#fffffe"))  // 背景
-    static let headline = AppColorScheme(main: Color(hex: "#094067"))  // ヘッドライン（タイトル）
-    static let paragraph = AppColorScheme(main: Color(hex: "#5f6c7b"))  // 段落（本文）
-    static let button = AppColorScheme(main: Color(hex: "#3da9fc"))  // ボタン
-    static let buttonText = AppColorScheme(main: Color(hex: "#fffffe"))  // ボタンテキスト
-
-    /// **Illustration**
-    static let stroke = AppColorScheme(main: Color(hex: "#094067"))  // 図のアウトライン
-    static let illustrationMain = AppColorScheme(main: Color(hex: "#fffffe"))  // イラストのメイン色
-    static let highlight = AppColorScheme(main: Color(hex: "#3da9fc"))  // 強調色
-    static let secondary = AppColorScheme(main: Color(hex: "#90b4ce"))  // セカンダリーカラー
-    static let tertiary = AppColorScheme(main: Color(hex: "#ef4565"))  // 補助的な色（警告やアラート）
-
+    static let black = Color(hex: "#171a1f")          // 黒ボタン、テキストの色
+    static let navy = Color(hex: "#094067")          // 主なボタンやアイコンのカラー
+    static let lightNavy = Color(hex: "#565d6d")     // ボタンの非選択時の色
+    static let darkGray = Color(hex: "#5f6c7b")      // ちょっとしたメニューバー
+    static let skyBlue = Color(hex: "#99cff6")       // 休憩部分や非表示部分
+    static let lightSkyBlue = Color(hex: "#f1f8fe")  // 薄いボタン
+    static let white = Color(hex: "#fffffe")         // 各ページの背景色、NavyButtonのテキストカラー
 }
 
+// HEXカラーをColorに変換する拡張
 extension Color {
-    static let theme = ColorTheme.self
-    
-    /// HEX 文字列から Color を生成する
     init(hex: String) {
         let hex = hex.trimmingCharacters(in: CharacterSet.alphanumerics.inverted)
         var int: UInt64 = 0
         Scanner(string: hex).scanHexInt64(&int)
+        
         let r, g, b: Double
-        r = Double((int >> 16) & 0xFF) / 255.0
-        g = Double((int >> 8) & 0xFF) / 255.0
-        b = Double(int & 0xFF) / 255.0
+        if hex.count == 6 {
+            r = Double((int >> 16) & 0xFF) / 255.0
+            g = Double((int >> 8) & 0xFF) / 255.0
+            b = Double(int & 0xFF) / 255.0
+        } else {
+            r = 1.0
+            g = 1.0
+            b = 1.0
+        }
+        
         self.init(red: r, green: g, blue: b)
-    }
-
-    /// 既存のカラーを明るくする
-    func lightened(by percentage: CGFloat) -> Color {
-        return self.adjustBrightness(by: abs(percentage))
-    }
-
-    /// 既存のカラーを暗くする
-    func darkened(by percentage: CGFloat) -> Color {
-        return self.adjustBrightness(by: -abs(percentage))
-    }
-
-    /// カラーの明るさを調整する
-    private func adjustBrightness(by percentage: CGFloat) -> Color {
-        var r: CGFloat = 0, g: CGFloat = 0, b: CGFloat = 0, a: CGFloat = 0
-        UIColor(self).getRed(&r, green: &g, blue: &b, alpha: &a)
-        return Color(red: min(r + percentage, 1.0),
-                     green: min(g + percentage, 1.0),
-                     blue: min(b + percentage, 1.0),
-                     opacity: Double(a))
     }
 }
