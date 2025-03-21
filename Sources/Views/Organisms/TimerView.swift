@@ -48,13 +48,13 @@ struct TimerView: View {
             Spacer()
             
             if timerViewModel.isActive {
-                StopTimerView(action: {
-                    timerViewModel.stopTimer()
-                })
+//                StopTimerView(action: {
+//                    timerViewModel.stopTimer()
+//                })
             } else {
-                StartTimerView(action: {
-                    timerViewModel.startTimer()
-                })
+//                StartTimerView(action: {
+//                    timerViewModel.startTimer()
+//                })
             }
         }
     }
