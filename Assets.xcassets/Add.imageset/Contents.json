@@ -1,17 +1,17 @@
 {
   "images" : [
     {
-      "filename" : "プラスのアイコン素材 (1).svg",
+      "filename" : "Add.svg",
       "idiom" : "universal",
       "scale" : "1x"
     },
     {
-      "filename" : "プラスのアイコン素材 (1) 2.svg",
+      "filename" : "Add2.svg",
       "idiom" : "universal",
       "scale" : "2x"
     },
     {
-      "filename" : "プラスのアイコン素材 (1) 1.svg",
+      "filename" : "Add3.svg",
       "idiom" : "universal",
       "scale" : "3x"
     }
