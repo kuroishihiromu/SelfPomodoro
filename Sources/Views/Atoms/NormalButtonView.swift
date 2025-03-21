@@ -1,103 +1,106 @@
 import SwiftUI
 
-protocol ButtonViewProtocol {
-    var buttonText: String { get }  // ボタンのテキスト
-    var radius: CGFloat { get }     // ボタンの角丸
-    var action: () -> Void { get }
-}
+struct NormalButton: View {
+    let text: String
+    let bgColor: Color
+    let fontColor: Color
+    let width: CGFloat
+    let height: CGFloat
+    let icon: Image?
+    let action: () -> Void
 
-extension ButtonViewProtocol {
-    var buttonStyle: some View {
-        RoundedRectangle(cornerRadius: radius)
-            .foregroundColor(ColorTheme.black)
+
+    init(
+        text: String,
+        bgColor: Color,
+        fontColor: Color,
+        icon: Image? = nil,
+        width: CGFloat,
+        height: CGFloat,
+        action: @escaping () -> Void
+    ) {
+        self.text = text
+        self.bgColor = bgColor
+        self.fontColor = fontColor
+        self.icon = icon
+        self.width = width
+        self.height = height
+        self.action = action
     }
     
-    var buttonTextView: some View {
-        Text(buttonText)
-            .font(.system(size: 20, weight: .semibold, design: .default))
-            .foregroundColor(.white)
-            .padding(.horizontal, 35)
-            .padding(.vertical, 20)
-    }
-}
-
-struct StartView: View, ButtonViewProtocol {
-    var buttonText: String = "Start"
-    var colorScheme = ColorTheme.navy
-    var radius: CGFloat = 10
-    var action: () -> Void
-
     var body: some View {
         Button(action: action) {
-            buttonTextView
-                .background(buttonStyle)
+            HStack(spacing:15) {
+                if let icon = icon {
+                    icon
+                        .resizable()
+                        .frame(width: 18, height: 18)
+                }
+
+                Text(text)
+                    .foregroundColor(fontColor)
+                    .font(.headline)
+            }
+            .padding()
+            .frame(width: width, height: height)
+            .background(bgColor)
+            .cornerRadius(10)
         }
     }
 }
 
-struct LetsTaskView: View, ButtonViewProtocol {
-    var buttonText: String = "Let's Task"
-    var colorScheme = ColorTheme.navy
-    var radius: CGFloat = 10
-    var action: () -> Void
-
-    var body: some View {
-        Button(action: action) {
-            buttonTextView
-                .background(buttonStyle)
-        }
-    }
-}
-
-struct StartTimerView: View, ButtonViewProtocol {
-    var buttonText = "Start Timer"
-    var colorScheme = ColorTheme.skyBlue
-    var radius: CGFloat = 10
-    var action: () -> Void
-    
-    var body: some View {
-        Button(action: action) {
-            buttonTextView
-                .background(buttonStyle)
-        }
-    }
-}
-
-struct StopTimerView: View, ButtonViewProtocol {
-    var buttonText = "Stop Timer."
-    var colorScheme = ColorTheme.navy
-    var radius: CGFloat = 10
-    var action: () -> Void
-    
-    var body: some View {
-        Button(action: action) {
-            buttonTextView
-                .background(buttonStyle)
-        }
-    }
-}
-
-struct SetTimerView: View, ButtonViewProtocol {
-    var buttonText = "Set Timer."
-    var colorScheme = ColorTheme.black
-    var radius: CGFloat = 10
-    var action: () -> Void
-    
-    var body: some View {
-        Button(action: action) {
-            buttonTextView
-                .background(buttonStyle)
-        }
-    }
-}
 
 #Preview {
     VStack {
-        StartView(action: {})
-        LetsTaskView(action: {})
-        StartTimerView(action: {})
-        StopTimerView(action: {})
-        SetTimerView(action: {})
+        NormalButton(
+            text: "Get Started",
+            bgColor: ColorTheme.navy,
+            fontColor: ColorTheme.white,
+            width:350,
+            height: 52,
+            action: {print("yahhoi!")}
+        )
+        NormalButton(
+            text: "Sign Up ",
+            bgColor: ColorTheme.navy,
+            fontColor: ColorTheme.white,
+            width:350,
+            height: 44,
+            action: {print("yahhoi!")}
+        )
+        NormalButton(
+            text: "Save",
+            bgColor: ColorTheme.navy,
+            fontColor: ColorTheme.white,
+            width:160,
+            height: 44,
+            action: {print("yahhoi!")}
+        )
+        NormalButton(
+            text: "Reset",
+            bgColor: ColorTheme.lightSkyBlue,
+            fontColor: ColorTheme.navy,
+            width:160,
+            height: 44,
+            action: {print("yahhoi!")}
+        )
+        NormalButton(
+            text: "Start",
+            bgColor: ColorTheme.black,
+            fontColor: ColorTheme.white,
+            width:160,
+            height: 44,
+            action: {print("yahhoi!")}
+        )
+        NormalButton(
+            text: "Add Task",
+            bgColor: ColorTheme.navy,
+            fontColor: ColorTheme.white,
+            icon: Image(.add),
+            width:160,
+            height: 44,
+            action: {print("yahhoi!")}
+        )
     }
 }
 

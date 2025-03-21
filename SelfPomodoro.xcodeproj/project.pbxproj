@@ -13,6 +13,7 @@
 		439F0F742D350EE100C3D3F4 /* Realtime in Frameworks */ = {isa = PBXBuildFile; productRef = 439F0F732D350EE100C3D3F4 /* Realtime */; };
 		439F0F762D350EE100C3D3F4 /* Storage in Frameworks */ = {isa = PBXBuildFile; productRef = 439F0F752D350EE100C3D3F4 /* Storage */; };
 		439F0F782D350EE100C3D3F4 /* Supabase in Frameworks */ = {isa = PBXBuildFile; productRef = 439F0F772D350EE100C3D3F4 /* Supabase */; };
+		43CC498A2D8D6E85003CA625 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 43CC49892D8D6E85003CA625 /* Assets.xcassets */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -36,6 +37,7 @@
 		433A04352CE4979100E73A8E /* SelfPomodoro.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = SelfPomodoro.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		433A04452CE4979200E73A8E /* SelfPomodoroTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = SelfPomodoroTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		433A044F2CE4979200E73A8E /* SelfPomodoroUITests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = SelfPomodoroUITests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
+		43CC49892D8D6E85003CA625 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFileSystemSynchronizedRootGroup section */
@@ -107,6 +109,7 @@
 				433A04522CE4979200E73A8E /* UITests */,
 				439F0F5D2D3506E600C3D3F4 /* Frameworks */,
 				433A04362CE4979100E73A8E /* Products */,
+				43CC49892D8D6E85003CA625 /* Assets.xcassets */,
 			);
 			sourceTree = "<group>";
 		};
@@ -258,6 +261,7 @@
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				43CC498A2D8D6E85003CA625 /* Assets.xcassets in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

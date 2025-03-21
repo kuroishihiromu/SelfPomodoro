@@ -62,9 +62,9 @@ struct TimerSettingsView: View {
             }
             Spacer()
             // Let's Taskボタン
-            LetsTaskView(action: {
-                onSettingsConfirmed(selectedRounds, selectedTaskMinutes, selectedRestMinutes)
-            })
+//            LetsTaskView(action: {
+//                onSettingsConfirmed(selectedRounds, selectedTaskMinutes, selectedRestMinutes)
+//            })
             .padding(.horizontal)
             Spacer()
         }
