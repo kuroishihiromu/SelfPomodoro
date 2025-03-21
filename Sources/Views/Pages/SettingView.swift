@@ -18,11 +18,11 @@ struct HomeView: View {
                 VStack {
                     Spacer()
                     // Startボタン
-                    StartView(action: {
-                        withAnimation(.easeInOut(duration: 0.3)) {
-                            showSettings = true
-                        }
-                    })
+//                    StartView(action: {
+//                        withAnimation(.easeInOut(duration: 0.3)) {
+//                            showSettings = true
+//                        }
+//                    })
                     Spacer()
                 }
                 .navigationDestination(isPresented: $isPresentingTimerView) {
