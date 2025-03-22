@@ -12,7 +12,6 @@ struct ColorTheme {
     static let navy = Color(hex: "#094067")          // 主なボタンやアイコンのカラー
     static let lightNavy = Color(hex: "#565d6d")     // ボタンの非選択時の色
     static let darkGray = Color(hex: "#5f6c7b")      // ちょっとしたメニューバー
-    static let gray = Color(hex: "#bdc1ca")          // テキストフィールドのプレースホルダーの色
     static let lightGray = Color(hex: "#f3f4f6")     // テキストフィールドの背景色
     static let skyBlue = Color(hex: "#99cff6")       // 休憩部分や非表示部分
     static let lightSkyBlue = Color(hex: "#f1f8fe")  // 薄いボタン
