@@ -9,25 +9,22 @@ import SwiftUI
 
 struct NormalTextField: View {
     let placeholder: String
-    let bgColor: Color
-    let fontColor: Color
     let width: CGFloat
     let height: CGFloat
     let icon: Image?
     @Binding var text: String
 
+    private let bgColor = ColorTheme.lightGray
+    private let fontColor = ColorTheme.black
+
     init(
         placeholder: String,
-        bgColor: Color,
-        fontColor: Color,
         icon: Image? = nil,
         width: CGFloat,
         height: CGFloat,
         text: Binding<String>
     ) {
         self.placeholder = placeholder
-        self.bgColor = bgColor
-        self.fontColor = fontColor
         self.icon = icon
         self.width = width
         self.height = height
@@ -67,8 +64,6 @@ struct PreviewWrapper: View {
         VStack(spacing: 20) {
             NormalTextField(
                 placeholder: "Your email address",
-                bgColor: ColorTheme.lightGray,
-                fontColor: ColorTheme.black,
                 icon: Image(.mail),
                 width: 350,
                 height: 44,
@@ -76,8 +71,6 @@ struct PreviewWrapper: View {
             )
             NormalTextField(
                 placeholder: "Enter your password",
-                bgColor: ColorTheme.lightGray,
-                fontColor: ColorTheme.black,
                 icon: Image(.key),
                 width: 350,
                 height: 44,
