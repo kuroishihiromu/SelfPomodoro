@@ -7,12 +7,75 @@
 
 import SwiftUI
 
-struct TextFieldView: View {
+struct NormalTextField: View {
+    let placeholder: String
+    let width: CGFloat
+    let height: CGFloat
+    let icon: Image?
+    @Binding var text: String
+
+    private let bgColor = ColorTheme.lightGray
+    private let fontColor = ColorTheme.black
+
+    init(
+        placeholder: String,
+        icon: Image? = nil,
+        width: CGFloat,
+        height: CGFloat,
+        text: Binding<String>
+    ) {
+        self.placeholder = placeholder
+        self.icon = icon
+        self.width = width
+        self.height = height
+        self._text = text
+    }
+
     var body: some View {
-        Text(/*@START_MENU_TOKEN@*/"Hello, World!"/*@END_MENU_TOKEN@*/)
+        HStack(spacing: 10) {
+            if let icon = icon {
+                icon
+                    .resizable()
+                    .frame(width: 18, height: 18)
+                    .foregroundColor(fontColor)
+            }
+
+            TextField(placeholder, text: $text)
+                .foregroundColor(fontColor)
+                .autocapitalization(.none)
+                .keyboardType(.emailAddress)
+        }
+        .padding()
+        .frame(width: width, height: height)
+        .background(bgColor)
+        .cornerRadius(6)
     }
 }
 
 #Preview {
-    TextFieldView()
+    PreviewWrapper()
+}
+
+struct PreviewWrapper: View {
+    @State var email = ""
+    @State var password = ""
+
+    var body: some View {
+        VStack(spacing: 20) {
+            NormalTextField(
+                placeholder: "Your email address",
+                icon: Image(.mail),
+                width: 350,
+                height: 44,
+                text: $email
+            )
+            NormalTextField(
+                placeholder: "Enter your password",
+                icon: Image(.key),
+                width: 350,
+                height: 44,
+                text: $password
+            )
+        }
+    }
 }
