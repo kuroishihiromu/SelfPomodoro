@@ -53,10 +53,10 @@ struct NormalTextField: View {
 }
 
 #Preview {
-    PreviewWrapper()
+    PreviewWrapperTextField()
 }
 
-struct PreviewWrapper: View {
+struct PreviewWrapperTextField: View {
     @State var email = ""
     @State var password = ""
 
