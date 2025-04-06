@@ -7,12 +7,12 @@
 
 import SwiftUI
 
-struct TaskManagementScreen: View {
+struct TaskManagementScreenView: View {
     var body: some View {
         Text(/*@START_MENU_TOKEN@*/"Hello, World!"/*@END_MENU_TOKEN@*/)
     }
 }
 
 #Preview {
-    TaskManagementScreen()
+    TaskManagementScreenView()
 }

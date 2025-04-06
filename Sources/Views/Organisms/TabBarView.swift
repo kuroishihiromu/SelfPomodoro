@@ -6,10 +6,30 @@
 //
 
 import SwiftUI
-
 struct TabBarView: View {
     var body: some View {
-        Text(/*@START_MENU_TOKEN@*/"Hello, World!"/*@END_MENU_TOKEN@*/)
+        TabView {
+            HomeScreenView()
+                .tabItem {
+                    Image(systemName: "house")
+                }
+
+            TaskManagementScreenView()
+                .tabItem {
+                    Image(systemName: "checkmark.circle")
+                }
+
+            StatisticsScreenView()
+                .tabItem {
+                    Image(systemName: "chart.bar")
+                }
+
+            ProfileScreenView()
+                .tabItem {
+                    Image(systemName: "person.crop.circle")
+
+                }
+        }
     }
 }
 
