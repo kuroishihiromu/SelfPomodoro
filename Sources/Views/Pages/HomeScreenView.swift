@@ -11,7 +11,7 @@ struct CycleView: View {
     var timerViewModel: TimerViewModel
 
     var body: some View {
-        TimerView(timerViewModel: timerViewModel)
+//        TimerView(timerViewModel: timerViewModel)
 //        StartTimerView(isActive: $isTimeActive)
 //        StopTimerView(isActive: $isTimeActive)
     }
