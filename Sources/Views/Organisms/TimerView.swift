@@ -6,60 +6,54 @@
 //
 
 import SwiftUI
+import ComposableArchitecture
 
 struct TimerView: View {
-    @ObservedObject var timerViewModel = TimerViewModel(totalRounds: 5, taskDuration: 1500, restDuration: 300)
-
-    let bgColor = ColorTheme.white
-
-    private var timerColor: Color {
-        return timerViewModel.state == .task ? ColorTheme.navy : ColorTheme.lightSkyBlue
-    }
-
-    private var circleColor: Color { ColorTheme.darkGray }
+    let store: StoreOf<TimerFeature>
 
     var body: some View {
-        VStack {
-            Spacer()
-            Text("\(timerViewModel.state == .task ? "タスク中" : "休憩中")")
-                .font(.system(size: 20, weight: .semibold, design: .default))
-                .foregroundColor(.black)
+        WithViewStore(store, observe: { $0 }) { viewStore in
+            VStack(spacing: 24) {
+                TaskTimerView(
+                    currentSeconds: viewStore.currentSeconds,
+                    totalSeconds: viewStore.totalSeconds
+                )
 
-            HStack {
-                Text("\(timerViewModel.formattedTime)  /  \(timerViewModel.totalTaskDuration)")
-                    .frame(width: 200, height: 200)
-                    .font(.system(size: 20, weight: .semibold))
-                    .padding(.horizontal, 35)
-                    .padding(.vertical, 20)
-                    .foregroundColor(circleColor)
+                HStack(spacing: 20) {
+                    if viewStore.isRunning {
+                        NormalButton(
+                            text: "Stop",
+                            bgColor: ColorTheme.skyBlue,
+                            fontColor: ColorTheme.white,
+                            width:200,
+                            height: 52,
+                            action: {viewStore.send(.stop)}
+                        )
+                    } else {
+                        NormalButton(
+                            text: "Start",
+                            bgColor: ColorTheme.navy,
+                            fontColor: ColorTheme.white,
+                            width:200,
+                            height: 52,
+                            action: {viewStore.send(.start)}
+                        )
+                    }
+                }
             }
-            .padding(.bottom, 50)
-            
-            HStack {
-                Text("\(timerViewModel.round)")
-                    .font(.system(size: 40, weight: .bold))
-                    .foregroundColor(.black)
-
-                Text("/ \(timerViewModel.totalRounds)")
-                    .font(.system(size: 30, weight: .semibold))
-                    .foregroundColor(.black)
-            }
-
-            Spacer()
-            
-            if timerViewModel.isActive {
-//                StopTimerView(action: {
-//                    timerViewModel.stopTimer()
-//                })
-            } else {
-//                StartTimerView(action: {
-//                    timerViewModel.startTimer()
-//                })
-            }
+            .padding()
         }
     }
 }
 
 #Preview {
-    TimerView()
+    TimerView(
+        store: Store(
+            initialState: TimerFeature.State(
+                currentSeconds: 0,
+                totalSeconds: 10
+            ),
+            reducer: { TimerFeature() }
+        )
+    )
 }
