@@ -8,69 +8,49 @@
 import SwiftUI
 
 struct TaskTimerView: View {
-    let minutes: Int
-    let seconds: Int
-    let totalMinutes: Int
+    let currentSeconds: Int
     let totalSeconds: Int
-    let fontSize: CGFloat
-    let barWidth: CGFloat
-    let barHeight: CGFloat
-    let progressColor: Color
-    let baseColor: Color
-
-    private let timerColor = ColorTheme.black
-
-    private var totalTime: Int {
-        totalMinutes * 60 + totalSeconds
-    }
-
-    private var remainingTime: Int {
-        minutes * 60 + seconds
-    }
-
-    private var progress: Double {
-        guard totalTime > 0 else { return 0 }
-        return 1.0 - (Double(remainingTime) / Double(totalTime))
-    }
-
-    private var formattedTime: String {
-        String(format: "%02d:%02d", minutes, seconds)
-    }
-
-    private var formattedTotalTime: String {
-        String(format: "%02d:%02d", totalMinutes, totalSeconds)
-    }
+    private let barWidth: CGFloat = 350
 
     var body: some View {
         VStack(spacing: 12) {
-            // 表示: 残り / 合計
-            Text("\(formattedTime) / \(formattedTotalTime)")
-                .font(.system(size: fontSize, weight: .bold))
-                .foregroundColor(timerColor)
+            Text("\(format(currentSeconds)) / \(format(totalSeconds))")
+                .font(.system(size: 32, weight: .bold))
+                .foregroundColor(.black)
 
-            // 進捗バー
             ZStack(alignment: .leading) {
+                // 背景バー
                 Capsule()
-                    .fill(baseColor)
-                    .frame(width: barWidth, height: barHeight)
+                    .fill(ColorTheme.lightSkyBlue)
+                    .frame(width: barWidth, height: 7)
 
+                // 進捗バー
                 Capsule()
-                    .fill(progressColor)
-                    .frame(width: CGFloat(progress) * barWidth, height: barHeight)
+                    .fill(ColorTheme.navy)
+                    .frame(
+                        width: barWidth * progress(current: currentSeconds, total: totalSeconds),
+                        height: 7
+                    )
             }
         }
     }
+
+    private func format(_ seconds: Int) -> String {
+        String(format: "%02d:%02d", seconds / 60, seconds % 60)
+    }
+
+    private func progress(current: Int, total: Int) -> Double {
+        guard total > 0 else { return 0 }
+        return min(Double(current) / Double(total), 1.0)
+    }
 }
+
 #Preview {
-    TaskTimerView(
-        minutes: 12,
-        seconds: 30,
-        totalMinutes: 25,
-        totalSeconds: 0,
-        fontSize: 32,
-        barWidth: 350,
-        barHeight: 7,
-        progressColor: ColorTheme.navy,
-        baseColor: ColorTheme.skyBlue
-    )
+    VStack(spacing: 40) {
+        TaskTimerView(currentSeconds: 0, totalSeconds: 60)
+        TaskTimerView(currentSeconds: 10, totalSeconds: 60)
+        TaskTimerView(currentSeconds: 30, totalSeconds: 60)
+        TaskTimerView(currentSeconds: 60, totalSeconds: 60)
+    }
+    .padding()
 }
