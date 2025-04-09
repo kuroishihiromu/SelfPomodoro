@@ -7,12 +7,13 @@
 
 import SwiftUI
 
-struct CycleView: View {
-    var timerViewModel: TimerViewModel
+struct HomeScreenView: View {
+//    var timerViewModel: TimerViewModel
 
     var body: some View {
 //        TimerView(timerViewModel: timerViewModel)
 //        StartTimerView(isActive: $isTimeActive)
 //        StopTimerView(isActive: $isTimeActive)
+        Text("Home")
     }
 }
