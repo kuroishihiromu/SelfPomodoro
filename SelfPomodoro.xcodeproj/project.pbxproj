@@ -14,6 +14,7 @@
 		439F0F762D350EE100C3D3F4 /* Storage in Frameworks */ = {isa = PBXBuildFile; productRef = 439F0F752D350EE100C3D3F4 /* Storage */; };
 		439F0F782D350EE100C3D3F4 /* Supabase in Frameworks */ = {isa = PBXBuildFile; productRef = 439F0F772D350EE100C3D3F4 /* Supabase */; };
 		43CC498A2D8D6E85003CA625 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 43CC49892D8D6E85003CA625 /* Assets.xcassets */; };
+		43E2CFC92DA35A0300E2B820 /* ComposableArchitecture in Frameworks */ = {isa = PBXBuildFile; productRef = 43E2CFC82DA35A0300E2B820 /* ComposableArchitecture */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -66,6 +67,11 @@
 			path = "Preview Content";
 			sourceTree = "<group>";
 		};
+		43E2CFBB2DA350D000E2B820 /* Features */ = {
+			isa = PBXFileSystemSynchronizedRootGroup;
+			path = Features;
+			sourceTree = "<group>";
+		};
 /* End PBXFileSystemSynchronizedRootGroup section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -75,6 +81,7 @@
 			files = (
 				439F0F722D350EE100C3D3F4 /* PostgREST in Frameworks */,
 				439F0F702D350EE100C3D3F4 /* Functions in Frameworks */,
+				43E2CFC92DA35A0300E2B820 /* ComposableArchitecture in Frameworks */,
 				439F0F782D350EE100C3D3F4 /* Supabase in Frameworks */,
 				439F0F6E2D350EE100C3D3F4 /* Auth in Frameworks */,
 				439F0F762D350EE100C3D3F4 /* Storage in Frameworks */,
@@ -102,6 +109,7 @@
 		433A042C2CE4979100E73A8E = {
 			isa = PBXGroup;
 			children = (
+				43E2CFBB2DA350D000E2B820 /* Features */,
 				43685E202D80882100F28BA8 /* Preview Content */,
 				43685E1B2D80868C00F28BA8 /* Documentatioin */,
 				433A04372CE4979100E73A8E /* Sources */,
@@ -149,6 +157,7 @@
 				433A04372CE4979100E73A8E /* Sources */,
 				43685E1B2D80868C00F28BA8 /* Documentatioin */,
 				43685E202D80882100F28BA8 /* Preview Content */,
+				43E2CFBB2DA350D000E2B820 /* Features */,
 			);
 			name = SelfPomodoro;
 			packageProductDependencies = (
@@ -158,6 +167,7 @@
 				439F0F732D350EE100C3D3F4 /* Realtime */,
 				439F0F752D350EE100C3D3F4 /* Storage */,
 				439F0F772D350EE100C3D3F4 /* Supabase */,
+				43E2CFC82DA35A0300E2B820 /* ComposableArchitecture */,
 			);
 			productName = SelfPomodoro;
 			productReference = 433A04352CE4979100E73A8E /* SelfPomodoro.app */;
@@ -243,6 +253,7 @@
 			minimizedProjectReferenceProxies = 1;
 			packageReferences = (
 				439F0F6C2D350ED900C3D3F4 /* XCRemoteSwiftPackageReference "supabase-swift" */,
+				43E2CFC72DA359F700E2B820 /* XCRemoteSwiftPackageReference "swift-composable-architecture" */,
 			);
 			preferredProjectObjectVersion = 77;
 			productRefGroup = 433A04362CE4979100E73A8E /* Products */;
@@ -618,6 +629,14 @@
 				minimumVersion = 2.5.1;
 			};
 		};
+		43E2CFC72DA359F700E2B820 /* XCRemoteSwiftPackageReference "swift-composable-architecture" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/pointfreeco/swift-composable-architecture#basic-usage";
+			requirement = {
+				kind = upToNextMajorVersion;
+				minimumVersion = 1.19.0;
+			};
+		};
 /* End XCRemoteSwiftPackageReference section */
 
 /* Begin XCSwiftPackageProductDependency section */
@@ -650,6 +669,11 @@
 			isa = XCSwiftPackageProductDependency;
 			package = 439F0F6C2D350ED900C3D3F4 /* XCRemoteSwiftPackageReference "supabase-swift" */;
 			productName = Supabase;
+		};
+		43E2CFC82DA35A0300E2B820 /* ComposableArchitecture */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 43E2CFC72DA359F700E2B820 /* XCRemoteSwiftPackageReference "swift-composable-architecture" */;
+			productName = ComposableArchitecture;
 		};
 /* End XCSwiftPackageProductDependency section */
 	};

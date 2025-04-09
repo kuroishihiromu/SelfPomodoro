@@ -7,7 +7,7 @@
 
 import SwiftUI
 
-struct AuthView: View {
+struct AuthScreenView: View {
     @StateObject private var viewModel = AuthViewModel()
     @Environment(\.isAuthenticated) private var isAuthenticated
     

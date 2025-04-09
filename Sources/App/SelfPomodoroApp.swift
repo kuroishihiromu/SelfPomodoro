@@ -11,7 +11,7 @@ struct SelfPomodoroApp: App {
     @State private var isAuthenticated = false
     var body: some Scene {
         WindowGroup {
-            AuthView()
+            AuthScreenView()
                 .environment(\.isAuthenticated, isAuthenticated)
                 .task {
                     for await state in supabase.auth.authStateChanges {

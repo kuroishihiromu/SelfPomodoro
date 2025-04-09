@@ -25,11 +25,11 @@ struct HomeView: View {
 //                    })
                     Spacer()
                 }
-                .navigationDestination(isPresented: $isPresentingTimerView) {
-                    if let viewModel = timerViewModel {
-                        CycleView(timerViewModel: viewModel)
-                    }
-                }
+//                .navigationDestination(isPresented: $isPresentingTimerView) {
+//                    if let viewModel = timerViewModel {
+//                        CycleView(timerViewModel: viewModel)
+//                    }
+//                }
 
                 // モーダル表示
                 if showSettings {

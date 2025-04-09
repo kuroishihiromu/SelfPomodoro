@@ -7,7 +7,7 @@
 
 import SwiftUI
 
-struct ProfileView: View {
+struct ProfileScreenView: View {
   @State var username = ""
   @State var fullName = ""
   @State var website = ""
@@ -103,5 +103,5 @@ struct ProfileView: View {
 }
 
 #Preview {
-    ProfileView()
+    ProfileScreenView()
 }
