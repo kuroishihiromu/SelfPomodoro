@@ -1,0 +1,29 @@
+name: iOS CI
+
+on:
+  push:
+    branches: [front]
+  pull_request:
+    branches: [front]
+
+env:
+  DEVELOPER_DIR: /Applications/Xcode_15.2.app
+
+jobs:
+  build-only:
+    runs-on: macos-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Show Xcode version
+        run: xcodebuild -version
+
+      - name: Build project
+        run: |
+          set -o pipefail &&
+          xcodebuild -scheme SelfPomodoro \
+                     -destination 'platform=iOS Simulator,name=iPhone 14' \
+                     -allowProvisioningUpdates \
+                     clean build
