@@ -16,7 +16,9 @@ struct TimerView: View {
             VStack(spacing: 24) {
                 TaskTimerView(
                     currentSeconds: viewStore.currentSeconds,
-                    totalSeconds: viewStore.totalSeconds
+                    totalSeconds: viewStore.totalSeconds,
+                    mainColor: ColorTheme.navy,
+                    subColor: ColorTheme.lightSkyBlue
                 )
 
                 HStack(spacing: 20) {
