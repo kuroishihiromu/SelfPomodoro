@@ -30,7 +30,7 @@ jobs:
           xcodebuild \
             -project SelfPomodoro.xcodeproj \
             -scheme SelfPomodoro \
-            -destination "platform=iOS Simulator,OS=18.4,name=iPhone 15" \
+            -destination "platform=iOS Simulator,OS=18.4,name=iPhone 16" \
             -allowProvisioningUpdates \
             -disablePackageRepositoryCache \
             clean build
