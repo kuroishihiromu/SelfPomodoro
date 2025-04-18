@@ -17,7 +17,7 @@ struct MainView: View {
                 // タブによって画面切り替え
                 Group {
                     switch viewStore.selectedTabIndex {
-                    case 0: HomeScreenView()
+                    case 0: TimerScreenView()
                     case 1: TaskManagementScreenView()
                     case 2: StatisticsScreenView()
                     case 3: ProfileScreenView()

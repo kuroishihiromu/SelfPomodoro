@@ -1,5 +1,5 @@
 //
-//  HomeScreenView.swift
+//  TimerScreenView.swift
 //  SelfPomodoro
 //
 //  Created by 黒石陽夢 on 2025/01/10.
@@ -8,7 +8,7 @@
 import ComposableArchitecture
 import SwiftUI
 
-struct HomeScreenView: View {
+struct TimerScreenView: View {
 //    var timerViewModel: TimerViewModel
 
     var body: some View {
