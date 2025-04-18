@@ -26,6 +26,8 @@ jobs:
       - name: Build iOS app
         run: |
           cd app
+          echo "📁 Contents of ./app:"
+          ls -la
           set -o pipefail &&
           xcodebuild \
             -project SelfPomodoro.xcodeproj \
