@@ -7,26 +7,31 @@ on:
     branches: [app]
 
 env:
-  DEVELOPER_DIR: /Applications/Xcode_15.2.app
+  DEVELOPER_DIR: /Applications/Xcode_16.app
 
 jobs:
   build-only:
-    runs-on: macos-latest
+    runs-on: macos-15
 
     steps:
       - name: Checkout code
         uses: actions/checkout@v3
+
+      - name: Show current path
+        run: pwd && ls -la && ls -la app
 
       - name: Show Xcode version
         run: xcodebuild -version
 
       - name: Build iOS app
         run: |
+          cd app
           set -o pipefail &&
           xcodebuild \
-            -project app/SelfPomodoro.xcodeproj \
+            -project SelfPomodoro.xcodeproj \
             -scheme SelfPomodoro \
-            -destination "platform=iOS Simulator,name=iPhone 14" \
+            -destination "platform=iOS Simulator,OS=18.4,name=iPhone 16" \
+            -skipMacroValidation \
             -allowProvisioningUpdates \
+            -disablePackageRepositoryCache \
             clean build
-
