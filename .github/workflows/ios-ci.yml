@@ -17,6 +17,9 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v3
 
+      - name: Show current path
+        run: pwd && ls -la && ls -la app
+
       - name: Show Xcode version
         run: xcodebuild -version
 
@@ -28,5 +31,6 @@ jobs:
             -scheme SelfPomodoro \
             -destination "platform=iOS Simulator,name=iPhone 14" \
             -allowProvisioningUpdates \
+            -disablePackageRepositoryCache \
             clean build
 
