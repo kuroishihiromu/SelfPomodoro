@@ -20,10 +20,13 @@ jobs:
       - name: Show Xcode version
         run: xcodebuild -version
 
-      - name: Build project
+      - name: Build iOS app
         run: |
           set -o pipefail &&
-          xcodebuild -scheme SelfPomodoro \
-                     -destination 'platform=iOS Simulator,name=iPhone 14' \
-                     -allowProvisioningUpdates \
-                     clean build
+          xcodebuild \
+            -project app/SelfPomodoro.xcodeproj \
+            -scheme SelfPomodoro \
+            -destination "platform=iOS Simulator,name=iPhone 14" \
+            -allowProvisioningUpdates \
+            clean build
+
