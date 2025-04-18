@@ -16,8 +16,6 @@ jobs:
     steps:
       - name: Checkout code
         uses: actions/checkout@v3
-        with:
-          path: .
 
       - name: Show current path
         run: pwd && ls -la && ls -la app
@@ -26,8 +24,8 @@ jobs:
         run: xcodebuild -version
 
       - name: Build iOS app
-        working-directory: ./app
         run: |
+          cd app
           set -o pipefail &&
           xcodebuild \
             -project SelfPomodoro.xcodeproj \
@@ -36,4 +34,3 @@ jobs:
             -allowProvisioningUpdates \
             -disablePackageRepositoryCache \
             clean build
-
