@@ -28,7 +28,7 @@ jobs:
         run: |
           set -o pipefail &&
           xcodebuild \
-            -project app/SelfPomodoro.xcodeproj \
+            -project SelfPomodoro.xcodeproj \
             -scheme SelfPomodoro \
             -destination "platform=iOS Simulator,name=iPhone 14" \
             -allowProvisioningUpdates \
