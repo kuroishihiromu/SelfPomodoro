@@ -14,13 +14,24 @@ struct TimerView: View {
     var body: some View {
         WithViewStore(store, observe: { $0 }) { viewStore in
             VStack(spacing: 24) {
+                // ラウンド数の表示
+                Text("Round \(viewStore.round)")
+                    .font(.system(size: 22, weight: .bold))
+
+                // フェーズ（Task/Break）の表示
+                Text(viewStore.phase == .task ? "Task Time" : "Break Time")
+                    .font(.system(size: 18, weight: .medium))
+                    .foregroundColor(.gray)
+
+                // タイマーバー（色切替付き）
                 TaskTimerView(
                     currentSeconds: viewStore.currentSeconds,
                     totalSeconds: viewStore.totalSeconds,
-                    mainColor: ColorTheme.navy,
-                    subColor: ColorTheme.lightSkyBlue
+                    mainColor: viewStore.phase == .task ? ColorTheme.navy : ColorTheme.skyBlue,
+                    subColor: viewStore.phase == .task ? ColorTheme.lightSkyBlue : ColorTheme.navy
                 )
 
+                // ボタン（Start / Stop）
                 HStack(spacing: 20) {
                     if viewStore.isRunning {
                         NormalButton(
@@ -48,12 +59,14 @@ struct TimerView: View {
     }
 }
 
+
 #Preview {
     TimerView(
         store: Store(
             initialState: TimerFeature.State(
-                currentSeconds: 0,
-                totalSeconds: 10
+                totalSeconds: 10,
+                taskDuration: 30,
+                restDuration: 10
             ),
             reducer: { TimerFeature() }
         )
