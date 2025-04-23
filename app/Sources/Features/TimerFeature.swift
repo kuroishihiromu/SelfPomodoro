@@ -82,7 +82,7 @@ struct TimerFeature {
 
             // 次のフェーズの時間を設定
             state.totalSeconds = state.currentPhaseDuration
-            return .none
+            return .send(.stop)
 
         case let .updateDurations(task, rest):
             state.taskDuration = task
