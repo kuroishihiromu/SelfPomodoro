@@ -9,31 +9,23 @@ import ComposableArchitecture
 import SwiftUI
 
 struct TimerScreenView: View {
+    let store: StoreOf<TimerScreenFeature>
 
     var body: some View {
-        ZStack{
-            VStack{
-                TimerView(
-                    store: Store(
-                        initialState: TimerFeature.State(
-                            totalSeconds: 30,
-                            taskDuration: 30,
-                            restDuration: 10
-                        ),
-                        reducer: { TimerFeature() }
-                    )
-                )
-                ToDoListView(store: Store(
-                    initialState: ToDoListFeature.State(),
-                    reducer: {
-                        ToDoListFeature()
-                    }
-                ))
+        WithViewStore(store, observe: \.self ) { _ in
+            ZStack {
+                VStack(spacing: 20) {
+                    TimerView(store: store.scope(state: \.timer, action: \.timer))
+                    ToDoListView(store: store.scope(state: \.todoList, action: \.todoList))
+                }
+
+                // 評価モーダル
+                IfLetStore(store.scope(state: \.evalModal, action: \.evalModal)) { modalStore in
+                    EvalModalView(store: modalStore)
+                        .background(Color.black.opacity(0.3).ignoresSafeArea())
+                }
             }
         }
     }
 }
 
-#Preview {
-    TimerScreenView()
-}
