@@ -14,28 +14,22 @@ struct PieChartView: View {
         VStack(spacing: 16) {
             // 円グラフ
             GeometryReader { geometry in
-                let center = CGPoint(x: geometry.size.width / 2, y: geometry.size.height / 2)
-                let radius = min(geometry.size.width, geometry.size.height) / 2
                 let clampedCompleted = max(0, min(completed, 100)) // 0~100の範囲に収まるように処理
                 let completedAngle = 360 * clampedCompleted / 100
 
                 ZStack {
                     // 達成済み
-                    PieSliceView(
-                        center: center,
-                        radius: radius,
+                    PieSlice(
                         startAngle: .degrees(-90),
-                        endAngle: .degrees(completedAngle - 90),
-                        color: ColorTheme.navy
+                        endAngle: .degrees(completedAngle - 90)
                     )
+                    .fill(ColorTheme.navy)
                     // 未達成
-                    PieSliceView(
-                        center: center,
-                        radius: radius,
+                    PieSlice(
                         startAngle: .degrees(completedAngle - 90),
-                        endAngle: .degrees(270),
-                        color: ColorTheme.darkGray
+                        endAngle: .degrees(270)
                     )
+                    .fill(ColorTheme.darkGray)
                 }
             }
             .aspectRatio(1, contentMode: .fit)
@@ -61,27 +55,27 @@ struct PieChartView: View {
 }
 
 // 扇型の描画
-struct PieSliceView: View {
-    let center: CGPoint
-    let radius: CGFloat
+struct PieSlice: Shape {
     let startAngle: Angle
     let endAngle: Angle
-    let color: Color
 
-    var body: some View {
-        Path { path in
-            path.move(to: center)
-            path.addArc(
-                center: center,
-                radius: radius,
-                startAngle: startAngle,
-                endAngle: endAngle,
-                clockwise: false
-            )
-        }
-        .fill(color)
+    func path(in rect: CGRect) -> Path {
+        let center = CGPoint(x: rect.midX, y: rect.midY)
+        let radius = min(rect.width, rect.height) / 2
+
+        var path = Path()
+        path.move(to: center)
+        path.addArc(
+            center: center,
+            radius: radius,
+            startAngle: startAngle,
+            endAngle: endAngle,
+            clockwise: false
+        )
+        return path
     }
 }
+
 
 #Preview {
     VStack(spacing: 20) {
