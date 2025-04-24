@@ -76,7 +76,6 @@ struct PieSlice: Shape {
     }
 }
 
-
 #Preview {
     VStack(spacing: 20) {
         PieChartView(completed: 0)
