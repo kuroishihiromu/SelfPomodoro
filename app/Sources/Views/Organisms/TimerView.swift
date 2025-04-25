@@ -66,7 +66,9 @@ struct TimerView: View {
             initialState: TimerFeature.State(
                 totalSeconds: 10,
                 taskDuration: 30,
-                restDuration: 10
+                shortBreakDuration: 10,
+                longBreakDuration: 20,
+                roundsPerSession: 3
             ),
             reducer: { TimerFeature() }
         )

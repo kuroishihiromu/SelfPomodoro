@@ -12,18 +12,20 @@ struct MainView: View {
     let store: StoreOf<TabButtonFeature>
 
     var body: some View {
-        WithViewStore(store, observe: { $0 }) { viewStore in
+        WithViewStore(store, observe: \.selectedTabIndex) { viewStore in
             VStack(spacing: 0) {
                 Group {
-                    switch viewStore.selectedTabIndex {
+                    switch viewStore.state {
                     case 0:
                         TimerScreenView(
                             store: Store(
                                 initialState: TimerScreenFeature.State(
                                     timer: TimerFeature.State(
-                                        totalSeconds: 5,
-                                        taskDuration: 5,
-                                        restDuration: 5
+                                        totalSeconds: 10,
+                                        taskDuration: 30,
+                                        shortBreakDuration: 10,
+                                        longBreakDuration: 20,
+                                        roundsPerSession:3
                                     ),
                                     todoList: ToDoListFeature.State(),
                                     evalModal: nil
