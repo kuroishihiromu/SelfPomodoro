@@ -32,7 +32,7 @@ struct TimerScreenFeature{
         Reduce {state, action in
             switch action {
             case .timer(.phaseCompleted):
-                if state.timer.phase == .rest {
+                if state.timer.phase == .shortBreak || state.timer.phase == .longBreak {
                     state.evalModal = EvalModalFeature.State(
                         score: 0.5,
                         round: state.timer.round
