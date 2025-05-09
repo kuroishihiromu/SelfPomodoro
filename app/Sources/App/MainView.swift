@@ -10,29 +10,28 @@ import SwiftUI
 
 struct MainView: View {
     let store: StoreOf<TabButtonFeature>
-
+    let timerStore = Store(
+        initialState: TimerScreenFeature.State(
+            timer: TimerFeature.State(
+                totalSeconds: 10,
+                taskDuration: 30,
+                shortBreakDuration: 10,
+                longBreakDuration: 20,
+                roundsPerSession: 3
+            ),
+            todoList: ToDoListFeature.State(),
+            evalModal: nil
+        ),
+        reducer: { TimerScreenFeature() }
+    )
+    
     var body: some View {
         WithViewStore(store, observe: \.selectedTabIndex) { viewStore in
             VStack(spacing: 0) {
                 Group {
                     switch viewStore.state {
                     case 0:
-                        TimerScreenView(
-                            store: Store(
-                                initialState: TimerScreenFeature.State(
-                                    timer: TimerFeature.State(
-                                        totalSeconds: 10,
-                                        taskDuration: 30,
-                                        shortBreakDuration: 10,
-                                        longBreakDuration: 20,
-                                        roundsPerSession:3
-                                    ),
-                                    todoList: ToDoListFeature.State(),
-                                    evalModal: nil
-                                ),
-                                reducer: { TimerScreenFeature() }
-                            )
-                        )
+                        TimerScreenView(store: timerStore)
                     case 1:
                         TaskManagementScreenView()
                     case 2:
@@ -51,8 +50,9 @@ struct MainView: View {
     }
 }
 #Preview {
-    MainView(store: Store(initialState: TabButtonFeature.State()) {
-        TabButtonFeature()
-    }
+    MainView(
+        store: Store(initialState: TabButtonFeature.State()) {
+            TabButtonFeature()
+        }
     )
 }
