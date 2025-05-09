@@ -3,6 +3,8 @@ module github.com/tsunakit99/selfpomodoro
 go 1.24.2
 
 require (
+	github.com/jmoiron/sqlx v1.4.0
+	github.com/lib/pq v1.10.9
 	github.com/spf13/viper v1.20.1
 	go.uber.org/zap v1.27.0
 )
