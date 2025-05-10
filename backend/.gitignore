@@ -1,0 +1,56 @@
+# バイナリファイル
+*.exe
+*.exe~
+*.dll
+*.so
+*.dylib
+*.test
+*.out
+
+# 依存関係ディレクトリ
+vendor/
+
+# Go固有
+*.o
+*.a
+*.[568]
+*.cgo1.go
+*.cgo2.c
+_cgo_*
+_obj/
+_test/
+/pkg/
+.cache
+
+# IDEとエディタの設定
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+
+# 環境設定
+.env
+.env.local
+.env.development
+.env.test
+.env.production
+
+# ログファイル
+*.log
+
+# テスト結果やカバレッジ
+coverage.txt
+profile.out
+
+# ビルド成果物
+/bin/
+/build/
+/dist/
+
+# OS固有のファイル
+.DS_Store
+Thumbs.db
+
+# その他のプロジェクト固有
+/tmp/
