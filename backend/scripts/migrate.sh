@@ -4,8 +4,8 @@
 set -e
 
 # 環境変数の読み込み
-if [ -f .env.development ]; then
-  export $(grep -v '^#' .env.development | xargs)
+if [ -f .env ]; then
+  export $(grep -v '^#' .env | xargs)
 fi
 
 # データベース接続文字列
