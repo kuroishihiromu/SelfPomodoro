@@ -9,7 +9,6 @@ import (
 	"time"
 
 	"github.com/labstack/echo/v4"
-	"github.com/labstack/echo/v4/middleware"
 	"github.com/tsunakit99/selfpomodoro/internal/config"
 	"github.com/tsunakit99/selfpomodoro/internal/infrastructure/logger"
 )
@@ -43,20 +42,6 @@ func NewServer(cfg *config.Config, logger logger.Logger) *Server {
 		// エラーをログに記録
 		logger.Errorf("HTTPエラー: %d - %s", code, message)
 	}
-
-	// 基本的なミドルウェアを設定
-	e.Use(middleware.Recover())
-	e.Use(middleware.RequestID())
-	e.Use(middleware.CORSWithConfig(middleware.CORSConfig{
-		AllowOrigins: []string{"*"},
-		AllowMethods: []string{http.MethodGet, http.MethodPut, http.MethodPost, http.MethodDelete, http.MethodPatch},
-		AllowHeaders: []string{echo.HeaderOrigin, echo.HeaderContentType, echo.HeaderAccept, echo.HeaderAuthorization},
-	}))
-
-	// リクエストロギングミドルウェア
-	e.Use(middleware.LoggerWithConfig(middleware.LoggerConfig{
-		Format: "${time_rfc3339} | ${id} | ${method} ${uri} | ${status} | ${latency_human}\n",
-	}))
 
 	return &Server{
 		echo:   e,
