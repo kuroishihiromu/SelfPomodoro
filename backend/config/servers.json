@@ -1,0 +1,14 @@
+{
+    "Servers": {
+      "1": {
+        "Name": "Local Docker PostgreSQL",
+        "Group": "Servers",
+        "Host": "postgres",
+        "Port": 5432,
+        "MaintenanceDB": "pomodoro",
+        "Username": "postgres",
+        "Password": "postgres",
+        "SSLMode": "prefer"
+      }
+    }
+  }
