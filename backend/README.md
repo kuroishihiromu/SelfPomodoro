@@ -152,6 +152,9 @@ http://localhost:8081
  ## 2025/05/14 タスク処理の動作確認
  ### 手順
  ```bash
+ # migrationをするためのパッッケージインストール(Macのみ記載)
+ brew install golang-migrate
+
  # backendディレクトリに移動
  cd backend
 
