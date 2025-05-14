@@ -27,8 +27,8 @@ func (s *Server) SetupRouter(handlers *handler.Handlers) {
 	api := e.Group("/api/v1")
 
 	// 認証ルート(開発用ダミー)
-	// auth := api.Group("/auth")
-	// auth.POST("/dev-login", handlers.Auth.DevLogin)
+	auth := api.Group("/auth")
+	auth.POST("/dev-login", handlers.Auth.DevLogin)
 
 	//　認証が必要なルート
 	secured := api.Group("")
