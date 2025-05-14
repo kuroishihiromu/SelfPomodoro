@@ -39,6 +39,6 @@ func (s *Server) SetupRouter(handlers *handler.Handlers) {
 	tasks.POST("", handlers.Task.CreateTask)
 	tasks.GET("", handlers.Task.GetAllTasks)
 	tasks.PATCH("/:task_id/edit", handlers.Task.UpdateTask)
-	tasks.PATCH("/;task_id/toggle", handlers.Task.ToggleTask)
-	tasks.DELETE("/;task_id", handlers.Task.DeleteTask)
+	tasks.PATCH("/:task_id/toggle", handlers.Task.ToggleTask)
+	tasks.DELETE("/:task_id", handlers.Task.DeleteTask)
 }
