@@ -10,7 +10,7 @@ import Foundation
 
 @Reducer
 struct TimerFeature {
-    
+
     enum Phase: Equatable {
         case task
         case shortBreak
@@ -31,7 +31,9 @@ struct TimerFeature {
         var longBreakDuration: Int
 
         var roundsPerSession: Int
-        
+
+        var startTime: ContinuousClock.Instant? = nil
+
         var currentPhaseDuration: Int {
             switch phase {
             case .task:
@@ -47,11 +49,11 @@ struct TimerFeature {
     enum Action: Equatable {
         case start
         case stop
-        case tick
+        case tick(Int)
         case phaseCompleted
         case updateSettings(task: Int, shortBreak: Int, longBreak: Int, roundsPerSession: Int)
     }
-    
+
     enum CancelID { case timer }
 
     func reduce(into state: inout State, action: Action) -> Effect<Action> {
@@ -59,10 +61,15 @@ struct TimerFeature {
 
         case .start:
             state.isRunning = true
-            return .run { send in
+            state.totalSeconds = state.currentPhaseDuration
+            let correctedStart = ContinuousClock().now.advanced(by: .seconds(-state.currentSeconds))
+            state.startTime = correctedStart
+            return .run { [start = correctedStart] send in
                 while true {
-                    try await Task.sleep(nanoseconds: 1_000_000_000)
-                    await send(.tick)
+                    let now = ContinuousClock().now
+                    let elapsed = Int(start.duration(to: now).components.seconds)
+                    await send(.tick(elapsed))
+                    try await Task.sleep(nanoseconds: 300_000_000)
                 }
             }
             .cancellable(id: CancelID.timer)
@@ -71,11 +78,14 @@ struct TimerFeature {
             state.isRunning = false
             return .cancel(id: CancelID.timer)
 
-        case .tick:
-            guard state.currentSeconds < state.totalSeconds else {
+        case let .tick(elapsed):
+            guard elapsed != state.currentSeconds else {
+                return .none
+            }
+            state.currentSeconds = elapsed
+            if elapsed >= state.totalSeconds {
                 return .send(.phaseCompleted)
             }
-            state.currentSeconds += 1
             return .none
 
         case .phaseCompleted:
@@ -105,7 +115,7 @@ struct TimerFeature {
             state.roundsPerSession = rps
             state.totalSeconds = state.currentPhaseDuration
             state.currentSeconds = 0
-                return .none
+            return .none
         }
     }
 }
