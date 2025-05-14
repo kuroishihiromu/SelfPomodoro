@@ -54,7 +54,7 @@ func (r *TaskRepositoryImpl) Create(ctx context.Context, task *model.Task) error
 	)
 
 	if err != nil {
-		r.logger.Errorf(("タスク作成エラー: %v"), err)
+		r.logger.Errorf("タスク作成エラー: %v", err)
 		return fmt.Errorf("%w: %v", ErrTaskCreationFailed, err)
 	}
 	return nil
