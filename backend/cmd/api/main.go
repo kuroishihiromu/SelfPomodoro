@@ -4,11 +4,13 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/labstack/echo/v4"
 	"github.com/tsunakit99/selfpomodoro/internal/app"
 	"github.com/tsunakit99/selfpomodoro/internal/config"
 	"github.com/tsunakit99/selfpomodoro/internal/infrastructure/database"
 	"github.com/tsunakit99/selfpomodoro/internal/infrastructure/logger"
+	"github.com/tsunakit99/selfpomodoro/internal/infrastructure/repository"
+	"github.com/tsunakit99/selfpomodoro/internal/interface/handler"
+	"github.com/tsunakit99/selfpomodoro/internal/usecase"
 )
 
 // ビルド情報（ビルド時に設定される）
@@ -57,21 +59,15 @@ func main() {
 	// }
 
 	// ここで各リポジトリ、ユースケース、ハンドラーを初期化
-	// TODO
+	RepositoryFactory := repository.NewRepositoryFactory(postgresDB, nil, appLogger)
+	useCases := usecase.NewUseCases(RepositoryFactory.Task, appLogger)
+	handlers := handler.NewHandlers(useCases, appLogger)
 
 	// サーバー初期化
 	server := app.NewServer(cfg, appLogger)
 
 	// ルーティング設定
-	// TODO
-
-	// ヘルスチェックエンドポイント
-	server.GetEcho().GET("/health", func(c echo.Context) error {
-		return c.JSON(200, map[string]string{
-			"status":  "OK",
-			"version": Version,
-		})
-	})
+	server.SetupRouter(handlers)
 
 	// サーバー起動
 	if err := server.Start(); err != nil {
