@@ -149,3 +149,78 @@ http://localhost:8081
  
  でログインできたらOK!
 
+ ## 2025/05/14 タスク処理の動作確認
+ ### 手順
+ ```bash
+ # backendディレクトリに移動
+ cd backend
+
+# マイグレーションスクリプトの実行権限付与
+ chmod +x scripts/migrate.sh
+
+ # 一応前回のキャッシュが残ってないか確認のためサーバーダウン(ホストPCのDockerDesktopを開いてね！)
+ make docker-down
+
+ # サーバ起動
+ make dev
+
+ # migration実行
+ make migrate-up
+
+ # Task動作確認(今回は開発環境用にダミーのトークンを使用)
+ curl -X POST http://localhost:8080/api/v1/tasks \
+  -H "Authorization: Bearer dev-token" \
+  -H "Content-Type: application/json" \
+  -d '{"detail": "テストタスク"}'
+
+  #以下のようなレスポンンスが来たら成功(idは一意生成なので違くてOK)
+  # 今回は固定値のuser_idに基づいてタスクを作成
+  {"id":"70d7757d-b1b7-467c-a5d4-da09f2f6f0e1","detail":"テストタスク","is_completed":false,"created_at":"2025-05-14T18:04:43.476769+09:00","updated_at":"2025-05-14T18:04:43.476769+09:00"}
+```
+
+### 他のエンドポイントも試してみるといいかも
+ - 全部のタスクをとってくる
+ ```bash
+ curl -X GET http://localhost:8080/api/v1/tasks \
+ -H "Authorization: Bearer dev-token" \
+ -H "Content-Type: application/json" \
+ ```
+
+ - タスクの詳細を編集する
+ ```bash
+ curl -X PATCH http://localhost:8080/api/v1/tasks/idのとこに出てきた文字列/edit \
+-H "Authorization: Bearer dev-token" \
+-H "Content-Type: application/json" \
+-d '{"detail": "テストタスク更新"}'
+ ```
+
+ - タスクの完了状態を切り替える
+ ```bash
+ curl -X PATCH http://localhost:8080/api/v1/tasks/idのとこに出てきた文字列/toggle \
+-H "Authorization: Bearer dev-token" \
+-H "Content-Type: application/json" \
+ ```
+
+ - タスクを削除する
+ ```bash
+ curl -X DELETE http://localhost:8080/api/v1/tasks/idのとこに出てきた文字列 \
+-H "Authorization: Bearer dev-token" \
+-H "Content-Type: application/json" \
+```
+
+※後々ユニットテストも実装予定です
+
+### pgadminでの確認
+作成したタスクをGUIで確認しよう！
+```bash
+# 以下にアクセス
+localhost:8081
+```
+以下のような画面が出てくるはず
+![Image](https://github.com/user-attachments/assets/67fd26e0-6d8b-49c2-8f5e-28446daef3ca)
+
+Local Docker PostgreSQLをクリックするとパスワードを求められるので、
+**postgres**
+と入力してください。
+
+
