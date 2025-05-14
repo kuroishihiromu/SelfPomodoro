@@ -224,6 +224,7 @@ Local Docker PostgreSQLをクリックするとパスワードを求められる
 と入力してください。
 
 スキーマ>public>テーブル>tasks で、tasksを右クリックすると以下のようなメニューが出てくるので、「すべての行」をクリックするとデータ見れます！
+
 ※ pgadminを日本語にする設定は以下のサイトから
 https://qiita.com/sanapuuu/items/4e43f6ed0cf0a597efb5
 
