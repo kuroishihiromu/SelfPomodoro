@@ -8,10 +8,6 @@
 
 /* Begin PBXBuildFile section */
 		434F40812DB1D81B00EE4D6D /* ComposableArchitecture in Frameworks */ = {isa = PBXBuildFile; productRef = 434F40802DB1D81B00EE4D6D /* ComposableArchitecture */; };
-		434F40842DB1D86200EE4D6D /* Auth in Frameworks */ = {isa = PBXBuildFile; productRef = 434F40832DB1D86200EE4D6D /* Auth */; };
-		434F40862DB1D86200EE4D6D /* PostgREST in Frameworks */ = {isa = PBXBuildFile; productRef = 434F40852DB1D86200EE4D6D /* PostgREST */; };
-		434F40882DB1D86200EE4D6D /* Storage in Frameworks */ = {isa = PBXBuildFile; productRef = 434F40872DB1D86200EE4D6D /* Storage */; };
-		434F408A2DB1D86200EE4D6D /* Supabase in Frameworks */ = {isa = PBXBuildFile; productRef = 434F40892DB1D86200EE4D6D /* Supabase */; };
 		43CC498A2D8D6E85003CA625 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 43CC49892D8D6E85003CA625 /* Assets.xcassets */; };
 /* End PBXBuildFile section */
 
@@ -77,10 +73,6 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				434F408A2DB1D86200EE4D6D /* Supabase in Frameworks */,
-				434F40882DB1D86200EE4D6D /* Storage in Frameworks */,
-				434F40862DB1D86200EE4D6D /* PostgREST in Frameworks */,
-				434F40842DB1D86200EE4D6D /* Auth in Frameworks */,
 				434F40812DB1D81B00EE4D6D /* ComposableArchitecture in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
@@ -158,10 +150,6 @@
 			name = SelfPomodoro;
 			packageProductDependencies = (
 				434F40802DB1D81B00EE4D6D /* ComposableArchitecture */,
-				434F40832DB1D86200EE4D6D /* Auth */,
-				434F40852DB1D86200EE4D6D /* PostgREST */,
-				434F40872DB1D86200EE4D6D /* Storage */,
-				434F40892DB1D86200EE4D6D /* Supabase */,
 			);
 			productName = SelfPomodoro;
 			productReference = 433A04352CE4979100E73A8E /* SelfPomodoro.app */;
@@ -247,7 +235,6 @@
 			minimizedProjectReferenceProxies = 1;
 			packageReferences = (
 				434F407F2DB1D81B00EE4D6D /* XCRemoteSwiftPackageReference "swift-composable-architecture" */,
-				434F40822DB1D86200EE4D6D /* XCRemoteSwiftPackageReference "supabase-swift" */,
 			);
 			preferredProjectObjectVersion = 77;
 			productRefGroup = 433A04362CE4979100E73A8E /* Products */;
@@ -623,14 +610,6 @@
 				minimumVersion = 1.19.1;
 			};
 		};
-		434F40822DB1D86200EE4D6D /* XCRemoteSwiftPackageReference "supabase-swift" */ = {
-			isa = XCRemoteSwiftPackageReference;
-			repositoryURL = "https://github.com/supabase/supabase-swift";
-			requirement = {
-				kind = upToNextMajorVersion;
-				minimumVersion = 2.5.1;
-			};
-		};
 /* End XCRemoteSwiftPackageReference section */
 
 /* Begin XCSwiftPackageProductDependency section */
@@ -638,26 +617,6 @@
 			isa = XCSwiftPackageProductDependency;
 			package = 434F407F2DB1D81B00EE4D6D /* XCRemoteSwiftPackageReference "swift-composable-architecture" */;
 			productName = ComposableArchitecture;
-		};
-		434F40832DB1D86200EE4D6D /* Auth */ = {
-			isa = XCSwiftPackageProductDependency;
-			package = 434F40822DB1D86200EE4D6D /* XCRemoteSwiftPackageReference "supabase-swift" */;
-			productName = Auth;
-		};
-		434F40852DB1D86200EE4D6D /* PostgREST */ = {
-			isa = XCSwiftPackageProductDependency;
-			package = 434F40822DB1D86200EE4D6D /* XCRemoteSwiftPackageReference "supabase-swift" */;
-			productName = PostgREST;
-		};
-		434F40872DB1D86200EE4D6D /* Storage */ = {
-			isa = XCSwiftPackageProductDependency;
-			package = 434F40822DB1D86200EE4D6D /* XCRemoteSwiftPackageReference "supabase-swift" */;
-			productName = Storage;
-		};
-		434F40892DB1D86200EE4D6D /* Supabase */ = {
-			isa = XCSwiftPackageProductDependency;
-			package = 434F40822DB1D86200EE4D6D /* XCRemoteSwiftPackageReference "supabase-swift" */;
-			productName = Supabase;
 		};
 /* End XCSwiftPackageProductDependency section */
 	};
