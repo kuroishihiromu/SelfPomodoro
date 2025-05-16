@@ -65,11 +65,15 @@ struct TimerFeature {
             let correctedStart = ContinuousClock().now.advanced(by: .seconds(-state.currentSeconds))
             state.startTime = correctedStart
             return .run { [start = correctedStart] send in
-                while true {
+                var lastElapsed = -1
+                while !Task.isCancelled {
                     let now = ContinuousClock().now
                     let elapsed = Int(start.duration(to: now).components.seconds)
-                    await send(.tick(elapsed))
-                    try await Task.sleep(nanoseconds: 100_000_000)
+                    if elapsed != lastElapsed {
+                        await send(.tick(elapsed))
+                        lastElapsed = elapsed
+                    }
+                    try? await Task.sleep(nanoseconds: 100_000_000)
                 }
             }
             .cancellable(id: CancelID.timer)
