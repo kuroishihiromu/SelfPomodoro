@@ -69,7 +69,7 @@ struct TimerFeature {
                     let now = ContinuousClock().now
                     let elapsed = Int(start.duration(to: now).components.seconds)
                     await send(.tick(elapsed))
-                    try await Task.sleep(nanoseconds: 300_000_000)
+                    try await Task.sleep(nanoseconds: 100_000_000)
                 }
             }
             .cancellable(id: CancelID.timer)
