@@ -49,4 +49,14 @@ func (s *Server) SetupRouter(handlers *handler.Handlers) {
 	sessions.GET("/:session_id", handlers.Session.GetSession)
 	sessions.PATCH("/:session_id/complete", handlers.Session.CompleteSession)
 	sessions.DELETE("/:session_id", handlers.Session.DeleteSession)
+
+	// セッションごとのラウンド関連のルート
+	sessions.POST("/:session_id/rounds", handlers.Round.StartRound)
+	sessions.GET("/:session_id/rounds", handlers.Round.GetAllRoundsBySessionID)
+
+	// ラウンド関連のルート
+	rounds := secured.Group("/rounds")
+	rounds.GET("/:round_id", handlers.Round.GetRound)
+	rounds.PATCH("/:round_id/complete", handlers.Round.CompleteRound)
+	rounds.PATCH("/:round_id/abort", handlers.Round.AbortRound)
 }
