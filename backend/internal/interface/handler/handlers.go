@@ -10,6 +10,7 @@ type Handlers struct {
 	Auth    *AuthHandler
 	Task    *TaskHandler
 	Session *SessionHandler
+	Round   *RoundHandler
 	// TODO: 他のハンドラーを追加する場合はここにフィールドを追加
 }
 
@@ -19,6 +20,7 @@ func NewHandlers(useCases *usecase.UseCases, logger logger.Logger) *Handlers {
 		Auth:    NewAuthHandler(useCases.Auth, logger),
 		Task:    NewTaskHandler(useCases.Task, logger),
 		Session: NewSessionHandler(useCases.Session, logger),
+		Round:   NewRoundHandler(useCases.Round, logger),
 		// TODO: 他のハンドラーを初期化する場合はここに追加
 	}
 }
