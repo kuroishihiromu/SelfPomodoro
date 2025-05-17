@@ -41,4 +41,12 @@ func (s *Server) SetupRouter(handlers *handler.Handlers) {
 	tasks.PATCH("/:task_id/edit", handlers.Task.UpdateTask)
 	tasks.PATCH("/:task_id/toggle", handlers.Task.ToggleTask)
 	tasks.DELETE("/:task_id", handlers.Task.DeleteTask)
+
+	// セッション関連のルート
+	sessions := secured.Group("/sessions")
+	sessions.POST("", handlers.Session.StartSession)
+	sessions.GET("", handlers.Session.GetAllSessions)
+	sessions.GET("/:session_id", handlers.Session.GetSession)
+	sessions.PATCH("/:session_id/complete", handlers.Session.CompleteSession)
+	sessions.DELETE("/:session_id", handlers.Session.DeleteSession)
 }
