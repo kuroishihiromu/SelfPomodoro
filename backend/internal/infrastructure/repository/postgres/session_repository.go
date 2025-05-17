@@ -62,7 +62,7 @@ func (r *SessionRepositoryImpl) Create(ctx context.Context, session *model.Sessi
 // GetByID はIDからセッションを取得するメソッド
 func (r *SessionRepositoryImpl) GetByID(ctx context.Context, id, userID uuid.UUID) (*model.Session, error) {
 	query := `
-		SELECT id, user_id, start_time, end_time, avarage_focus, total_work_min, round_count, break_time, created_at, updated_at
+		SELECT id, user_id, start_time, end_time, average_focus, total_work_min, round_count, break_time, created_at, updated_at
 		FROM sessions
 		WHERE id = $1
 	`
@@ -87,7 +87,7 @@ func (r *SessionRepositoryImpl) GetByID(ctx context.Context, id, userID uuid.UUI
 // GetAllByUserID はユーザIDからセッションを取得するメソッド
 func (r *SessionRepositoryImpl) GetAllByUserID(ctx context.Context, userID uuid.UUID) ([]*model.Session, error) {
 	query := `
-		SELECT id, user_id, start_time, end_time, avarage_focus, total_work_min, round_count, break_time, created_at, updated_at
+		SELECT id, user_id, start_time, end_time, average_focus, total_work_min, round_count, break_time, created_at, updated_at
 		FROM sessions
 		WHERE user_id = $1
 		ORDER BY start_time DESC
@@ -112,13 +112,13 @@ func (r *SessionRepositoryImpl) Update(ctx context.Context, session *model.Sessi
 
 	query := `
 		UPDATE sessions
-		SET end_time = $1, avarage_focus = $2, total_work_min = $3, round_count = $4, break_time = $5, updated_at = $6
+		SET end_time = $1, average_focus = $2, total_work_min = $3, round_count = $4, break_time = $5, updated_at = $6
 		WHERE id = $7
 	`
 
 	_, err = r.db.DB.ExecContext(ctx, query,
 		session.EndTime,
-		session.AvarageFocus,
+		session.AverageFocus,
 		session.TotaiWorkMin,
 		session.RoundCount,
 		session.BreakTime,
@@ -146,7 +146,7 @@ func (r *SessionRepositoryImpl) Complete(ctx context.Context, id, userID uuid.UU
 
 	// 計算結果をセット
 	avgFocus := averageFocus
-	session.AvarageFocus = &avgFocus
+	session.AverageFocus = &avgFocus
 
 	totalWork := totalWorkMin
 	session.TotaiWorkMin = &totalWork

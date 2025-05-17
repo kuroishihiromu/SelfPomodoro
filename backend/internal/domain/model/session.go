@@ -12,7 +12,7 @@ type Session struct {
 	UserID       uuid.UUID  `db:"user_id" json:"user_id"`
 	StartTime    time.Time  `db:"start_time" json:"start_time"`
 	EndTime      *time.Time `db:"end_time" json:"end_time"`
-	AvarageFocus *float64   `db:"avarage_focus" json:"avarage_focus"`
+	AverageFocus *float64   `db:"average_focus" json:"average_focus"`
 	TotaiWorkMin *int       `db:"total_work_min" json:"total_work_min"`
 	RoundCount   *int       `db:"round_count" json:"round_count"`
 	BreakTime    *int       `db:"break_time" json:"break_time"`
@@ -37,7 +37,7 @@ type SessionResponse struct {
 	ID           uuid.UUID  `json:"id"`
 	StartTime    time.Time  `json:"start_time"`
 	EndTime      *time.Time `json:"end_time"`
-	AvarageFocus *float64   `json:"avarage_focus"`
+	AverageFocus *float64   `json:"average_focus"`
 	TotaiWorkMin *int       `json:"total_work_min"`
 	RoundCount   *int       `json:"round_count"`
 	BreakTime    *int       `json:"break_time"`
@@ -49,7 +49,7 @@ func (s *Session) ToResponse() *SessionResponse {
 		ID:           s.ID,
 		StartTime:    s.StartTime,
 		EndTime:      s.EndTime,
-		AvarageFocus: s.AvarageFocus,
+		AverageFocus: s.AverageFocus,
 		TotaiWorkMin: s.TotaiWorkMin,
 		RoundCount:   s.RoundCount,
 		BreakTime:    s.BreakTime,
