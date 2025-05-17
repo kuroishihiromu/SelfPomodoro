@@ -96,12 +96,11 @@ func (uc *sessionUseCase) CompleteSession(ctx context.Context, id, userID uuid.U
 	}
 
 	// TODO: ラウンドの平均集中度、総作業時間、ラウンド数、休憩時間を計算するロジックを実装
-
-	// ここでは仮の値を設定
-	roundCount := 0
-	totalWorkMin := 0
-	breakTime := 0
-	averageFocus := 0.0
+	averageFocus, totalWorkMin, roundCount, breakTime, err := uc.roundRepo.CalculateSessionStats(ctx, id)
+	if err != nil {
+		uc.logger.Errorf("セッション統計情報取得エラー: %v", err)
+		return nil, err
+	}
 
 	// セッションを完了する
 	err = uc.sessionRepo.Complete(ctx, id, userID, averageFocus, totalWorkMin, roundCount, breakTime)
@@ -110,6 +109,7 @@ func (uc *sessionUseCase) CompleteSession(ctx context.Context, id, userID uuid.U
 		return nil, err
 	}
 
+	// 完了したセッションを取得
 	updatedSession, err := uc.sessionRepo.GetByID(ctx, id, userID)
 	if err != nil {
 		uc.logger.Errorf("セッション取得エラー: %v", err)
