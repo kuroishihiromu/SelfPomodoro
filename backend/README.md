@@ -297,7 +297,7 @@ curl -X GET http://localhost:8080/api/v1/sessions/{session_id} \
 
 #### セッション完了
 ```bash
-curl -X POST http://localhost:8080/api/v1/sessions/{session_id}/complete \
+curl -X PATCH http://localhost:8080/api/v1/sessions/{session_id}/complete \
   -H "Authorization: Bearer dev-token" \
   -H "Content-Type: application/json"
   ```
@@ -340,7 +340,7 @@ curl -X GET http://localhost:8080/api/v1/rounds/{round_id} \
 
 #### ラウンド完了
 ```bash
-curl -X POST http://localhost:8080/api/v1/rounds/{round_id}/complete \
+curl -X PATCH http://localhost:8080/api/v1/rounds/{round_id}/complete \
   -H "Authorization: Bearer dev-token" \
   -H "Content-Type: application/json" \
   -d '{"focus_score": 85}'
@@ -373,7 +373,7 @@ curl -X POST http://localhost:8080/api/v1/sessions/$SESSION_ID/rounds \
 
 #### ラウンド完了（集中度スコア入力）
 ```bash
-curl -X POST http://localhost:8080/api/v1/rounds/$ROUND_ID/complete \
+curl -X PATCH http://localhost:8080/api/v1/rounds/$ROUND_ID/complete \
   -H "Authorization: Bearer dev-token" \
   -H "Content-Type: application/json" \
   -d '{"focus_score": 90}'
@@ -395,7 +395,7 @@ curl -X POST http://localhost:8080/api/v1/sessions/$SESSION_ID/rounds \
 
 #### 3回目のラウンド完了
 ```bash
-curl -X POST http://localhost:8080/api/v1/rounds/$ROUND_ID/complete \
+curl -X PATCH http://localhost:8080/api/v1/rounds/$ROUND_ID/complete \
   -H "Authorization: Bearer dev-token" \
   -H "Content-Type: application/json" \
   -d '{"focus_score": 95}'
@@ -403,7 +403,7 @@ curl -X POST http://localhost:8080/api/v1/rounds/$ROUND_ID/complete \
 
 #### セッション完了（統計計算）
 ```bash
-curl -X POST http://localhost:8080/api/v1/sessions/$SESSION_ID/complete \
+curl -X PATCH http://localhost:8080/api/v1/sessions/$SESSION_ID/complete \
   -H "Authorization: Bearer dev-token" \
   -H "Content-Type: application/json"
   ```
