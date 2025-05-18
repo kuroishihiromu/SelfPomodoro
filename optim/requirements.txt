@@ -1,0 +1,6 @@
+numpy
+pandas
+scikit-learn
+scikit-optimize
+fastapi
+uvicorn
