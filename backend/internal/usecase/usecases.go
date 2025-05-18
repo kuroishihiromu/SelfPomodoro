@@ -19,7 +19,7 @@ func NewUseCases(taskRepo repository.TaskRepository, sessionRepo repository.Sess
 	return &UseCases{
 		Auth:    NewAuthUseCase(logger),
 		Task:    NewTaskUseCase(taskRepo, logger),
-		Session: NewSessionUseCase(sessionRepo, nil, logger),
+		Session: NewSessionUseCase(sessionRepo, roundRepo, logger),
 		Round:   NewRoundUseCase(roundRepo, sessionRepo, logger),
 		// TODO: 他のユースケースを初期化する場合はここに追加
 	}
