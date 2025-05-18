@@ -234,6 +234,204 @@ https://qiita.com/sanapuuu/items/4e43f6ed0cf0a597efb5
 ![Image](https://github.com/user-attachments/assets/5e859e9b-8741-446b-9e67-d57e5b31219c)
 
 
+## 2025/0518 セッション・ラウンド管理機能の動作確認
+
+### 前提
+---
+
+※動作確認は、3の**典型的なワークフロー**を試すだけでも十分だと思います！
+
+全部のエンドポイントが気になるなら1, 2に記載している他のやつも叩いてみてください！
+
+---
+
+まず、前回と同じ要領で、
+ ```bash
+ # backendディレクトリに移動
+ cd backend
+
+ # 一応前回のキャッシュが残ってないか確認のためサーバーダウン(ホストPCのDockerDesktopを開いてね！)
+ make docker-down
+
+ # サーバ起動
+ make dev
+
+ # migration実行
+ make migrate-up
+ ```
+
+### 1. セッション管理機能
+
+#### セッション開始
+
+```bash
+curl -X POST http://localhost:8080/api/v1/sessions \
+  -H "Authorization: Bearer dev-token" \
+  -H "Content-Type: application/json"
+
+レスポンス例:
+ {
+  "id": "セッションID",
+  "start_time": "2025-05-18T04:20:48.371273+09:00",
+  "end_time": null,
+  "average_focus": null,
+  "total_work_min": null,
+  "round_count": null,
+  "break_time": null
+  }
+  ```
+
+#### セッション一覧取得
+```bash
+curl -X GET http://localhost:8080/api/v1/sessions \
+  -H "Authorization: Bearer dev-token" \
+  -H "Content-Type: application/json"
+  ```
+
+#### 特定のセッション取得
+```bash
+curl -X GET http://localhost:8080/api/v1/sessions/{session_id} \
+  -H "Authorization: Bearer dev-token" \
+  -H "Content-Type: application/json"
+  ```
+
+#### セッション完了
+```bash
+curl -X POST http://localhost:8080/api/v1/sessions/{session_id}/complete \
+  -H "Authorization: Bearer dev-token" \
+  -H "Content-Type: application/json"
+  ```
+
+
+### 2. ラウンド管理機能
+#### ラウンド開始
+```bash
+curl -X POST http://localhost:8080/api/v1/sessions/{session_id}/rounds \
+  -H "Authorization: Bearer dev-token" \
+  -H "Content-Type: application/json"
+
+レスポンス例:
+ {
+  "id": "ラウンドID",
+  "session_id": "セッションID",
+  "round_order": 1,
+  "start_time": "2025-05-18T04:25:12.371273+09:00",
+  "end_time": null,
+  "work_time": null,
+  "break_time": null,
+  "focus_score": null,
+  "is_aborted": false
+}
+```
+
+#### セッションの全ラウンド取得
+```bash
+curl -X GET http://localhost:8080/api/v1/sessions/{session_id}/rounds \
+  -H "Authorization: Bearer dev-token" \
+  -H "Content-Type: application/json"
+  ```
+
+#### 特定のラウンド取得
+```bash
+curl -X GET http://localhost:8080/api/v1/rounds/{round_id} \
+  -H "Authorization: Bearer dev-token" \
+  -H "Content-Type: application/json"
+  ```
+
+#### ラウンド完了
+```bash
+curl -X POST http://localhost:8080/api/v1/rounds/{round_id}/complete \
+  -H "Authorization: Bearer dev-token" \
+  -H "Content-Type: application/json" \
+  -d '{"focus_score": 85}'
+  ```
+#### ラウンド中断
+```bash
+curl -X POST http://localhost:8080/api/v1/rounds/{round_id}/abort \
+  -H "Authorization: Bearer dev-token" \
+  -H "Content-Type: application/json"
+  ```
+
+### 3. 典型的なワークフロー
+以下は時系列順のセッション・ラウンドのワークフローの例です!
+
+フローで気になるところとかあったら修正するんでなんでも言ってください！
+
+#### セッション開始
+```bash
+curl -X POST http://localhost:8080/api/v1/sessions \
+  -H "Authorization: Bearer dev-token" \
+  -H "Content-Type: application/json"
+```
+
+#### 最初のラウンド開始
+```bash
+curl -X POST http://localhost:8080/api/v1/sessions/$SESSION_ID/rounds \
+  -H "Authorization: Bearer dev-token" \
+  -H "Content-Type: application/json"
+```
+
+#### ラウンド完了（集中度スコア入力）
+```bash
+curl -X POST http://localhost:8080/api/v1/rounds/$ROUND_ID/complete \
+  -H "Authorization: Bearer dev-token" \
+  -H "Content-Type: application/json" \
+  -d '{"focus_score": 90}'
+  ```
+
+#### 2回目のラウンド開始
+```bash
+curl -X POST http://localhost:8080/api/v1/sessions/$SESSION_ID/rounds \
+  -H "Authorization: Bearer dev-token" \
+  -H "Content-Type: application/json"
+  ```
+
+#### 3回目のラウンド開始
+```bash
+curl -X POST http://localhost:8080/api/v1/sessions/$SESSION_ID/rounds \
+  -H "Authorization: Bearer dev-token" \
+  -H "Content-Type: application/json"
+```
+
+#### 3回目のラウンド完了
+```bash
+curl -X POST http://localhost:8080/api/v1/rounds/$ROUND_ID/complete \
+  -H "Authorization: Bearer dev-token" \
+  -H "Content-Type: application/json" \
+  -d '{"focus_score": 95}'
+  ```
+
+#### セッション完了（統計計算）
+```bash
+curl -X POST http://localhost:8080/api/v1/sessions/$SESSION_ID/complete \
+  -H "Authorization: Bearer dev-token" \
+  -H "Content-Type: application/json"
+  ```
+
+#### セッションの最終結果確認
+```bash
+curl -X GET http://localhost:8080/api/v1/sessions/$SESSION_ID \
+  -H "Authorization: Bearer dev-token" \
+  -H "Content-Type: application/json"
+  ```
+
+4. 実装上の注意点
+
+- ラウンドの順序は自動的に管理される（クライアントが指定する必要はない）
+- 進行中のラウンドがある場合、新しいラウンドを開始することはできない
+- セッション完了時にはラウンドの統計情報（平均集中度、総作業時間など）が自動計算される
+- 集中度スコアは0〜100の整数値で入力
+- 現在の実装では作業時間と休憩時間はバックエンドでデフォルト値（25分/5分）に設定されている(Dynamoと最適化との連携がまだなため)
+
+現状
+- セッションは完了してなくても新しいセッション開始のリクエストは通る
+- ラウンドが中断した後は、同セッション内でラウンド開始リクエストが通ってしまう
+
+↓
+
+より詳細なフローの認識をすり合わせて最終的な処理の実装方針を決めたい！
+
+
 
 
 
