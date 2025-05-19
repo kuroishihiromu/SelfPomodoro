@@ -12,6 +12,16 @@ struct TaskResult: Equatable, Identifiable, Codable {
     let id: UUID
     var detail: String
     var isCompleted: Bool
+    var createdAt: Date?
+    var updatedAt: Date?
+
+    enum CodingKeys: String, CodingKey {
+        case id
+        case detail
+        case isCompleted = "is_completed"
+        case createdAt = "created_at"
+        case updatedAt = "updated_at"
+    }
 }
 
 enum taskAPIError: Error, Equatable {
@@ -37,13 +47,31 @@ extension TaskAPIClient {
             request.setValue("application/json", forHTTPHeaderField: "Content-Type")
 
             let (data, response) = try await URLSession.shared.data(for: request)
-            if let httpResponse = response as? HTTPURLResponse {
-                print("Status Code: \(httpResponse.statusCode)")
-            }
             print("Fetched tasks → \(String(data: data, encoding: .utf8) ?? "Invalid UTF-8")")
 
-            return try JSONDecoder().decode([TaskResult].self, from: data)
+            let formatter = ISO8601DateFormatter()
+            formatter.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
+
+            let decoder = JSONDecoder()
+            decoder.dateDecodingStrategy = .custom { decoder in
+                let container = try decoder.singleValueContainer()
+                let dateStr = try container.decode(String.self)
+                guard let date = formatter.date(from: dateStr) else {
+                    throw DecodingError.dataCorruptedError(
+                        in: container,
+                        debugDescription: "Invalid date format: \(dateStr)"
+                    )
+                }
+                return date
+            }
+
+            struct TaskListResponse: Decodable {
+                let tasks: [TaskResult]
+            }
+
+            return try decoder.decode(TaskListResponse.self, from: data).tasks
         },
+
 
         addTask: { detail in
             var request = URLRequest(url: URL(string: "http://localhost:8080/api/v1/tasks")!)
@@ -54,7 +82,10 @@ extension TaskAPIClient {
 
             let (data, _) = try await URLSession.shared.data(for: request)
             print("Add task response → \(String(data: data, encoding: .utf8) ?? "Invalid UTF-8")")
-            return try JSONDecoder().decode(TaskResult.self, from: data)
+
+            let decoder = JSONDecoder()
+            decoder.dateDecodingStrategy = .iso8601
+            return try decoder.decode(TaskResult.self, from: data)
         },
 
         deleteTask: { id in
@@ -72,7 +103,24 @@ extension TaskAPIClient {
 
             let (data, _) = try await URLSession.shared.data(for: request)
             print("Toggle task response → \(String(data: data, encoding: .utf8) ?? "Invalid UTF-8")")
-            return try JSONDecoder().decode(TaskResult.self, from: data)
+
+            let formatter = ISO8601DateFormatter()
+            formatter.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
+
+            let decoder = JSONDecoder()
+            decoder.dateDecodingStrategy = .custom { decoder in
+                let container = try decoder.singleValueContainer()
+                let dateStr = try container.decode(String.self)
+                guard let date = formatter.date(from: dateStr) else {
+                    throw DecodingError.dataCorruptedError(
+                        in: container,
+                        debugDescription: "Invalid date format: \(dateStr)"
+                    )
+                }
+                return date
+            }
+
+            return try decoder.decode(TaskResult.self, from: data)
         },
 
         editTask: { id, detail in

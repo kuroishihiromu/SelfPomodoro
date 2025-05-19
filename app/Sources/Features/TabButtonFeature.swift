@@ -61,7 +61,7 @@ struct TabButtonFeature {
                     uniqueElements: tasks.map { task in
                         ToDoListRowFeature.State(
                             id: task.id,
-                            title: task.detail,
+                            detail: task.detail,
                             isCompleted: task.isCompleted
                         )
                     }

@@ -11,7 +11,7 @@ import Foundation
 struct ToDoListRowFeature {
     struct State: Equatable, Identifiable {
         let id: UUID
-        var title: String
+        var detail: String
         var isCompleted: Bool
     }
 

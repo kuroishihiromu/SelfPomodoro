@@ -11,7 +11,7 @@ import ComposableArchitecture
 struct ToDoListView: View {
     let store: StoreOf<ToDoListFeature>
 
-    @State private var newTaskTitle = ""
+    @State private var newTaskDetail = ""
 
     var body: some View {
         WithViewStore(store, observe: { $0 }) { viewStore in
@@ -28,7 +28,7 @@ struct ToDoListView: View {
             }
             .padding()
             VStack {
-                TextField("新しいタスク", text: $newTaskTitle)
+                TextField("新しいタスク", text: $newTaskDetail)
                     .textFieldStyle(.roundedBorder)
                     .frame(width: 350, height: 50)
 
@@ -40,9 +40,9 @@ struct ToDoListView: View {
                     width:350,
                     height: 40,
                     action: {
-                        guard !newTaskTitle.isEmpty else { return }
-                        viewStore.send(.addItem(title: newTaskTitle))
-                        newTaskTitle = ""
+                        guard !newTaskDetail.isEmpty else { return }
+                        viewStore.send(.addItem(detail: newTaskDetail))
+                        newTaskDetail = ""
                     }
                 )
             }
