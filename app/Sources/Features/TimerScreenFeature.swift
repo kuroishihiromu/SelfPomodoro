@@ -11,13 +11,11 @@ import SwiftUI
 struct TimerScreenFeature{
     struct State: Equatable {
         var timer: TimerFeature.State
-        var todoList: ToDoListFeature.State
         var evalModal: EvalModalFeature.State?
     }
     
     enum Action {
         case timer(TimerFeature.Action)
-        case todoList(ToDoListFeature.Action)
         case evalModal(EvalModalFeature.Action)
         
         case showEvalModal
@@ -26,7 +24,6 @@ struct TimerScreenFeature{
     
     var body: some ReducerOf<Self> {
         Scope(state: \.timer, action: \.timer){TimerFeature()}
-        Scope(state: \.todoList, action: \.todoList) {ToDoListFeature()}
         .ifLet(\.evalModal, action: \.evalModal) {EvalModalFeature()}
         
         Reduce {state, action in

@@ -6,13 +6,20 @@
 //
 
 import SwiftUI
+import ComposableArchitecture
 
 struct TaskManagementScreenView: View {
+    let store: StoreOf<ToDoListFeature>
+
     var body: some View {
-        Text(/*@START_MENU_TOKEN@*/"Hello, World!"/*@END_MENU_TOKEN@*/)
+        ToDoListView(store: store)
     }
 }
 
 #Preview {
-    TaskManagementScreenView()
+    TaskManagementScreenView(
+        store: Store(initialState: ToDoListFeature.State()) {
+            ToDoListFeature()
+        }
+    )
 }

@@ -19,11 +19,13 @@ struct MainView: View {
                 longBreakDuration: 20,
                 roundsPerSession: 3
             ),
-            todoList: ToDoListFeature.State(),
             evalModal: nil
         ),
         reducer: { TimerScreenFeature() }
     )
+    let toDoStore = Store(initialState: ToDoListFeature.State()) {
+        ToDoListFeature()
+    }
     
     var body: some View {
         WithViewStore(store, observe: \.selectedTabIndex) { viewStore in
@@ -33,7 +35,9 @@ struct MainView: View {
                     case 0:
                         TimerScreenView(store: timerStore)
                     case 1:
-                        TaskManagementScreenView()
+                        TaskManagementScreenView(
+                            store: store.scope(state: \.todoListState, action: \.todoList)
+                        )
                     case 2:
                         StatisticsScreenView()
                     case 3:
