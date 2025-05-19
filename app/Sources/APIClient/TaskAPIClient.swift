@@ -21,11 +21,11 @@ enum taskAPIError: Error, Equatable {
 }
 
 struct TaskAPIClient {
-    var fetchTasks: () async throws -> [TaskResult]                         // GET /tasks
-    var addTask: (_ detail: String) async throws -> TaskResult            // POST /tasks
-    var deleteTask: (_ id: UUID) async throws -> Void                // DELETE /tasks/{id}
-    var toggleCompletion: (_ id: UUID) async throws -> TaskResult          // PATCH /tasks/{id}/toggle
-    var editTask: (_ id: UUID, _ detail: String) async throws -> TaskResult // PATCH /tasks/{id}/edit
+    var fetchTasks: () async throws -> [TaskResult]
+    var addTask: (_ detail: String) async throws -> TaskResult
+    var deleteTask: (_ id: UUID) async throws -> Void
+    var toggleCompletion: (_ id: UUID) async throws -> TaskResult
+    var editTask: (_ id: UUID, _ detail: String) async throws -> TaskResult
 }
 
 extension TaskAPIClient {
@@ -37,12 +37,10 @@ extension TaskAPIClient {
             request.setValue("application/json", forHTTPHeaderField: "Content-Type")
 
             let (data, response) = try await URLSession.shared.data(for: request)
-
             if let httpResponse = response as? HTTPURLResponse {
                 print("Status Code: \(httpResponse.statusCode)")
             }
-
-            print("Data fetched from tasks → \(String(data: data, encoding: .utf8) ?? "Invalid UTF-8")")
+            print("Fetched tasks → \(String(data: data, encoding: .utf8) ?? "Invalid UTF-8")")
 
             return try JSONDecoder().decode([TaskResult].self, from: data)
         },
@@ -50,36 +48,47 @@ extension TaskAPIClient {
         addTask: { detail in
             var request = URLRequest(url: URL(string: "http://localhost:8080/api/v1/tasks")!)
             request.httpMethod = "POST"
+            request.setValue("Bearer dev-token", forHTTPHeaderField: "Authorization")
             request.setValue("application/json", forHTTPHeaderField: "Content-Type")
             request.httpBody = try JSONEncoder().encode(["detail": detail])
+
             let (data, _) = try await URLSession.shared.data(for: request)
+            print("Add task response → \(String(data: data, encoding: .utf8) ?? "Invalid UTF-8")")
             return try JSONDecoder().decode(TaskResult.self, from: data)
         },
 
         deleteTask: { id in
             var request = URLRequest(url: URL(string: "http://localhost:8080/api/v1/tasks/\(id)")!)
             request.httpMethod = "DELETE"
+            request.setValue("Bearer dev-token", forHTTPHeaderField: "Authorization")
             _ = try await URLSession.shared.data(for: request)
         },
 
         toggleCompletion: { id in
             var request = URLRequest(url: URL(string: "http://localhost:8080/api/v1/tasks/\(id)/toggle")!)
             request.httpMethod = "PATCH"
-            _ = try await URLSession.shared.data(for: request)
+            request.setValue("Bearer dev-token", forHTTPHeaderField: "Authorization")
+            request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+
             let (data, _) = try await URLSession.shared.data(for: request)
+            print("Toggle task response → \(String(data: data, encoding: .utf8) ?? "Invalid UTF-8")")
             return try JSONDecoder().decode(TaskResult.self, from: data)
         },
 
         editTask: { id, detail in
             var request = URLRequest(url: URL(string: "http://localhost:8080/api/v1/tasks/\(id)/edit")!)
             request.httpMethod = "PATCH"
+            request.setValue("Bearer dev-token", forHTTPHeaderField: "Authorization")
             request.setValue("application/json", forHTTPHeaderField: "Content-Type")
             request.httpBody = try JSONEncoder().encode(["detail": detail])
+
             let (data, _) = try await URLSession.shared.data(for: request)
+            print("Edit task response → \(String(data: data, encoding: .utf8) ?? "Invalid UTF-8")")
             return try JSONDecoder().decode(TaskResult.self, from: data)
         }
     )
 }
+
 
 extension DependencyValues {
     var taskAPIClient: TaskAPIClient {
