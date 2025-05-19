@@ -60,7 +60,7 @@ func main() {
 
 	// ここで各リポジトリ、ユースケース、ハンドラーを初期化
 	RepositoryFactory := repository.NewRepositoryFactory(postgresDB, nil, appLogger)
-	useCases := usecase.NewUseCases(RepositoryFactory.Task, appLogger)
+	useCases := usecase.NewUseCases(RepositoryFactory.Task, RepositoryFactory.Session, RepositoryFactory.Round, appLogger)
 	handlers := handler.NewHandlers(useCases, appLogger)
 
 	// サーバー初期化
