@@ -7,20 +7,22 @@ import (
 
 // Handlers はすべてのハンドラーをまとめた構造体
 type Handlers struct {
-	Auth    *AuthHandler
-	Task    *TaskHandler
-	Session *SessionHandler
-	Round   *RoundHandler
+	Auth       *AuthHandler
+	Task       *TaskHandler
+	Session    *SessionHandler
+	Round      *RoundHandler
+	Statistics *StatisticsHandler
 	// TODO: 他のハンドラーを追加する場合はここにフィールドを追加
 }
 
 // NewHandlers はすべてのハンドラーを初期化する
 func NewHandlers(useCases *usecase.UseCases, logger logger.Logger) *Handlers {
 	return &Handlers{
-		Auth:    NewAuthHandler(useCases.Auth, logger),
-		Task:    NewTaskHandler(useCases.Task, logger),
-		Session: NewSessionHandler(useCases.Session, logger),
-		Round:   NewRoundHandler(useCases.Round, logger),
+		Auth:       NewAuthHandler(useCases.Auth, logger),
+		Task:       NewTaskHandler(useCases.Task, logger),
+		Session:    NewSessionHandler(useCases.Session, logger),
+		Round:      NewRoundHandler(useCases.Round, logger),
+		Statistics: NewStatisticsHandler(useCases.Statistics, logger),
 		// TODO: 他のハンドラーを初期化する場合はここに追加
 	}
 }
