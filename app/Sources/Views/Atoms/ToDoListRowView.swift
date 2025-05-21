@@ -6,65 +6,42 @@
 //
 
 import SwiftUI
+import ComposableArchitecture
 
-struct TodoListRow: View {
-    let title: String
+struct ToDoListRow: View {
+    let store: StoreOf<ToDoListRowFeature>
     let width: CGFloat
     let height: CGFloat
-    @Binding var isCompleted: Bool
-
     private let bgColor = ColorTheme.white
     private let fontColor = ColorTheme.black
     private let checkedColor = ColorTheme.navy
     private let uncheckedColor = ColorTheme.darkGray
 
-    init(
-        title: String,
-        width: CGFloat,
-        height: CGFloat,
-        isCompleted: Binding<Bool>
-    ) {
-        self.title = title
-        self.width = width
-        self.height = height
-        _isCompleted = isCompleted
-    }
-
     var body: some View {
-        HStack(spacing: 5) {
-            Button(action: {
-                isCompleted.toggle()
-            }) {
-                Image(systemName: isCompleted ? "checkmark.square.fill" : "square")
-                    .foregroundColor(isCompleted ? checkedColor : uncheckedColor)
-                    .font(.system(size: 16))
+        WithViewStore(store, observe: {$0}){ viewStore in
+            HStack {
+                Button(action: {
+                    viewStore.send(.toggleCompleted)
+                }) {
+                    Image(systemName: viewStore.isCompleted ? "checkmark.square.fill" : "square")
+                        .foregroundColor(viewStore.isCompleted ? checkedColor : uncheckedColor)
+                        .font(.system(size: 16))
+                }
+
+                Text(viewStore.detail)
+                    .foregroundColor(fontColor)
+                    .font(.system(size: 14))
             }
-
-            Text(title)
-                .foregroundColor(fontColor)
-                .font(.system(size: 14))
-        }
-        .padding()
-        .frame(width: width, height: height, alignment: .leading)
-        .background(bgColor)
-    }
-}
-
-#Preview {
-    PreviewTodoListRow()
-}
-
-struct PreviewTodoListRow: View {
-    @State var isChecked = false
-
-    var body: some View {
-        VStack {
-            TodoListRow(
-                title: "Task 1: Review design specifications",
-                width: 300,
-                height: 30,
-                isCompleted: $isChecked
-            )
+            .padding()
+            .frame(maxWidth: width, maxHeight: height, alignment: .leading )
+            .background(bgColor)
+            .cornerRadius(8)
         }
     }
 }
+
+//#Preview {
+//    PreviewTodoListRow(
+//        store
+//    )
+//}
