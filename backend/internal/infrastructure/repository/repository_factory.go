@@ -9,9 +9,10 @@ import (
 
 // RepositoryFactory はすべてのリポジトリを管理するファクトリ
 type RepositoryFactory struct {
-	Task    repository.TaskRepository
-	Session repository.SessionRepository
-	Round   repository.RoundRepository
+	Task       repository.TaskRepository
+	Session    repository.SessionRepository
+	Round      repository.RoundRepository
+	Statistics repository.StatisticsRepository
 	// TODO: 他のリポジトリを追加する場合はここにフィールドを追加
 }
 
@@ -21,12 +22,14 @@ func NewRepositoryFactory(postgresDB *database.PostgresDB, dynamoDB *database.Dy
 	taskRepo := postgres.NewTaskRepository(postgresDB, logger)
 	sessionRepo := postgres.NewSessionRepository(postgresDB, logger)
 	roundRepo := postgres.NewRoundRepository(postgresDB, logger)
+	statisticsRepo := postgres.NewStatisticsRepository(postgresDB, logger)
 
 	// TODO: DynamoDBを使用してリポジトリを初期化する場合はここに追加
 
 	return &RepositoryFactory{
-		Task:    taskRepo,
-		Session: sessionRepo,
-		Round:   roundRepo,
+		Task:       taskRepo,
+		Session:    sessionRepo,
+		Round:      roundRepo,
+		Statistics: statisticsRepo,
 	}
 }
