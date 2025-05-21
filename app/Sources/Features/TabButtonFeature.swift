@@ -13,6 +13,7 @@ struct TabButtonFeature {
     @ObservableState
     struct State: Equatable {
         var selectedTabIndex: Int = 0
+        var todoListState: ToDoListFeature.State = .init()
     }
 
     enum Action {
@@ -20,9 +21,19 @@ struct TabButtonFeature {
         case tasksButtonTapped
         case statsButtonTapped
         case profileButtonTapped
+        
+        case fetchTasksResponse(Result<[TaskResult], taskAPIError>)
+        case todoList(ToDoListFeature.Action)
     }
+    
+    
+    @Dependency(\.taskAPIClient) var apiClient
 
     var body: some ReducerOf<Self> {
+        Scope(state: \.todoListState, action: \..todoList) {
+            ToDoListFeature()
+        }
+        
         Reduce { state, action in
             switch action {
             case .homeButtonTapped:
@@ -30,7 +41,41 @@ struct TabButtonFeature {
                 return .none
             case .tasksButtonTapped:
                 state.selectedTabIndex = 1
+                print("📲 tasksButtonTapped → fetching tasks from API")
+                return .run { send in
+                    do {
+                        let tasks = try await apiClient.fetchTasks()
+                        print("✅ fetchTasks succeeded with \(tasks.count) items")
+                        await send(.fetchTasksResponse(.success(tasks)))
+                    } catch let error as taskAPIError {
+                        print("❌ fetchTasks failed: \(error)")
+                        await send(.fetchTasksResponse(.failure(error)))
+                    } catch {
+                        await send(.fetchTasksResponse(.failure(.unknown)))
+                    }
+                }
+                
+            case let .fetchTasksResponse(.success(tasks)):
+                print("🟡 fetchTasksResponse (success)")
+                state.todoListState.items = IdentifiedArrayOf(
+                    uniqueElements: tasks.map { task in
+                        ToDoListRowFeature.State(
+                            id: task.id,
+                            detail: task.detail,
+                            isCompleted: task.isCompleted
+                        )
+                    }
+                )
                 return .none
+
+            case .fetchTasksResponse(.failure(let error)):
+                print("🔴 fetchTasksResponse (failure): \(error)")
+                // エラー状態に応じた UI 対応も可能
+                return .none
+                
+            case .todoList:
+                return .none
+                
             case .statsButtonTapped:
                 state.selectedTabIndex = 2
                 return .none
