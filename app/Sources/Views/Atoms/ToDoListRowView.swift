@@ -28,7 +28,7 @@ struct ToDoListRow: View {
                         .font(.system(size: 16))
                 }
 
-                Text(viewStore.title)
+                Text(viewStore.detail)
                     .foregroundColor(fontColor)
                     .font(.system(size: 14))
             }

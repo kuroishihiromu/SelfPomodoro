@@ -16,7 +16,6 @@ struct TimerScreenView: View {
             ZStack {
                 VStack(spacing: 20) {
                     TimerView(store: store.scope(state: \.timer, action: \.timer))
-                    ToDoListView(store: store.scope(state: \.todoList, action: \.todoList))
                 }
 
                 // 評価モーダル
