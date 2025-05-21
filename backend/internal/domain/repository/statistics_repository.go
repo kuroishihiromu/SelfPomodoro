@@ -8,7 +8,7 @@ import (
 	"github.com/tsunakit99/selfpomodoro/internal/domain/model"
 )
 
-// StaristicsRepository は統計情報を取得するためのリポジトリインターフェース
+// StatisticsRepository は統計情報を取得するためのリポジトリインターフェース
 type StatisticsRepository interface {
 	// GetFocusTrend は指定期間内の日別集中度統計を取得する
 	GetFocusTrend(ctx context.Context, userID uuid.UUID, period *model.StatisticsPeriod) ([]*model.FocusTrendItem, error)
