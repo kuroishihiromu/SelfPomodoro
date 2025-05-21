@@ -25,8 +25,8 @@ func NewSessionHandler(sessionUseCase usecase.SessionUseCase, logger logger.Logg
 	}
 }
 
-// getIUserIDFromContext はコンテキストからユーザIDを取得する
-func (h *SessionHandler) getIUserIDFromContext(c echo.Context) (uuid.UUID, error) {
+// getUserIDFromContext はコンテキストからユーザIDを取得する
+func (h *SessionHandler) getUserIDFromContext(c echo.Context) (uuid.UUID, error) {
 	userID, ok := c.Get("user_id").(string)
 	if !ok {
 		return uuid.Nil, errors.New("ユーザIDが取得できません")
@@ -43,7 +43,7 @@ func (h *SessionHandler) getIUserIDFromContext(c echo.Context) (uuid.UUID, error
 // POST /sessions
 func (h *SessionHandler) StartSession(c echo.Context) error {
 	// コンテキストからユーザIDを取得
-	userID, err := h.getIUserIDFromContext(c)
+	userID, err := h.getUserIDFromContext(c)
 	if err != nil {
 		return c.JSON(http.StatusUnauthorized, map[string]string{"error": err.Error()})
 	}
@@ -61,7 +61,7 @@ func (h *SessionHandler) StartSession(c echo.Context) error {
 // GET /sessions
 func (h *SessionHandler) GetAllSessions(c echo.Context) error {
 	// コンテキストからユーザIDを取得
-	userID, err := h.getIUserIDFromContext(c)
+	userID, err := h.getUserIDFromContext(c)
 	if err != nil {
 		return c.JSON(http.StatusUnauthorized, map[string]string{"error": err.Error()})
 	}
@@ -79,7 +79,7 @@ func (h *SessionHandler) GetAllSessions(c echo.Context) error {
 // GET /sessions/:session_id
 func (h *SessionHandler) GetSession(c echo.Context) error {
 	// コンテキストからユーザIDを取得
-	userID, err := h.getIUserIDFromContext(c)
+	userID, err := h.getUserIDFromContext(c)
 	if err != nil {
 		return c.JSON(http.StatusUnauthorized, map[string]string{"error": err.Error()})
 	}
@@ -109,7 +109,7 @@ func (h *SessionHandler) GetSession(c echo.Context) error {
 // POST /sessions/:session_id/complete
 func (h *SessionHandler) CompleteSession(c echo.Context) error {
 	// コンテキストからユーザIDを取得
-	userID, err := h.getIUserIDFromContext(c)
+	userID, err := h.getUserIDFromContext(c)
 	if err != nil {
 		return c.JSON(http.StatusUnauthorized, map[string]string{"error": err.Error()})
 	}
@@ -139,7 +139,7 @@ func (h *SessionHandler) CompleteSession(c echo.Context) error {
 // DELETE /sessions/:session_id
 func (h *SessionHandler) DeleteSession(c echo.Context) error {
 	// コンテキストからユーザIDを取得
-	userID, err := h.getIUserIDFromContext(c)
+	userID, err := h.getUserIDFromContext(c)
 	if err != nil {
 		return c.JSON(http.StatusUnauthorized, map[string]string{"error": err.Error()})
 	}
