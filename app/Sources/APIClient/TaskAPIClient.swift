@@ -82,9 +82,23 @@ extension TaskAPIClient {
 
             let (data, _) = try await URLSession.shared.data(for: request)
             print("Add task response → \(String(data: data, encoding: .utf8) ?? "Invalid UTF-8")")
-
+            
             let decoder = JSONDecoder()
-            decoder.dateDecodingStrategy = .iso8601
+
+            let formatter = ISO8601DateFormatter()
+            formatter.formatOptions = [.withInternetDateTime, .withFractionalSeconds, .withTimeZone] // 重要！
+
+            decoder.dateDecodingStrategy = .custom { decoder in
+                let container = try decoder.singleValueContainer()
+                let dateStr = try container.decode(String.self)
+                guard let date = formatter.date(from: dateStr) else {
+                    throw DecodingError.dataCorruptedError(
+                        in: container,
+                        debugDescription: "Invalid date format: \(dateStr)"
+                    )
+                }
+                return date
+            }
             return try decoder.decode(TaskResult.self, from: data)
         },
 
