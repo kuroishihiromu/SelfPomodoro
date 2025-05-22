@@ -432,6 +432,112 @@ curl -X GET http://localhost:8080/api/v1/sessions/$SESSION_ID \
 より詳細なフローの認識をすり合わせて最終的な処理の実装方針を決めたい！
 
 
+## 2025/05/21 統計表示関連の動作確認
+
+※ 追記・・・Goサーバをダウンさせるときは起動しているターミナルで```control + C```　を入力してください。
+(Go側の実装が変更した時に都度必要(pullしたときなど))
+
+### 前提
+ ```bash
+ # backendディレクトリに移動
+ cd backend
+
+ # 一応前回のキャッシュが残ってないか確認のためサーバーダウン(ホストPCのDockerDesktopを開いてね！)
+ make docker-down
+
+ # サーバ起動
+ make dev
+
+ # migration実行(テストデータ分)
+ make migrate-up
+ ```
+
+
+### テストデータについて
+今回は統計表示に関するテストデータを用意しています！
+各自migrateした後に、APIを叩いて確認してみてください。
+- 過去2週間分のポモドーロセッションとラウンド
+- 異なる時間帯（早朝、午前、午後、夕方、深夜）のデータを含む
+- 変動する集中度スコア（60～100）
+- 様々なラウンド数（2～4）のセッション
+- 合計10セッション、26ラウンドのデータ
+- 評価値がない日付も何日分かだけ設定
+
+### APIについて
+- 一応バックエンド側で現在の日時を認識して、週ごとや月ごとを返すAPIも用意しています！
+```bash
+preiod=week
+period=month
+```
+- 主要実装は自分で期間を指定するAPIになるかと思います！
+```bash
+period=custom&start_date=YYYY-MM-DD&end_date=YYYY-MM-DD
+```
+
+### カスタム期間指定の期間の型について
+- ISO86001形式でという話でしたが、こちらの実装の都合上、指定する期間は**YYYY-MM-DD形式のstring型**で送って欲しいです！
+
+### ヒートマップのAPIのレスポンスで返ってくるHourについて
+- 現状、このHourの部分は**そのラウンドが始まった時の時刻**を参照しています。
+
+### 集中度トレンドAPI
+```bash
+# 週間集中度トレンド
+curl -X GET "http://localhost:8080/api/v1/statistics/focus-trend?period=week" \
+  -H "Authorization: Bearer dev-token" | jq
+
+# 月間集中度トレンド
+curl -X GET "http://localhost:8080/api/v1/statistics/focus-trend?period=month" \
+  -H "Authorization: Bearer dev-token" | jq
+
+# カスタム期間集中度トレンド
+curl -X GET "http://localhost:8080/api/v1/statistics/focus-trend?period=custom&start_date=2025-05-15&end_date=2025-05-20" \
+  -H "Authorization: Bearer dev-token" | jq
+  ```
+
+  ### 集中度ヒートマップAPI
+  ```bash
+  # 週間集中度ヒートマップ
+curl -X GET "http://localhost:8080/api/v1/statistics/focus-heatmap?period=week" \
+  -H "Authorization: Bearer dev-token" | jq
+
+# 月間集中度ヒートマップ
+curl -X GET "http://localhost:8080/api/v1/statistics/focus-heatmap?period=month" \
+  -H "Authorization: Bearer dev-token" | jq
+
+# カスタム期間集中度ヒートマップ
+curl -X GET "http://localhost:8080/api/v1/statistics/focus-heatmap?period=custom&start_date=YYYY-MM-DD&end_date=YYYY-MM-DD" \
+  -H "Authorization: Bearer dev-token" | jq
+  ```
+
+
+### テストデータはClaudeに吐かせたので、以下Claude出力
+#### テストデータのパターン解析
+テストデータには以下のようなパターンが含まれています：
+
+1. 時間帯別の集中度傾向
+- 早朝（7時台）の集中度は非常に高い（95-100）
+- 夜遅く（23時台）の集中度はやや低め（70-75）
+- 午前中は安定した集中度（85前後）
+- 午後は日によって変動が大きい
+
+
+2. 日別の集中度傾向
+- 安定した日（例：12日目）は全ラウンドで同一の集中度スコア
+- 低下する日（例：13日目）は徐々に集中度が下がる
+- 上昇する日もある
+
+
+3. セッション進行による集中度変化
+- 長いセッション（4ラウンド）では集中度に波がある
+- 短いセッション（2ラウンド）では比較的安定している
+
+#### データの視覚化
+このテストデータを使用すると、以下のような傾向が視覚化できます：
+- 日ごとの平均集中度の変化（トレンドグラフ）
+- 時間帯ごとの集中度の傾向（ヒートマップ）
+- 最も集中できる時間帯（朝型か夜型か）
+- 曜日ごとの集中度の傾向
 
 
 

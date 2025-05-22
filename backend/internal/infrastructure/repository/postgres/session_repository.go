@@ -119,7 +119,7 @@ func (r *SessionRepositoryImpl) Update(ctx context.Context, session *model.Sessi
 	_, err = r.db.DB.ExecContext(ctx, query,
 		session.EndTime,
 		session.AverageFocus,
-		session.TotaiWorkMin,
+		session.TotalWorkMin,
 		session.RoundCount,
 		session.BreakTime,
 		time.Now(),
@@ -149,7 +149,7 @@ func (r *SessionRepositoryImpl) Complete(ctx context.Context, id, userID uuid.UU
 	session.AverageFocus = &avgFocus
 
 	totalWork := totalWorkMin
-	session.TotaiWorkMin = &totalWork
+	session.TotalWorkMin = &totalWork
 
 	rounds := roundCount
 	session.RoundCount = &rounds

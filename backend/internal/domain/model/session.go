@@ -13,7 +13,7 @@ type Session struct {
 	StartTime    time.Time  `db:"start_time" json:"start_time"`
 	EndTime      *time.Time `db:"end_time" json:"end_time"`
 	AverageFocus *float64   `db:"average_focus" json:"average_focus"`
-	TotaiWorkMin *int       `db:"total_work_min" json:"total_work_min"`
+	TotalWorkMin *int       `db:"total_work_min" json:"total_work_min"`
 	RoundCount   *int       `db:"round_count" json:"round_count"`
 	BreakTime    *int       `db:"break_time" json:"break_time"`
 	CreatedAt    time.Time  `db:"created_at" json:"created_at"`
@@ -38,7 +38,7 @@ type SessionResponse struct {
 	StartTime    time.Time  `json:"start_time"`
 	EndTime      *time.Time `json:"end_time"`
 	AverageFocus *float64   `json:"average_focus"`
-	TotaiWorkMin *int       `json:"total_work_min"`
+	TotalWorkMin *int       `json:"total_work_min"`
 	RoundCount   *int       `json:"round_count"`
 	BreakTime    *int       `json:"break_time"`
 }
@@ -50,7 +50,7 @@ func (s *Session) ToResponse() *SessionResponse {
 		StartTime:    s.StartTime,
 		EndTime:      s.EndTime,
 		AverageFocus: s.AverageFocus,
-		TotaiWorkMin: s.TotaiWorkMin,
+		TotalWorkMin: s.TotalWorkMin,
 		RoundCount:   s.RoundCount,
 		BreakTime:    s.BreakTime,
 	}

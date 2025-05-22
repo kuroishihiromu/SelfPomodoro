@@ -59,4 +59,9 @@ func (s *Server) SetupRouter(handlers *handler.Handlers) {
 	rounds.GET("/:round_id", handlers.Round.GetRound)
 	rounds.PATCH("/:round_id/complete", handlers.Round.CompleteRound)
 	rounds.PATCH("/:round_id/abort", handlers.Round.AbortRound)
+
+	// 統計情報関連のルート
+	statistics := secured.Group("/statistics")
+	statistics.GET("/focus-trend", handlers.Statistics.GetFocusTrend)
+	statistics.GET("/focus-heatmap", handlers.Statistics.GetFocusHeatmap)
 }
