@@ -43,7 +43,9 @@ struct ChartView: View {
 
     // 集中度の線
     var scoreLine: [some ChartContent] {
-        data.map {
+        data
+            .filter { $0.score > 0 }
+            .map {
             LineMark(
                 x: .value("日付", $0.date),
                 y: .value("集中度", $0.score),
@@ -56,7 +58,9 @@ struct ChartView: View {
 
     // 集中度の点
     var scorePoints: [some ChartContent] {
-        data.map {
+        data
+            .filter { $0.score > 0 }
+            .map {
             PointMark(
                 x: .value("日付", $0.date),
                 y: .value("集中度", $0.score)
@@ -79,7 +83,6 @@ struct ChartView: View {
         }
     }
 
-
     var body: some View {
         VStack(alignment: .leading, spacing: 16) {
             Text("Concentration Score Trend")
@@ -94,12 +97,12 @@ struct ChartView: View {
             }
             .frame(height: 260)
             .padding(.horizontal)
-            .chartYScale(domain: 0...100)
+            .chartYScale(domain: 1...100)
             .chartXAxis {
                 AxisMarks(values: data.map { $0.date }) { date in
                     AxisGridLine()
                     AxisTick()
-                    AxisValueLabel(format: .dateTime.day(.twoDigits))
+                    AxisValueLabel(format: .dateTime.month(.twoDigits).day(.twoDigits))
                 }
             }
             .chartYAxis {
@@ -119,8 +122,10 @@ struct ChartView: View {
                     RoundedRectangle(cornerRadius: 2)
                         .stroke(ColorTheme.navy, style: StrokeStyle(lineWidth: 2, dash: [5]))
                         .frame(width: 24, height: 4)
-                    Text("Average")
+                    Text("MovingAverage")
                         .font(.caption)
+                        .minimumScaleFactor(0.7)
+                        .lineLimit(1)
                 }
 
                 HStack(spacing: 6) {
@@ -129,11 +134,11 @@ struct ChartView: View {
                         .frame(width: 24, height: 10)
                     Text("±1 Std. Deviation")
                         .font(.caption)
+                        .minimumScaleFactor(0.7)
+                        .lineLimit(1)
                 }
             }
             .padding(.horizontal)
-            .padding(.top, 8)
-
         }
     }
 }
