@@ -13,11 +13,16 @@ provider:
     DB_USER: ${env:DB_USER}
     DB_PASSWORD: ${env:DB_PASSWORD}
     DB_NAME: ${env:DB_NAME}
+    DB_SSL_MODE: ${env:DB_SSL_MODE}
     COGNITO_USER_POOL_ID: ${env:COGNITO_USER_POOL_ID}
     COGNITO_CLIENT_ID: ${env:COGNITO_CLIENT_ID}
     DYNAMO_USER_CONFIG_TABLE: ${env:DYNAMO_USER_CONFIG_TABLE}
     DYNAMO_ROUND_OPTIMIZATION_TABLE: ${env:DYNAMO_ROUND_OPTIMIZATION_TABLE}
     DYNAMO_SESSION_OPTIMIZATION_TABLE: ${env:DYNAMO_SESSION_OPTIMIZATION_TABLE}
+    SQS_ROUND_OPTIMIZATION_URL: ${env:SQS_ROUND_OPTIMIZATION_URL}
+    SQS_SESSION_OPTIMIZATION_URL: ${env:SQS_SESSION_OPTIMIZATION_URL}
+    LOG_LEVEL: ${env:LOG_LEVEL}
+    ENVIRONMENT: ${env:ENVIRONMENT}
 
 functions:
   health:
@@ -28,5 +33,34 @@ functions:
           method: get
           cors: true
 
+  api-tasks:
+    handler: functions/api-tasks/bootstrap
+    events:
+      # タスク一覧取得
+      - http:
+          path: /api/v1/tasks
+          method: get
+          cors: true
+      # タスク作成
+      - http:
+          path: /api/v1/tasks
+          method: post
+          cors: true
+      # タスク更新
+      - http:
+          path: /api/v1/tasks/{task_id}/edit
+          method: patch
+          cors: true
+      # タスク完了状態切り替え
+      - http:
+          path: /api/v1/tasks/{task_id}/toggle
+          method: patch
+          cors: true
+      # タスク削除
+      - http:
+          path: /api/v1/tasks/{task_id}
+          method: delete
+          cors: true
+
 package:
-  artifact: bootstrap.zip
+  individually: true
