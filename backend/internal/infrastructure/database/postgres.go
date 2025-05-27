@@ -16,7 +16,7 @@ type PostgresDB struct {
 	logger logger.Logger
 }
 
-// NewPostgresDB は新しいPostgreSQLデータベース接続を作成する
+// NewPostgresDB は新しいPostgreSQLデータベース接続を作成する（Lambda最適化版）
 func NewPostgresDB(cfg *config.Config, logger logger.Logger) (*PostgresDB, error) {
 	// 接続文字列の作成
 	dsn := fmt.Sprintf(
@@ -31,10 +31,10 @@ func NewPostgresDB(cfg *config.Config, logger logger.Logger) (*PostgresDB, error
 		return nil, fmt.Errorf("PostgreSQL接続エラー: %w", err)
 	}
 
-	// 接続設定
-	db.SetMaxOpenConns(25)
-	db.SetMaxIdleConns(5)
-	db.SetConnMaxLifetime(5 * time.Minute)
+	// Lambda用接続設定（軽量化）
+	db.SetMaxOpenConns(5)                  // Lambda用に少なめに設定
+	db.SetMaxIdleConns(2)                  // アイドル接続も少なめ
+	db.SetConnMaxLifetime(1 * time.Minute) // 短いライフタイム
 
 	// 接続テスト
 	if err := db.Ping(); err != nil {
@@ -51,11 +51,14 @@ func NewPostgresDB(cfg *config.Config, logger logger.Logger) (*PostgresDB, error
 
 // Close はデータベース接続を閉じる
 func (p *PostgresDB) Close() error {
-	p.logger.Info("PostgreSQL接続を閉じる")
-	return p.DB.Close()
+	if p.DB != nil {
+		p.logger.Info("PostgreSQL接続を閉じる")
+		return p.DB.Close()
+	}
+	return nil
 }
 
-// ExecTx はトランザクション内で関数を実行する
+// ExecTx はトランザクション内で関数を実行する（既存機能維持）
 func (p *PostgresDB) ExecTx(fn func(*sqlx.Tx) error) error {
 	tx, err := p.DB.Beginx()
 	if err != nil {
