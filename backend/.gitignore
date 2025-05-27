@@ -89,6 +89,7 @@ jspm_packages/
 
 # dotenv environment files
 .env
+.env.backup
 .env.*.local
 
 # Next.js build output
