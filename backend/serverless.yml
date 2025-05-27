@@ -1,0 +1,32 @@
+service: selfpomodoro-serverless
+
+provider:
+  name: aws
+  runtime: provided.al2
+  region: ap-northeast-1
+  stage: ${opt:stage, 'dev'}
+  profile: selfpomodoro-dev
+
+  environment:
+    DB_HOST: ${env:DB_HOST}
+    DB_PORT: ${env:DB_PORT}
+    DB_USER: ${env:DB_USER}
+    DB_PASSWORD: ${env:DB_PASSWORD}
+    DB_NAME: ${env:DB_NAME}
+    COGNITO_USER_POOL_ID: ${env:COGNITO_USER_POOL_ID}
+    COGNITO_CLIENT_ID: ${env:COGNITO_CLIENT_ID}
+    DYNAMO_USER_CONFIG_TABLE: ${env:DYNAMO_USER_CONFIG_TABLE}
+    DYNAMO_ROUND_OPTIMIZATION_TABLE: ${env:DYNAMO_ROUND_OPTIMIZATION_TABLE}
+    DYNAMO_SESSION_OPTIMIZATION_TABLE: ${env:DYNAMO_SESSION_OPTIMIZATION_TABLE}
+
+functions:
+  health:
+    handler: bootstrap
+    events:
+      - http:
+          path: /health
+          method: get
+          cors: true
+
+package:
+  artifact: bootstrap.zip
