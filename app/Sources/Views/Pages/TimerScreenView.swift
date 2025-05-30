@@ -16,6 +16,14 @@ struct TimerScreenView: View {
             ZStack {
                 VStack(spacing: 20) {
                     TimerView(store: store.scope(state: \.timer, action: \.timer))
+                    NormalButton(
+                        text: "Featch Cycle",
+                        bgColor: ColorTheme.navy,
+                        fontColor: ColorTheme.white,
+                        width: 200,
+                        height: 44,
+                        action: { store.send(.fetchCycleTapped) }
+                    )
                 }
 
                 // 評価モーダル

@@ -18,6 +18,7 @@ struct TimerFeature {
     }
 
     struct State: Equatable {
+        var currentRoundId: UUID?
         var currentSeconds: Int = 0
         var totalSeconds: Int
 
