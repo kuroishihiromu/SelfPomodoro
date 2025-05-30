@@ -135,8 +135,8 @@ func (uc *roundUseCase) CompleteRound(ctx context.Context, id uuid.UUID, userID 
 	// 現在のラウンドの作業時間と休憩時間を取得
 	// TODO: 将来的にはDynamoDBのuser_configsから取得
 	// 現時点ではデフォルト値を使用
-	workTime := 0.5 // デフォルト: 5分
-	breakTime := 0.1 // デフォルト: 0.1分
+	workTime := 1 // デフォルト: 1分
+	breakTime := 1 // デフォルト: 1分
 
 	// ラウンドを完了する
 	if err := uc.roundRepo.Complete(ctx, id, req.FocusScore, workTime, breakTime); err != nil {
