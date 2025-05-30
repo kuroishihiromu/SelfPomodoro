@@ -64,6 +64,7 @@ struct TimerView: View {
     TimerView(
         store: Store(
             initialState: TimerFeature.State(
+                currentRoundId: UUID(uuidString: "E621E1F8-C36C-495A-93FC-0C247A3E6E5F")!,
                 totalSeconds: 10,
                 taskDuration: 30,
                 shortBreakDuration: 10,
