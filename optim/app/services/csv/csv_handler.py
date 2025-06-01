@@ -1,5 +1,6 @@
 import os
 import pandas as pd
+from typing import Optional, List, Union
 
 class CSVHandler:
     """CSVファイルを操作するクラス
@@ -35,7 +36,7 @@ class CSVHandler:
             raise Exception(f"CSVファイルの読み込みに失敗しました->\n {e}")
 
 
-    def update_data(self, new_data: list, columns: list[str] = []):
+    def update_data(self, new_data: list, columns: List[str]):
         """CSVファイルの更新
 
         Args:
@@ -69,7 +70,7 @@ class CSVHandler:
             raise Exception(f"CSVファイルの更新に失敗しました->\n {e}")
 
 
-    def choose_data(self, columns: list[str] = [], rows: list[int] | slice = []):
+    def choose_data(self, columns: Optional[List[str]] = None, rows: Optional[Union[List[int], slice]] = None) -> pd.DataFrame:
         """CSVファイルの特定のカラムと行を取得
 
         Args:
@@ -107,7 +108,7 @@ class CSVHandler:
             raise Exception(f"CSVファイルの特定のカラムと行の取得に失敗しました->\n {e}")
     
 
-    def make_chosen_data_list(self, columns: list[str] = [], rows: list[int] | slice = []):
+    def make_chosen_data_list(self, columns: Optional[List[str]] = None, rows: Optional[Union[List[int], slice]] = None) -> List[Union[float, int]]:
         """CSVファイルの特定のカラムと行を取得し、リストに変換
 
         Args:
