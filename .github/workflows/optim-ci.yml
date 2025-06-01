@@ -35,6 +35,7 @@ jobs:
         run: |
           uv add -r requirements.txt
           uv pip list
+          uv pip install .
 
       ## Lintチェック
       - name: Lint check with ruff
