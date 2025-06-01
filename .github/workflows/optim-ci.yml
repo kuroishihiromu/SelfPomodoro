@@ -40,13 +40,13 @@ jobs:
       - name: Lint check with ruff
         working-directory: ./optim
         run: |
-          ruff check app/*
+          uv run ruff check app/*
 
       ## 型チェック
       - name: Type check with ty
         working-directory: ./optim
         run: |
-          ty check app/*
+          uv run ty check app/*
 
       ## フォーマットチェック
 
