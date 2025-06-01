@@ -12,6 +12,8 @@ struct TimerScreenFeature{
     struct State: Equatable {
         var timer: TimerFeature.State
         var evalModal: EvalModalFeature.State?
+        var sessionId: UUID?
+
     }
     
     enum Action {
