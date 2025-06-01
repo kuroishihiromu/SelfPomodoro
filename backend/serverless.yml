@@ -6,6 +6,7 @@ provider:
   region: ap-northeast-1
   stage: ${opt:stage, 'dev'}
   profile: selfpomodoro-dev
+  versionFunctions: false
 
   environment:
     DB_HOST: ${env:DB_HOST}
@@ -25,16 +26,10 @@ provider:
     ENVIRONMENT: ${env:ENVIRONMENT}
 
 functions:
-  health:
-    handler: bootstrap
-    events:
-      - http:
-          path: /health
-          method: get
-          cors: true
-
   api-tasks:
-    handler: functions/api-tasks/bootstrap
+    handler: bootstrap
+    package:
+      artifact: functions/api-tasks/bootstrap.zip
     events:
       # タスク一覧取得
       - http:
@@ -60,6 +55,84 @@ functions:
       - http:
           path: /api/v1/tasks/{task_id}
           method: delete
+          cors: true
+
+  api-sessions:
+    handler: bootstrap
+    package:
+      artifact: functions/api-sessions/bootstrap.zip
+    events:
+      # セッション一覧取得
+      - http:
+          path: /api/v1/sessions
+          method: get
+          cors: true
+      # セッション開始
+      - http:
+          path: /api/v1/sessions
+          method: post
+          cors: true
+      # セッション取得
+      - http:
+          path: /api/v1/sessions/{session_id}
+          method: get
+          cors: true
+      # セッション完了
+      - http:
+          path: /api/v1/sessions/{session_id}/complete
+          method: patch
+          cors: true
+      # セッション削除
+      - http:
+          path: /api/v1/sessions/{session_id}
+          method: delete
+          cors: true
+
+  api-rounds:
+    handler: bootstrap
+    package:
+      artifact: functions/api-rounds/bootstrap.zip
+    events:
+      # セッションのラウンド一覧取得
+      - http:
+          path: /api/v1/sessions/{session_id}/rounds
+          method: get
+          cors: true
+      # ラウンド開始
+      - http:
+          path: /api/v1/sessions/{session_id}/rounds
+          method: post
+          cors: true
+      # ラウンド取得
+      - http:
+          path: /api/v1/rounds/{round_id}
+          method: get
+          cors: true
+      # ラウンド完了
+      - http:
+          path: /api/v1/rounds/{round_id}/complete
+          method: patch
+          cors: true
+      # ラウンド中止
+      - http:
+          path: /api/v1/rounds/{round_id}/abort
+          method: post
+          cors: true
+
+  api-statistics:
+    handler: bootstrap
+    package:
+      artifact: functions/api-statistics/bootstrap.zip
+    events:
+      # 集中度トレンド取得
+      - http:
+          path: /api/v1/statistics/focus-trend
+          method: get
+          cors: true
+      # 集中度ヒートマップ取得
+      - http:
+          path: /api/v1/statistics/focus-heatmap
+          method: get
           cors: true
 
 package:
