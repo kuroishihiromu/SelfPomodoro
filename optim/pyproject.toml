@@ -8,6 +8,8 @@ dependencies = [
     "fastapi>=0.115.12",
     "pandas>=2.2.3",
     "ruff>=0.11.12",
+    "scikit-learn>=1.6.1",
+    "scikit-optimize>=0.10.2",
     "ty>=0.0.1a7",
     "uvicorn>=0.34.3",
 ]
