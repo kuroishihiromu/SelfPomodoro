@@ -25,11 +25,16 @@ jobs:
         run: |
           curl -LsSf https://astral.sh/uv/install.sh | sh
           echo "$HOME/.cargo/bin" >> $GITHUB_PATH
+      - name: Create virtual environment with uv
+        working-directory: ./optim
+        run: |
+          uv venv .venv
 
       - name: Install dependencies
         working-directory: ./optim
         run: |
-          uv pip install -r requirements.txt
+          uv add -r requirements.txt
+          uv pip list
 
       ## Lintチェック
       - name: Lint check with ruff
