@@ -56,6 +56,11 @@ jobs:
         working-directory: ./optim
         run: |
           uv run tests/services/csv/csv_handler.py
+      
+      - name: Run bayesian_optimizer test
+        working-directory: ./optim
+        run: |
+          uv run tests/services/optimize/bayesian_optimizer.py
 
       ## api層のテスト
 
