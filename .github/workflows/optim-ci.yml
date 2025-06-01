@@ -52,6 +52,10 @@ jobs:
       ## フォーマットチェック
 
       ## services層のテスト
+      - name: Run csv_handler test
+        working-directory: ./optim
+        run: |
+          uv run tests/services/csv/csv_handler.py
 
       ## api層のテスト
 
