@@ -4,6 +4,7 @@ def test_round_csv_handler():
     try:
         print("[テスト] CSVファイルの読み込みと更新テスト")
         print()
+
         # CSVファイルの読み込み
         round_csv_path = "app/data/round/123e4567-e89b-12d3-a456-426614174000.csv"
         csv_handler = CSVHandler(round_csv_path)
@@ -27,6 +28,7 @@ def test_round_csv_handler():
         assert isinstance(objective_variable, list)
         print()
         print()
+        
         print("[成功]: CSVファイルの読み込みと更新テスト完了")
         print()
         
