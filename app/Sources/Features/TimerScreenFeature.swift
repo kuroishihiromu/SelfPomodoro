@@ -8,19 +8,22 @@ import ComposableArchitecture
 import SwiftUI
 
 @Reducer
-struct TimerScreenFeature{
+struct TimerScreenFeature {
     struct State: Equatable {
         var timer: TimerFeature.State
         var evalModal: EvalModalFeature.State?
         var sessionId: UUID?
 
     }
-    
+
     enum Action {
         case timer(TimerFeature.Action)
         case evalModal(EvalModalFeature.Action)
-        
+
         case fetchCycleTapped
+
+        case startNextRound
+        
         case sessionStartResponse(Result<SessionResult, Error>)
         case roundStartResponse(Result<RoundResult, Error>)
         
@@ -89,7 +92,37 @@ struct TimerScreenFeature{
                 
             case .evalModal(.submitEval(let score)):
                 state.evalModal = nil
-                print("投稿されたスコア:\(score)")
+                guard let roundId = state.timer.currentRoundId else {
+                    print("⚠️ roundId is nil")
+                    return .none
+                }
+
+                print("📨 評価送信中: roundId=\(roundId), score=\(score)")
+
+                return .run { send in
+                    let result = try await sessionAPIClient.completeRound(roundId, Int(score * 100))
+                    await send(.completeRoundResponse(.success(result)))
+                } catch: { error, send in
+                    print("❌ completeRound エラー: \(error)")
+                    await send(.completeRoundResponse(.failure(error)))
+                }
+
+            case .startNextRound:
+                guard let sessionId = state.timer.sessionId else {
+                    print("⚠️ sessionId is nil")
+                    return .none
+                }
+                return .run { send in
+                    let round = try await sessionAPIClient.startRound(sessionId)
+                    print("🔄 Next round started → \(round.id)")
+                    await send(.roundStartResponse(.success(round)))
+                } catch: { error, send in
+                    print("❌ Failed to start next round: \(error)")
+                    await send(.roundStartResponse(.failure(error)))
+                }
+
+            case let .completeRoundResponse(.success(round)):
+                print("✅ completeRound 成功: \(round)")
                 return .send(.timer(.start))
                 
             case .dismissEvalModal:
