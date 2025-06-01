@@ -1,0 +1,52 @@
+name: Optim CI
+
+on:
+  ## main, develop, optimブランチへのプッシュをトリガーにする
+  push:
+    branches: [main, develop, optim]
+
+  ## main, develop, optimブランチへのプルリクをトリガーにする
+  pull_request:
+    branches: [main, develop, optim]
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: "3.12"
+
+      ## 依存関係のチェック
+      - name: Install uv
+        run: |
+          curl -LsSf https://astral.sh/uv/install.sh | sh
+          echo "$HOME/.cargo/bin" >> $GITHUB_PATH
+
+      - name: Install dependencies
+        working-directory: ./optim
+        run: |
+          uv pip install -r requirements.txt
+
+      ## Lintチェック
+      - name: Lint check with ruff
+        working-directory: ./optim
+        run: |
+          ruff check app/*
+
+      ## 型チェック
+      - name: Type check with ty
+        working-directory: ./optim
+        run: |
+          ty check app/*
+
+      ## フォーマットチェック
+
+      ## services層のテスト
+
+      ## api層のテスト
+
+      ## app層(main.py)のテスト
