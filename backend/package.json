@@ -10,7 +10,7 @@
   "author": "",
   "license": "ISC",
   "devDependencies": {
-    "serverless": "^4.14.4",
+    "serverless": "^4.15.1",
     "serverless-go-plugin": "^2.4.1",
     "serverless-offline": "^14.4.0"
   }
