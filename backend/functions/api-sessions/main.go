@@ -45,9 +45,26 @@ func handler(ctx context.Context, request events.APIGatewayProxyRequest) (events
 	}
 	defer postgresDB.Close()
 
+	// DynamoDB接続（UserConfig用）
+	var dynamoDB *database.DynamoDB
+	dynamoDB, err = database.NewDynamoDB(cfg, appLogger)
+	if err != nil {
+		appLogger.Warnf("DynamoDB接続エラー: %v", err)
+		appLogger.Warn("DynamoDBなしで続行します（デフォルト設定使用）")
+		dynamoDB = nil
+	}
+	if dynamoDB != nil {
+		defer dynamoDB.Close()
+	}
+
 	// リポジトリとユースケースの初期化
-	repositoryFactory := repository.NewRepositoryFactory(postgresDB, nil, appLogger)
-	sessionUseCase := usecase.NewSessionUseCase(repositoryFactory.Session, repositoryFactory.Round, appLogger)
+	repositoryFactory := repository.NewRepositoryFactory(postgresDB, dynamoDB, appLogger)
+	sessionUseCase := usecase.NewSessionUseCase(
+		repositoryFactory.Session,
+		repositoryFactory.Round,
+		repositoryFactory.UserConfig, // DynamoDB UserConfig追加
+		appLogger,
+	)
 
 	// ハンドラーの初期化
 	sessionHandler := &SessionHandler{
@@ -136,14 +153,17 @@ func (h *SessionHandler) handleGetSessions(ctx context.Context, request events.A
 	}
 }
 
-// handleStartSession はセッション開始を処理
+// handleStartSession はセッション開始を処理（UserConfig確認付き）
 func (h *SessionHandler) handleStartSession(ctx context.Context, userID uuid.UUID) (events.APIGatewayProxyResponse, error) {
+	h.logger.Infof("セッション開始要求: ユーザーID=%s", userID.String())
+
 	sessionResponse, err := h.sessionUseCase.StartSession(ctx, userID)
 	if err != nil {
 		h.logger.Errorf("セッション開始エラー: %v", err)
 		return errorResponse(http.StatusInternalServerError, "セッション開始に失敗しました"), nil
 	}
 
+	h.logger.Infof("セッション開始成功: セッションID=%s", sessionResponse.ID.String())
 	return successResponse(http.StatusCreated, sessionResponse), nil
 }
 
@@ -165,6 +185,8 @@ func (h *SessionHandler) handleCompleteSession(ctx context.Context, request even
 		return errorResponse(http.StatusNotFound, "無効なパス"), nil
 	}
 
+	h.logger.Infof("セッション完了要求: セッションID=%s", sessionID.String())
+
 	sessionResponse, err := h.sessionUseCase.CompleteSession(ctx, sessionID, userID)
 	if err != nil {
 		if isSessionNotFoundError(err) {
@@ -177,6 +199,7 @@ func (h *SessionHandler) handleCompleteSession(ctx context.Context, request even
 		return errorResponse(http.StatusInternalServerError, "セッション完了に失敗しました"), nil
 	}
 
+	h.logger.Infof("セッション完了成功: セッションID=%s", sessionID.String())
 	return successResponse(http.StatusOK, sessionResponse), nil
 }
 
