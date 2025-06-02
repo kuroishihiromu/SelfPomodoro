@@ -1,0 +1,9 @@
+fastapi
+uvicorn
+httpx
+pandas
+scikit-learn
+scikit-optimize
+ruff
+ty
+pytest

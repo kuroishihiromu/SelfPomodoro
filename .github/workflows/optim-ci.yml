@@ -1,0 +1,71 @@
+name: Optim CI
+
+on:
+  ## main, develop, optimブランチへのプッシュをトリガーにする
+  push:
+    branches: [main, develop, optim]
+
+  ## main, develop, optimブランチへのプルリクをトリガーにする
+  pull_request:
+    branches: [main, develop, optim]
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: "3.12"
+
+      ## 依存関係のチェック
+      - name: Install uv
+        run: |
+          curl -LsSf https://astral.sh/uv/install.sh | sh
+          echo "$HOME/.cargo/bin" >> $GITHUB_PATH
+      - name: Create virtual environment with uv
+        working-directory: ./optim
+        run: |
+          uv venv .venv
+
+      - name: Install dependencies
+        working-directory: ./optim
+        run: |
+          uv add -r requirements.txt
+          uv pip list
+          uv pip install .
+
+      ## Lintチェック
+      - name: Lint check with ruff
+        working-directory: ./optim
+        run: |
+          uv run ruff check app/*
+
+      ## 型チェック
+      - name: Type check with ty
+        working-directory: ./optim
+        run: |
+          uv run ty check app/*
+
+      ## フォーマットチェック
+
+      ## services層のテスト
+      - name: Run csv_handler test
+        working-directory: ./optim
+        run: |
+          uv run pytest tests/services/csv/csv_handler.py
+
+      - name: Run bayesian_optimizer test
+        working-directory: ./optim
+        run: |
+          uv run pytest tests/services/optimize/bayesian_optimizer.py
+
+      ## api層のテスト
+
+      ## app層(main.py)のテスト
+      - name: Run bayesian_optimizer test
+        working-directory: ./optim
+        run: |
+          uv run pytest tests/main.py
