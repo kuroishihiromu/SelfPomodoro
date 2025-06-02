@@ -1,7 +1,7 @@
 import uuid
 from fastapi import FastAPI
-from services.csv.csv_handler import CSVHandler
-from services.optimize.bayesian_optimizer import BayesianOptimizer
+from app.services.csv.csv_handler import CSVHandler
+from app.services.optimize.bayesian_optimizer import BayesianOptimizer
 
 app = FastAPI()
 
@@ -21,7 +21,7 @@ def round_optimizer(user_id: uuid.UUID, focus_score: float):
         work_time (float): 最適な作業時間
         break_time (float): 最適な休憩時間
     """
-    csv_handler = CSVHandler(f"data/round/{user_id}.csv")
+    csv_handler = CSVHandler(f"app/data/round/{user_id}.csv")
     # CSVファイル更新
     new_data = [focus_score]
     columns = ["focus_score"]
@@ -59,7 +59,7 @@ def session_optimizer(user_id: uuid.UUID, average_focus_score: float):
         session_break_time (float): 最適なセッション間休憩時間
         number_of_round (int): 最適なラウンド繰り返し回数
     """
-    csv_handler = CSVHandler(f"data/session/{user_id}.csv")
+    csv_handler = CSVHandler(f"app/data/session/{user_id}.csv")
     # CSVファイル更新
     new_data = [average_focus_score]
     columns = ["average_focus_score"]

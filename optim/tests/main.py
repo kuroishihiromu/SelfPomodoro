@@ -12,7 +12,7 @@ def test_round_optimizer():
     assert isinstance(data["break_time"], (int, float))
 
 def test_session_optimizer():
-    response = client.get("/session_optimizer/123e4567-e89b-12d3-a456-426614174000?average_focus_score=100")
+    response = client.get("session_optimizer/123e4567-e89b-12d3-a456-426614174000?average_focus_score=100")
     assert response.status_code == 200
     data = response.json()
     assert isinstance(data["session_break_time"], (int, float))
