@@ -4,6 +4,7 @@ import (
 	"github.com/tsunakit99/selfpomodoro/internal/domain/repository"
 	"github.com/tsunakit99/selfpomodoro/internal/infrastructure/database"
 	"github.com/tsunakit99/selfpomodoro/internal/infrastructure/logger"
+	"github.com/tsunakit99/selfpomodoro/internal/infrastructure/repository/dynamodb"
 	"github.com/tsunakit99/selfpomodoro/internal/infrastructure/repository/postgres"
 )
 
@@ -13,6 +14,7 @@ type RepositoryFactory struct {
 	Session    repository.SessionRepository
 	Round      repository.RoundRepository
 	Statistics repository.StatisticsRepository
+	UserConfig repository.UserConfigRepository
 	// TODO: 他のリポジトリを追加する場合はここにフィールドを追加
 }
 
@@ -24,6 +26,16 @@ func NewRepositoryFactory(postgresDB *database.PostgresDB, dynamoDB *database.Dy
 	roundRepo := postgres.NewRoundRepository(postgresDB, logger)
 	statisticsRepo := postgres.NewStatisticsRepository(postgresDB, logger)
 
+	// DynamoDBを使用してリポジトリを初期化
+	var userConfigRepo repository.UserConfigRepository
+	if dynamoDB != nil {
+		userConfigRepo = dynamodb.NewUserConfigRepository(dynamoDB.Client, dynamoDB.Config, logger)
+	} else {
+		// DynamoDBが利用できない場合はnilを設定(エラーハンドリングは各usecaseで行う)
+		logger.Warn("DynamoDBが利用できないため、UserConfigRepositoryはnilになります")
+		userConfigRepo = nil
+	}
+
 	// TODO: DynamoDBを使用してリポジトリを初期化する場合はここに追加
 
 	return &RepositoryFactory{
@@ -31,5 +43,6 @@ func NewRepositoryFactory(postgresDB *database.PostgresDB, dynamoDB *database.Dy
 		Session:    sessionRepo,
 		Round:      roundRepo,
 		Statistics: statisticsRepo,
+		UserConfig: userConfigRepo,
 	}
 }
