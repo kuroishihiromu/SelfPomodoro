@@ -48,9 +48,26 @@ func handler(ctx context.Context, request events.APIGatewayProxyRequest) (events
 	}
 	defer postgresDB.Close()
 
+	// DynamoDB接続（UserConfig用）
+	var dynamoDB *database.DynamoDB
+	dynamoDB, err = database.NewDynamoDB(cfg, appLogger)
+	if err != nil {
+		appLogger.Warnf("DynamoDB接続エラー: %v", err)
+		appLogger.Warn("DynamoDBなしで続行します（デフォルト設定使用）")
+		dynamoDB = nil
+	}
+	if dynamoDB != nil {
+		defer dynamoDB.Close()
+	}
+
 	// リポジトリとユースケースの初期化
-	repositoryFactory := repository.NewRepositoryFactory(postgresDB, nil, appLogger)
-	roundUseCase := usecase.NewRoundUseCase(repositoryFactory.Round, repositoryFactory.Session, appLogger)
+	repositoryFactory := repository.NewRepositoryFactory(postgresDB, dynamoDB, appLogger)
+	roundUseCase := usecase.NewRoundUseCase(
+		repositoryFactory.Round,
+		repositoryFactory.Session,
+		repositoryFactory.UserConfig, // DynamoDB UserConfig追加
+		appLogger,
+	)
 
 	// ハンドラーの初期化
 	roundHandler := &RoundHandler{
@@ -112,7 +129,7 @@ func (h *RoundHandler) handleSessionRounds(ctx context.Context, request events.A
 		// セッションのラウンド一覧取得
 		return h.handleGetRoundsBySession(ctx, sessionID)
 	case "POST":
-		// ラウンド開始
+		// ラウンド開始（UserConfig考慮）
 		return h.handleStartRound(ctx, sessionID, userID)
 	default:
 		return errorResponse(http.StatusMethodNotAllowed, "メソッドが許可されていません"), nil
@@ -137,7 +154,7 @@ func (h *RoundHandler) handleIndividualRound(ctx context.Context, request events
 		// ラウンド取得
 		return h.handleGetRound(ctx, roundID)
 	case "PATCH":
-		// ラウンド完了
+		// ラウンド完了（DynamoDB設定値使用）
 		return h.handleCompleteRound(ctx, request, roundID, userID)
 	case "POST":
 		if strings.Contains(request.Path, "/abort") {
@@ -160,8 +177,10 @@ func (h *RoundHandler) handleGetRoundsBySession(ctx context.Context, sessionID u
 	return successResponse(http.StatusOK, roundsResponse), nil
 }
 
-// handleStartRound はラウンド開始を処理
+// handleStartRound はラウンド開始を処理（ログ強化版）
 func (h *RoundHandler) handleStartRound(ctx context.Context, sessionID uuid.UUID, userID uuid.UUID) (events.APIGatewayProxyResponse, error) {
+	h.logger.Infof("ラウンド開始要求: セッションID=%s, ユーザーID=%s", sessionID.String(), userID.String())
+
 	var req model.RoundCreateRequest
 	roundResponse, err := h.roundUseCase.StartRound(ctx, sessionID, userID, &req)
 	if err != nil {
@@ -174,6 +193,8 @@ func (h *RoundHandler) handleStartRound(ctx context.Context, sessionID uuid.UUID
 		h.logger.Errorf("ラウンド開始エラー: %v", err)
 		return errorResponse(http.StatusInternalServerError, "ラウンド開始に失敗しました"), nil
 	}
+
+	h.logger.Infof("ラウンド開始成功: ラウンドID=%s, ラウンド順序=%d", roundResponse.ID.String(), roundResponse.RoundOrder)
 	return successResponse(http.StatusCreated, roundResponse), nil
 }
 
@@ -190,7 +211,7 @@ func (h *RoundHandler) handleGetRound(ctx context.Context, roundID uuid.UUID) (e
 	return successResponse(http.StatusOK, roundResponse), nil
 }
 
-// handleCompleteRound はラウンド完了を処理
+// handleCompleteRound はラウンド完了を処理（DynamoDB設定値使用版）
 func (h *RoundHandler) handleCompleteRound(ctx context.Context, request events.APIGatewayProxyRequest, roundID uuid.UUID, userID uuid.UUID) (events.APIGatewayProxyResponse, error) {
 	if !strings.Contains(request.Path, "/complete") {
 		return errorResponse(http.StatusNotFound, "無効なパス"), nil
@@ -205,6 +226,8 @@ func (h *RoundHandler) handleCompleteRound(ctx context.Context, request events.A
 		return errorResponse(http.StatusBadRequest, "集中度スコアは0から100の間である必要があります"), nil
 	}
 
+	h.logger.Infof("ラウンド完了要求: ラウンドID=%s, 集中度スコア=%v", roundID.String(), req.FocusScore)
+
 	roundResponse, err := h.roundUseCase.CompleteRound(ctx, roundID, userID, &req)
 	if err != nil {
 		if isRoundNotFoundError(err) {
@@ -213,11 +236,16 @@ func (h *RoundHandler) handleCompleteRound(ctx context.Context, request events.A
 		h.logger.Errorf("ラウンド完了エラー: %v", err)
 		return errorResponse(http.StatusInternalServerError, "ラウンド完了に失敗しました"), nil
 	}
+
+	h.logger.Infof("ラウンド完了成功: ラウンドID=%s, 作業時間=%d分, 休憩時間=%d分",
+		roundID.String(), *roundResponse.WorkTime, *roundResponse.BreakTime)
 	return successResponse(http.StatusOK, roundResponse), nil
 }
 
 // handleAbortRound はラウンド中止を処理
 func (h *RoundHandler) handleAbortRound(ctx context.Context, roundID uuid.UUID, userID uuid.UUID) (events.APIGatewayProxyResponse, error) {
+	h.logger.Infof("ラウンド中止要求: ラウンドID=%s", roundID.String())
+
 	roundResponse, err := h.roundUseCase.AbortRound(ctx, roundID, userID)
 	if err != nil {
 		if isRoundNotFoundError(err) {
@@ -226,6 +254,8 @@ func (h *RoundHandler) handleAbortRound(ctx context.Context, roundID uuid.UUID, 
 		h.logger.Errorf("ラウンド中止エラー: %v", err)
 		return errorResponse(http.StatusInternalServerError, "ラウンド中止に失敗しました"), nil
 	}
+
+	h.logger.Infof("ラウンド中止成功: ラウンドID=%s", roundID.String())
 	return successResponse(http.StatusOK, roundResponse), nil
 }
 
