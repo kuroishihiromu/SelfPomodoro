@@ -18,6 +18,8 @@ struct TimerFeature {
     }
 
     struct State: Equatable {
+        var currentRoundId: UUID?
+        var sessionId: UUID?
         var currentSeconds: Int = 0
         var totalSeconds: Int
 
@@ -44,6 +46,7 @@ struct TimerFeature {
                 return longBreakDuration
             }
         }
+        
     }
 
     enum Action: Equatable {

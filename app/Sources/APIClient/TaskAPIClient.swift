@@ -46,30 +46,14 @@ extension TaskAPIClient {
             request.setValue("Bearer dev-token", forHTTPHeaderField: "Authorization")
             request.setValue("application/json", forHTTPHeaderField: "Content-Type")
 
-            let (data, response) = try await URLSession.shared.data(for: request)
+            let (data, _) = try await URLSession.shared.data(for: request)
             print("Fetched tasks → \(String(data: data, encoding: .utf8) ?? "Invalid UTF-8")")
-
-            let formatter = ISO8601DateFormatter()
-            formatter.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
-
-            let decoder = JSONDecoder()
-            decoder.dateDecodingStrategy = .custom { decoder in
-                let container = try decoder.singleValueContainer()
-                let dateStr = try container.decode(String.self)
-                guard let date = formatter.date(from: dateStr) else {
-                    throw DecodingError.dataCorruptedError(
-                        in: container,
-                        debugDescription: "Invalid date format: \(dateStr)"
-                    )
-                }
-                return date
-            }
 
             struct TaskListResponse: Decodable {
                 let tasks: [TaskResult]
             }
 
-            return try decoder.decode(TaskListResponse.self, from: data).tasks
+            return try APIFormatters.jsonDecoder.decode(TaskListResponse.self, from: data).tasks
         },
 
 
@@ -83,23 +67,7 @@ extension TaskAPIClient {
             let (data, _) = try await URLSession.shared.data(for: request)
             print("Add task response → \(String(data: data, encoding: .utf8) ?? "Invalid UTF-8")")
             
-            let decoder = JSONDecoder()
-
-            let formatter = ISO8601DateFormatter()
-            formatter.formatOptions = [.withInternetDateTime, .withFractionalSeconds, .withTimeZone] // 重要！
-
-            decoder.dateDecodingStrategy = .custom { decoder in
-                let container = try decoder.singleValueContainer()
-                let dateStr = try container.decode(String.self)
-                guard let date = formatter.date(from: dateStr) else {
-                    throw DecodingError.dataCorruptedError(
-                        in: container,
-                        debugDescription: "Invalid date format: \(dateStr)"
-                    )
-                }
-                return date
-            }
-            return try decoder.decode(TaskResult.self, from: data)
+            return try APIFormatters.jsonDecoder.decode(TaskResult.self, from: data)
         },
 
         deleteTask: { id in
