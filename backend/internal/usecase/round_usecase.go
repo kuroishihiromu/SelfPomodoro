@@ -31,17 +31,19 @@ type RoundUseCase interface {
 
 // roundUseCase はラウンドに関するユースケースの実装
 type roundUseCase struct {
-	roundRepo   repository.RoundRepository
-	sessionRepo repository.SessionRepository
-	logger      logger.Logger
+	roundRepo      repository.RoundRepository
+	sessionRepo    repository.SessionRepository
+	userConfigRepo repository.UserConfigRepository
+	logger         logger.Logger
 }
 
 // NewRoundUseCase は新しいラウンドユースケースを作成する
-func NewRoundUseCase(roundrepo repository.RoundRepository, sessionRepo repository.SessionRepository, logger logger.Logger) RoundUseCase {
+func NewRoundUseCase(roundrepo repository.RoundRepository, sessionRepo repository.SessionRepository, userConfigRepo repository.UserConfigRepository, logger logger.Logger) RoundUseCase {
 	return &roundUseCase{
-		roundRepo:   roundrepo,
-		sessionRepo: sessionRepo,
-		logger:      logger,
+		roundRepo:      roundrepo,
+		sessionRepo:    sessionRepo,
+		userConfigRepo: userConfigRepo,
+		logger:         logger,
 	}
 }
 
@@ -132,11 +134,12 @@ func (uc *roundUseCase) CompleteRound(ctx context.Context, id uuid.UUID, userID 
 		return nil, err
 	}
 
-	// 現在のラウンドの作業時間と休憩時間を取得
-	// TODO: 将来的にはDynamoDBのuser_configsから取得
-	// 現時点ではデフォルト値を使用
-	workTime := 25 // デフォルト: 25分
-	breakTime := 5 // デフォルト: 5分
+	// ユーザーの作業時間と休憩時間を取得
+	workTime, breakTime, err := uc.getUserWorkAndBreakTime(ctx, userID)
+	if err != nil {
+		uc.logger.Errorf("ユーザーの作業時間と休憩時間取得エラー: %v", err)
+		return nil, err
+	}
 
 	// ラウンドを完了する
 	if err := uc.roundRepo.Complete(ctx, id, req.FocusScore, workTime, breakTime); err != nil {
@@ -191,4 +194,31 @@ func (uc *roundUseCase) AbortRound(ctx context.Context, id uuid.UUID, userID uui
 
 	// ラウンドをAPIレスポンス形式に変換
 	return updatedRound.ToResponse(), nil
+}
+
+// getUserWorkAndBreakTime はユーザーの作業時間と休憩時間を取得する
+func (uc *roundUseCase) getUserWorkAndBreakTime(ctx context.Context, userID uuid.UUID) (workTime int, breakTime int, err error) {
+	uc.logger.Infof("getUserWorkAndBreakTime 開始: userID=%s", userID.String())
+
+	// DynamoDBからユーザー設定を取得
+	if uc.userConfigRepo != nil {
+		uc.logger.Info("UserConfigRepository が利用可能です")
+		userConfig, configErr := uc.userConfigRepo.GetOrCreateUserConfig(ctx, userID)
+		if configErr != nil {
+			// ユーザー設定が存在しない場合はデフォルト値を使用
+			uc.logger.Warnf("ユーザー設定取得エラー、デフォルト値を使用します: %v", configErr)
+		} else {
+			// ユーザー設定が存在する場合はそれを使用
+			uc.logger.Infof("DynamoDB設定値取得成功: workTime=%d, breakTime=%d", userConfig.RoundWorkTime, userConfig.RoundBreakTime)
+			return userConfig.RoundWorkTime, userConfig.RoundBreakTime, nil
+		}
+	} else {
+		uc.logger.Warn("UserConfigRepository が nil です")
+	}
+
+	// デフォルト値を使用
+	defaultWorkTime := 25
+	defaultBreakTime := 5
+	uc.logger.Infof("デフォルト値を使用: workTime=%d, breakTime=%d", defaultWorkTime, defaultBreakTime)
+	return defaultWorkTime, defaultBreakTime, nil
 }
