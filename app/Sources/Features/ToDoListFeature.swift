@@ -28,7 +28,6 @@ struct ToDoListFeature {
             switch action {
             case let .addItem(detail):
                 print("🟢 addItem called with detail: \(detail)")
-                state.items.append(.init(id: UUID(), detail: detail, isCompleted: false))
                 return .run { send in
                     do {
                         let result = try await apiClient.addTask(detail)
