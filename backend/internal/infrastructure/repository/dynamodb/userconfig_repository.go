@@ -8,7 +8,6 @@ import (
 	"time"
 
 	"github.com/aws/aws-sdk-go-v2/aws"
-	"github.com/aws/aws-sdk-go-v2/feature/dynamodb/attributevalue"
 	"github.com/aws/aws-sdk-go-v2/service/dynamodb"
 	"github.com/aws/aws-sdk-go-v2/service/dynamodb/types"
 	"github.com/google/uuid"
@@ -169,15 +168,20 @@ func (r *UserConfigRepositoryImpl) CreateUserConfig(ctx context.Context, config 
 	return nil
 }
 
-// UpdateUserConfig はユーザー設定を更新する
+// UpdateUserConfig はユーザー設定を更新する（手動マッピング）
 func (r *UserConfigRepositoryImpl) UpdateUserConfig(ctx context.Context, config *model.UserConfig) error {
 	// 更新時刻を設定
 	config.UpdatedAt = time.Now()
 
-	item, err := attributevalue.MarshalMap(config)
-	if err != nil {
-		r.logger.Errorf("DynamoDB MarshalMap エラー: %v", err)
-		return fmt.Errorf("%w: %v", ErrUserConfigUpdateFailed, err)
+	// 手動でDynamoDBアイテムを作成
+	item := map[string]types.AttributeValue{
+		"user_id":            &types.AttributeValueMemberS{Value: config.UserID},
+		"round_work_time":    &types.AttributeValueMemberN{Value: fmt.Sprintf("%d", config.RoundWorkTime)},
+		"round_break_time":   &types.AttributeValueMemberN{Value: fmt.Sprintf("%d", config.RoundBreakTime)},
+		"session_rounds":     &types.AttributeValueMemberN{Value: fmt.Sprintf("%d", config.SessionRounds)},
+		"session_break_time": &types.AttributeValueMemberN{Value: fmt.Sprintf("%d", config.SessionBreakTime)},
+		"created_at":         &types.AttributeValueMemberS{Value: config.CreatedAt.Format(time.RFC3339)},
+		"updated_at":         &types.AttributeValueMemberS{Value: config.UpdatedAt.Format(time.RFC3339)},
 	}
 
 	input := &dynamodb.PutItemInput{
@@ -187,7 +191,7 @@ func (r *UserConfigRepositoryImpl) UpdateUserConfig(ctx context.Context, config 
 		ConditionExpression: aws.String("attribute_exists(user_id)"),
 	}
 
-	_, err = r.client.PutItem(ctx, input)
+	_, err := r.client.PutItem(ctx, input)
 	if err != nil {
 		var conditionalCheckFailedException *types.ConditionalCheckFailedException
 		if errors.As(err, &conditionalCheckFailedException) {
