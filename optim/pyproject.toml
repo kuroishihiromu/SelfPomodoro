@@ -14,7 +14,14 @@ dependencies = [
     "scikit-learn>=1.6.1",
     "scikit-optimize>=0.10.2",
     "ty>=0.0.1a7",
+    "typing>=3.10.0.0",
+    "typing-extensions>=4.13.2",
     "uvicorn>=0.34.3",
 ]
 [tool.setuptools.packages.find]
 where = ["."]
+
+[tool.pytest.ini_options]
+filterwarnings = [
+    "ignore::DeprecationWarning:botocore.*"
+]

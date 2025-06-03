@@ -5,6 +5,8 @@ fastapi
 uvicorn
 httpx
 boto3
+typing
+typing-extensions
 ruff
 ty
 pytest

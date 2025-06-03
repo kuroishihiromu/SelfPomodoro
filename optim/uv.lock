@@ -222,6 +222,8 @@ dependencies = [
     { name = "scikit-learn" },
     { name = "scikit-optimize" },
     { name = "ty" },
+    { name = "typing" },
+    { name = "typing-extensions" },
     { name = "uvicorn" },
 ]
 
@@ -236,6 +238,8 @@ requires-dist = [
     { name = "scikit-learn", specifier = ">=1.6.1" },
     { name = "scikit-optimize", specifier = ">=0.10.2" },
     { name = "ty", specifier = ">=0.0.1a7" },
+    { name = "typing", specifier = ">=3.10.0.0" },
+    { name = "typing-extensions", specifier = ">=4.13.2" },
     { name = "uvicorn", specifier = ">=0.34.3" },
 ]
 
@@ -604,6 +608,15 @@ wheels = [
     { url = "https://files.pythonhosted.org/packages/61/36/cf0075f7de2bd3c9821ac54b749c91f5f3f181326cdab88a8c6a095340a8/ty-0.0.1a7-py3-none-win32.whl", hash = "sha256:02f9e82bc3180ca6d72cca780ac5909b97753cfb1d4abfb0e6fd8cf2190dd2c5", size = 5924237, upload-time = "2025-05-26T18:52:15.989Z" },
     { url = "https://files.pythonhosted.org/packages/2c/49/02aec0611f6967087d562a87ffc218b8f9c8c9bba205a67a24d142e8c9e0/ty-0.0.1a7-py3-none-win_amd64.whl", hash = "sha256:b6cea4d80b4cbdfa21c04b4e2bcbe964dcd781462165d3c06b84781b046a163f", size = 6407997, upload-time = "2025-05-26T18:52:19.018Z" },
     { url = "https://files.pythonhosted.org/packages/4a/94/e048fd4d5bd3f9518dcbc07e83b06a286512db310df17262af8adc32a29d/ty-0.0.1a7-py3-none-win_arm64.whl", hash = "sha256:b5a40b77f91bf86d4a2d6740e2ba1b09ae70e94d152074a7a6bc80aafe83bb06", size = 6061856, upload-time = "2025-05-26T18:52:21.786Z" },
+]
+
+[[package]]
+name = "typing"
+version = "3.10.0.0"
+source = { registry = "https://pypi.org/simple" }
+sdist = { url = "https://files.pythonhosted.org/packages/b0/1b/835d4431805939d2996f8772aca1d2313a57e8860fec0e48e8e7dfe3a477/typing-3.10.0.0.tar.gz", hash = "sha256:13b4ad211f54ddbf93e5901a9967b1e07720c1d1b78d596ac6a439641aa1b130", size = 78962, upload-time = "2021-05-01T18:03:58.186Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/f2/5d/865e17349564eb1772688d8afc5e3081a5964c640d64d1d2880ebaed002d/typing-3.10.0.0-py3-none-any.whl", hash = "sha256:12fbdfbe7d6cca1a42e485229afcb0b0c8259258cfb919b8a5e2a5c953742f89", size = 26320, upload-time = "2021-05-01T18:03:56.398Z" },
 ]
 
 [[package]]

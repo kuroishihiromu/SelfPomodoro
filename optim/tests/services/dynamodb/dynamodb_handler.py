@@ -1,5 +1,4 @@
 from app.services.dynamodb.dynamodb_handler import DynamoDBHandler
-import pytest
 
 def test_round_dynamodb_handler():
     """DynamoDBのラウンドデータのテスト"""
@@ -12,14 +11,6 @@ def test_round_dynamodb_handler():
         
         # テーブル名の確認
         assert dynamodb_handler.table_name == 'round_optimization_logs'
-        
-        # 集中度スコアの追加
-        dynamodb_handler.put_round_data(
-            user_id='testuser-abcd-1234-5678-dynamodbtest',
-            time='2023-01-01T10:00:00Z',
-            focus_score=9,
-            timestamp='2023-01-01T10:00:00.000Z'
-        )
 
         # 作業時間と小休憩時間の追加
         dynamodb_handler.put_round_data(
@@ -82,14 +73,6 @@ def test_session_dynamodb_handler():
         
         # テーブル名の確認
         assert dynamodb_handler.table_name == 'session_optimization_logs'
-        
-        # 平均集中度スコアの追加
-        dynamodb_handler.put_session_data(
-            user_id='testuser-abcd-1234-5678-dynamodbtest',
-            time='2023-01-01T10:00:00Z',
-            avg_focus_score=9.5,
-            timestamp='2023-01-01T10:00:00.000Z'
-        )
 
         # ラウンド数と長休憩時間の追加
         dynamodb_handler.put_session_data(

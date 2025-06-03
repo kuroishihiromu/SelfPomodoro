@@ -56,6 +56,11 @@ jobs:
         working-directory: ./optim
         run: |
           uv run pytest tests/services/csv/csv_handler.py
+      
+      - name: Run dynamodb_handler test
+        working-directory: ./optim
+        run: |
+          uv run pytest tests/services/dynamodb/dynamodb_handler.py
 
       - name: Run bayesian_optimizer test
         working-directory: ./optim
