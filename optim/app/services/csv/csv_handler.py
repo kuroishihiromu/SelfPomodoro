@@ -134,9 +134,9 @@ class CSVHandler:
             # 一つの列だけの場合は1次元リストにフラット化
             if columns is not None and len(columns) == 1:
                 chosen_data_list = [item[0] for item in chosen_data_list]
-            
+
             return chosen_data_list
-        
+
         except Exception as e:
             print(f"CSVファイルの特定のカラムと行の取得に失敗しました->\n {e}")
             raise Exception(f"CSVファイルの特定のカラムと行の取得に失敗しました->\n {e}")

@@ -1,9 +1,12 @@
-fastapi
-uvicorn
-httpx
 pandas
 scikit-learn
 scikit-optimize
+fastapi
+uvicorn
+httpx
+boto3
+typing
+typing-extensions
 ruff
 ty
 pytest
