@@ -1,10 +1,36 @@
+from unittest.mock import Mock, patch
 from app.services.dynamodb.dynamodb_handler import DynamoDBHandler
 
-def test_round_dynamodb_handler():
-    """DynamoDBのラウンドデータのテスト"""
+@patch('app.services.dynamodb.dynamodb_handler.boto3')
+def test_round_dynamodb_handler(mock_boto3):
+    """DynamoDBのラウンドデータのテスト（モック使用）"""
     try:
         print("[テスト] DynamoDBのラウンドデータのテスト")
         print()
+
+        # モックの設定 - boto3.clientをモック化
+        mock_client = Mock()
+        mock_boto3.client.return_value = mock_client
+        
+        # モックの戻り値設定 - DynamoDB低レベルAPIの形式
+        mock_client.put_item.return_value = {}
+        mock_client.get_item.return_value = {
+            'Item': {
+                'user_id': {'S': 'testuser-abcd-1234-5678-dynamodbtest'},
+                'time': {'S': '2023-01-01T10:00:00Z'},
+                'work_time': {'N': '20'},
+                'break_time': {'N': '6'},
+                'focus_score': {'N': '8.5'},
+                'timestamp': {'S': '2023-01-01T10:00:00.000Z'}
+            }
+        }
+        mock_client.query.return_value = {
+            'Items': [
+                {'focus_score': {'N': '8.5'}},
+                {'focus_score': {'N': '7.2'}},
+                {'focus_score': {'N': '9.1'}}
+            ]
+        }
 
         # インスタンス作成
         dynamodb_handler = DynamoDBHandler(table_name='round_optimization_logs', region_name='ap-northeast-1')
@@ -62,11 +88,32 @@ def test_round_dynamodb_handler():
         raise
 
 
-def test_session_dynamodb_handler():
-    """セッションデータのテスト"""
+@patch('app.services.dynamodb.dynamodb_handler.boto3')
+def test_session_dynamodb_handler(mock_boto3):
+    """セッションデータのテスト（モック使用）"""
     try:
         print("[テスト] DynamoDBのセッションデータのテスト")
         print()
+
+        # モックの設定 - boto3.clientをモック化
+        mock_client = Mock()
+        mock_boto3.client.return_value = mock_client
+        
+        # モックの戻り値設定 - DynamoDB低レベルAPIの形式
+        mock_client.put_item.return_value = {}
+        mock_client.query.return_value = {
+            'Items': [
+                {
+                    'user_id': {'S': 'testuser-abcd-1234-5678-dynamodbtest'},
+                    'time': {'S': '2023-01-01T10:00:00Z'},
+                    'round_count': {'N': '2'},
+                    'break_time': {'N': '5'},
+                    'total_work_time': {'N': '50'},
+                    'avg_focus_score': {'N': '8.2'},
+                    'timestamp': {'S': '2023-01-01T10:00:00.000Z'}
+                }
+            ]
+        }
 
         # インスタンス作成
         dynamodb_handler = DynamoDBHandler(table_name='session_optimization_logs', region_name='ap-northeast-1')
