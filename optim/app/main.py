@@ -1,7 +1,7 @@
-import uuid
-from fastapi import FastAPI
 from app.services.csv.csv_handler import CSVHandler
 from app.services.optimize.bayesian_optimizer import BayesianOptimizer
+from fastapi import FastAPI
+import uuid
 
 app = FastAPI()
 

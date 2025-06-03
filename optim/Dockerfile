@@ -1,5 +1,6 @@
 FROM python:3.12-slim
 
+# AWS Lambdaへのデプロイに必要
 COPY --from=public.ecr.aws/awsguru/aws-lambda-adapter:0.9.0 /lambda-adapter /opt/extensions/lambda-adapter 
 
 WORKDIR /code
@@ -18,5 +19,5 @@ ENV AWS_LAMBDA_FUNCTION_NAME=pomodoro-optimizer
 ENV AWS_LAMBDA_FUNCTION_VERSION=1
 ENV AWS_LAMBDA_RUNTIME_API=127.0.0.1
 
-# FastAPIアプリケーションをバックグラウンドで起動してからLambda Adapterを実行
+# FastAPIを起動
 CMD [ "uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8080" ]
