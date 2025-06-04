@@ -9,6 +9,7 @@ import (
 	"github.com/tsunakit99/selfpomodoro/internal/domain/repository"
 	"github.com/tsunakit99/selfpomodoro/internal/infrastructure/logger"
 	"github.com/tsunakit99/selfpomodoro/internal/infrastructure/repository/postgres"
+	"github.com/tsunakit99/selfpomodoro/internal/infrastructure/sqs"
 )
 
 // RoundUseCase はラウンドに関するユースケースを定義するインターフェース
@@ -22,10 +23,10 @@ type RoundUseCase interface {
 	// GetAllRoundsBySessionID は指定されたセッションIDのラウンドを取得する
 	GetAllRoundsBySessionID(ctx context.Context, sessionID uuid.UUID) (*model.RoundsResponse, error)
 
-	// CompleteRound はラウンドを完了する
+	// CompleteRound はラウンドを完了する(SQSメッセージ送信付き)
 	CompleteRound(ctx context.Context, id uuid.UUID, userID uuid.UUID, req *model.RoundCompleteRequest) (*model.RoundResponse, error)
 
-	// AbortRound はラウンドを中止する
+	// AbortRound はラウンドを中止する（SQSメッセージは送信しない）
 	AbortRound(ctx context.Context, id uuid.UUID, userID uuid.UUID) (*model.RoundResponse, error)
 }
 
@@ -34,15 +35,17 @@ type roundUseCase struct {
 	roundRepo      repository.RoundRepository
 	sessionRepo    repository.SessionRepository
 	userConfigRepo repository.UserConfigRepository
+	sqsClient      *sqs.SQSClient
 	logger         logger.Logger
 }
 
 // NewRoundUseCase は新しいラウンドユースケースを作成する
-func NewRoundUseCase(roundrepo repository.RoundRepository, sessionRepo repository.SessionRepository, userConfigRepo repository.UserConfigRepository, logger logger.Logger) RoundUseCase {
+func NewRoundUseCase(roundrepo repository.RoundRepository, sessionRepo repository.SessionRepository, userConfigRepo repository.UserConfigRepository, sqsClient *sqs.SQSClient, logger logger.Logger) RoundUseCase {
 	return &roundUseCase{
 		roundRepo:      roundrepo,
 		sessionRepo:    sessionRepo,
 		userConfigRepo: userConfigRepo,
+		sqsClient:      sqsClient,
 		logger:         logger,
 	}
 }
@@ -118,7 +121,7 @@ func (uc *roundUseCase) GetAllRoundsBySessionID(ctx context.Context, sessionID u
 	return &model.RoundsResponse{Rounds: roundResponses}, nil
 }
 
-// CompleteRound はラウンドを完了する
+// CompleteRound はラウンドを完了する(SQSメッセージ送信付き)
 func (uc *roundUseCase) CompleteRound(ctx context.Context, id uuid.UUID, userID uuid.UUID, req *model.RoundCompleteRequest) (*model.RoundResponse, error) {
 	// ラウンドを取得して存在確認とセッションIDの取得
 	round, err := uc.roundRepo.GetByID(ctx, id)
@@ -147,8 +150,16 @@ func (uc *roundUseCase) CompleteRound(ctx context.Context, id uuid.UUID, userID 
 		return nil, err
 	}
 
-	// セッションの現在のラウンドをクリア（current_round_id を使用している場合）
-	// または別の方法で完了状態を管理
+	// ✅ 完了時のみSQS送信（集中度スコアが入力されている場合）
+	if req.FocusScore != nil {
+		uc.logger.Infof("ラウンド完了 - SQS最適化メッセージ送信開始: RoundID=%s, FocusScore=%d",
+			id.String(), *req.FocusScore)
+
+		// 同期でSQS送信
+		uc.sendRoundOptimizationMessage(ctx, userID, id, *req.FocusScore)
+	} else {
+		uc.logger.Warn("集中度スコアが入力されていないため、SQS最適化メッセージは送信しません")
+	}
 
 	// 更新後のラウンドを取得
 	updatedRound, err := uc.roundRepo.GetByID(ctx, id)
@@ -163,7 +174,7 @@ func (uc *roundUseCase) CompleteRound(ctx context.Context, id uuid.UUID, userID 
 	return updatedRound.ToResponse(), nil
 }
 
-// AbortRound はラウンドを中止する
+// AbortRound はラウンドを中止する（SQSメッセージは送信しない）
 func (uc *roundUseCase) AbortRound(ctx context.Context, id uuid.UUID, userID uuid.UUID) (*model.RoundResponse, error) {
 	// ラウンドを取得して存在確認とセッションIDの取得
 	round, err := uc.roundRepo.GetByID(ctx, id)
@@ -185,6 +196,9 @@ func (uc *roundUseCase) AbortRound(ctx context.Context, id uuid.UUID, userID uui
 		return nil, err
 	}
 
+	// ❌ 中止時はSQS送信なし（セッション全体が中止される想定）
+	uc.logger.Infof("ラウンド中止完了: %s (SQS送信なし - セッション中止を想定)", id.String())
+
 	// 更新後のラウンドを取得
 	updatedRound, err := uc.roundRepo.GetByID(ctx, id)
 	if err != nil {
@@ -194,6 +208,26 @@ func (uc *roundUseCase) AbortRound(ctx context.Context, id uuid.UUID, userID uui
 
 	// ラウンドをAPIレスポンス形式に変換
 	return updatedRound.ToResponse(), nil
+}
+
+// sendRoundOptimizationMessage はラウンド最適化メッセージをSQSに送信する（同期）
+func (uc *roundUseCase) sendRoundOptimizationMessage(ctx context.Context, userID, roundID uuid.UUID, focusScore int) {
+	if uc.sqsClient == nil {
+		uc.logger.Warn("SQSクライアントが初期化されていません。最適化メッセージは送信されません。")
+		return
+	}
+
+	// 最小限のメッセージを作成
+	message := model.NewRoundOptimizationMessage(userID, roundID, focusScore)
+
+	// SQS送信実行
+	err := uc.sqsClient.SendRoundOptimizationMessage(ctx, message)
+	if err != nil {
+		uc.logger.Errorf("ラウンド最適化メッセージ送信エラー: %v", err)
+		return
+	}
+
+	uc.logger.Infof("ラウンド最適化メッセージ送信成功: %s", message.ToLogString())
 }
 
 // getUserWorkAndBreakTime はユーザーの作業時間と休憩時間を取得する

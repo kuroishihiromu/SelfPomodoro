@@ -15,6 +15,7 @@ import (
 	"github.com/tsunakit99/selfpomodoro/internal/infrastructure/logger"
 	"github.com/tsunakit99/selfpomodoro/internal/infrastructure/repository"
 	"github.com/tsunakit99/selfpomodoro/internal/infrastructure/repository/postgres"
+	"github.com/tsunakit99/selfpomodoro/internal/infrastructure/sqs"
 	"github.com/tsunakit99/selfpomodoro/internal/usecase"
 )
 
@@ -57,12 +58,32 @@ func handler(ctx context.Context, request events.APIGatewayProxyRequest) (events
 		defer dynamoDB.Close()
 	}
 
+	// SQS接続（最適化用）
+	var sqsClient *sqs.SQSClient
+	sqsClient, err = sqs.NewSQSClient(cfg, appLogger)
+	if err != nil {
+		appLogger.Warnf("SQS接続エラー: %v", err)
+		appLogger.Warn("SQSなしで続行します（最適化機能無効）")
+		sqsClient = nil
+	}
+	if sqsClient != nil {
+		defer sqsClient.Close()
+
+		// SQS接続確認（開発環境のみ）
+		if cfg.Environment != "production" {
+			if healthErr := sqsClient.HealthCheck(ctx); healthErr != nil {
+				appLogger.Warnf("SQS接続確認失敗: %v", healthErr)
+			}
+		}
+	}
+
 	// リポジトリとユースケースの初期化
 	repositoryFactory := repository.NewRepositoryFactory(postgresDB, dynamoDB, appLogger)
 	sessionUseCase := usecase.NewSessionUseCase(
 		repositoryFactory.Session,
 		repositoryFactory.Round,
 		repositoryFactory.UserConfig, // DynamoDB UserConfig追加
+		sqsClient,
 		appLogger,
 	)
 
@@ -167,7 +188,7 @@ func (h *SessionHandler) handleStartSession(ctx context.Context, userID uuid.UUI
 	return successResponse(http.StatusCreated, sessionResponse), nil
 }
 
-// handleCompleteSession はセッション完了を処理
+// handleCompleteSession はセッション完了を処理（SQS最適化メッセージ送信付き）
 func (h *SessionHandler) handleCompleteSession(ctx context.Context, request events.APIGatewayProxyRequest, userID uuid.UUID) (events.APIGatewayProxyResponse, error) {
 	// パスパラメータからセッションIDを取得
 	sessionIDStr := request.PathParameters["session_id"]
@@ -199,7 +220,15 @@ func (h *SessionHandler) handleCompleteSession(ctx context.Context, request even
 		return errorResponse(http.StatusInternalServerError, "セッション完了に失敗しました"), nil
 	}
 
-	h.logger.Infof("セッション完了成功: セッションID=%s", sessionID.String())
+	// SQS送信の有無をログ出力
+	if sessionResponse.RoundCount != nil && *sessionResponse.RoundCount > 0 {
+		h.logger.Infof("セッション完了成功: セッションID=%s, ラウンド数=%d, 平均集中度=%.1f, 総作業時間=%d分 (SQS最適化メッセージ送信済み)",
+			sessionID.String(), *sessionResponse.RoundCount, *sessionResponse.AverageFocus, *sessionResponse.TotalWorkMin)
+	} else {
+		h.logger.Infof("セッション完了成功: セッションID=%s, ラウンド数=0 (完了ラウンドなし・SQS送信なし)",
+			sessionID.String())
+	}
+
 	return successResponse(http.StatusOK, sessionResponse), nil
 }
 

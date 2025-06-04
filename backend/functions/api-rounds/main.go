@@ -17,6 +17,7 @@ import (
 	"github.com/tsunakit99/selfpomodoro/internal/infrastructure/logger"
 	"github.com/tsunakit99/selfpomodoro/internal/infrastructure/repository"
 	"github.com/tsunakit99/selfpomodoro/internal/infrastructure/repository/postgres"
+	"github.com/tsunakit99/selfpomodoro/internal/infrastructure/sqs"
 	"github.com/tsunakit99/selfpomodoro/internal/usecase"
 )
 
@@ -60,12 +61,32 @@ func handler(ctx context.Context, request events.APIGatewayProxyRequest) (events
 		defer dynamoDB.Close()
 	}
 
+	// SQS接続（最適化用）
+	var sqsClient *sqs.SQSClient
+	sqsClient, err = sqs.NewSQSClient(cfg, appLogger)
+	if err != nil {
+		appLogger.Warnf("SQS接続エラー: %v", err)
+		appLogger.Warn("SQSなしで続行します（最適化機能無効）")
+		sqsClient = nil
+	}
+	if sqsClient != nil {
+		defer sqsClient.Close()
+
+		// SQS接続確認（開発環境のみ）
+		if cfg.Environment != "production" {
+			if healthErr := sqsClient.HealthCheck(ctx); healthErr != nil {
+				appLogger.Warnf("SQS接続確認失敗: %v", healthErr)
+			}
+		}
+	}
+
 	// リポジトリとユースケースの初期化
 	repositoryFactory := repository.NewRepositoryFactory(postgresDB, dynamoDB, appLogger)
 	roundUseCase := usecase.NewRoundUseCase(
 		repositoryFactory.Round,
 		repositoryFactory.Session,
 		repositoryFactory.UserConfig, // DynamoDB UserConfig追加
+		sqsClient,
 		appLogger,
 	)
 
@@ -211,7 +232,7 @@ func (h *RoundHandler) handleGetRound(ctx context.Context, roundID uuid.UUID) (e
 	return successResponse(http.StatusOK, roundResponse), nil
 }
 
-// handleCompleteRound はラウンド完了を処理（DynamoDB設定値使用版）
+// handleCompleteRound はラウンド完了を処理（DynamoDB設定値使用版, SQS最適化メッセージ送信付き）
 func (h *RoundHandler) handleCompleteRound(ctx context.Context, request events.APIGatewayProxyRequest, roundID uuid.UUID, userID uuid.UUID) (events.APIGatewayProxyResponse, error) {
 	if !strings.Contains(request.Path, "/complete") {
 		return errorResponse(http.StatusNotFound, "無効なパス"), nil
@@ -237,12 +258,19 @@ func (h *RoundHandler) handleCompleteRound(ctx context.Context, request events.A
 		return errorResponse(http.StatusInternalServerError, "ラウンド完了に失敗しました"), nil
 	}
 
-	h.logger.Infof("ラウンド完了成功: ラウンドID=%s, 作業時間=%d分, 休憩時間=%d分",
-		roundID.String(), *roundResponse.WorkTime, *roundResponse.BreakTime)
+	// SQS送信の有無をログ出力
+	if req.FocusScore != nil {
+		h.logger.Infof("ラウンド完了成功: ラウンドID=%s, 作業時間=%d分, 休憩時間=%d分 (SQS最適化メッセージ送信済み)",
+			roundID.String(), *roundResponse.WorkTime, *roundResponse.BreakTime)
+	} else {
+		h.logger.Infof("ラウンド完了成功: ラウンドID=%s, 作業時間=%d分, 休憩時間=%d分 (集中度スコア未入力・SQS送信なし)",
+			roundID.String(), *roundResponse.WorkTime, *roundResponse.BreakTime)
+	}
+
 	return successResponse(http.StatusOK, roundResponse), nil
 }
 
-// handleAbortRound はラウンド中止を処理
+// handleAbortRound はラウンド中止を処理（SQS最適化メッセージは送信しない）
 func (h *RoundHandler) handleAbortRound(ctx context.Context, roundID uuid.UUID, userID uuid.UUID) (events.APIGatewayProxyResponse, error) {
 	h.logger.Infof("ラウンド中止要求: ラウンドID=%s", roundID.String())
 
@@ -255,7 +283,7 @@ func (h *RoundHandler) handleAbortRound(ctx context.Context, roundID uuid.UUID, 
 		return errorResponse(http.StatusInternalServerError, "ラウンド中止に失敗しました"), nil
 	}
 
-	h.logger.Infof("ラウンド中止成功: ラウンドID=%s", roundID.String())
+	h.logger.Infof("ラウンド中止成功: ラウンドID=%s (SQS送信なし)", roundID.String())
 	return successResponse(http.StatusOK, roundResponse), nil
 }
 

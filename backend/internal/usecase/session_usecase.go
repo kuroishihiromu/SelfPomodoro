@@ -7,6 +7,7 @@ import (
 	"github.com/tsunakit99/selfpomodoro/internal/domain/model"
 	"github.com/tsunakit99/selfpomodoro/internal/domain/repository"
 	"github.com/tsunakit99/selfpomodoro/internal/infrastructure/logger"
+	"github.com/tsunakit99/selfpomodoro/internal/infrastructure/sqs"
 )
 
 // SessionUseCase はセッションに関するユースケースを定義するインターフェース
@@ -20,7 +21,7 @@ type SessionUseCase interface {
 	// GetAllSessions はユーザの全セッションを取得する
 	GetAllSessions(ctx context.Context, userID uuid.UUID) (*model.SessionsResponse, error)
 
-	// CompleteSession はセッションを完了する
+	// CompleteSession はセッションを完了する（SQSメッセージ送信付き）
 	CompleteSession(ctx context.Context, id, userID uuid.UUID) (*model.SessionResponse, error)
 
 	// DeleteSession はセッションを削除する
@@ -31,7 +32,8 @@ type SessionUseCase interface {
 type sessionUseCase struct {
 	sessionRepo    repository.SessionRepository
 	roundRepo      repository.RoundRepository
-	userConfigRepo repository.UserConfigRepository // 新規追加
+	userConfigRepo repository.UserConfigRepository
+	sqsClient      *sqs.SQSClient
 	logger         logger.Logger
 }
 
@@ -39,13 +41,15 @@ type sessionUseCase struct {
 func NewSessionUseCase(
 	sessionRepo repository.SessionRepository,
 	roundRepo repository.RoundRepository,
-	userConfigRepo repository.UserConfigRepository, // 新規追加
+	userConfigRepo repository.UserConfigRepository,
+	sqsClient *sqs.SQSClient,
 	logger logger.Logger,
 ) SessionUseCase {
 	return &sessionUseCase{
 		sessionRepo:    sessionRepo,
 		roundRepo:      roundRepo,
-		userConfigRepo: userConfigRepo, // 新規追加
+		userConfigRepo: userConfigRepo,
+		sqsClient:      sqsClient,
 		logger:         logger,
 	}
 }
@@ -107,7 +111,7 @@ func (uc *sessionUseCase) GetAllSessions(ctx context.Context, userID uuid.UUID) 
 	return &model.SessionsResponse{Sessions: sessionResponses}, nil
 }
 
-// CompleteSession はセッションを完了する（UserConfig統合版）
+// CompleteSession はセッションを完了する（SQSメッセージ送信付き）
 func (uc *sessionUseCase) CompleteSession(ctx context.Context, id, userID uuid.UUID) (*model.SessionResponse, error) {
 	// セッションを取得
 	_, err := uc.sessionRepo.GetByID(ctx, id, userID)
@@ -128,6 +132,17 @@ func (uc *sessionUseCase) CompleteSession(ctx context.Context, id, userID uuid.U
 	if err != nil {
 		uc.logger.Errorf("セッション完了エラー: %v", err)
 		return nil, err
+	}
+
+	// ✅ 完了したラウンドが存在する場合のみSQS送信
+	if roundCount > 0 {
+		uc.logger.Infof("セッション完了 - SQS最適化メッセージ送信開始: SessionID=%s, RoundCount=%d, AvgFocus=%.1f, TotalWork=%dmin",
+			id.String(), roundCount, averageFocus, totalWorkMin)
+
+		// 同期でSQS送信
+		uc.sendSessionOptimizationMessage(ctx, userID, id, averageFocus, totalWorkMin)
+	} else {
+		uc.logger.Warn("完了したラウンドが存在しないため、SQS最適化メッセージは送信しません")
 	}
 
 	// 完了したセッションを取得
@@ -157,6 +172,26 @@ func (uc *sessionUseCase) DeleteSession(ctx context.Context, id, userID uuid.UUI
 
 	uc.logger.Infof("セッション削除成功: %s", id.String())
 	return nil
+}
+
+// sendSessionOptimizationMessage はセッション最適化メッセージをSQSに送信する（同期）
+func (uc *sessionUseCase) sendSessionOptimizationMessage(ctx context.Context, userID, sessionID uuid.UUID, avgFocusScore float64, totalWorkTime int) {
+	if uc.sqsClient == nil {
+		uc.logger.Warn("SQSクライアントが初期化されていません。最適化メッセージは送信されません。")
+		return
+	}
+
+	// 計算結果を使用してメッセージを作成
+	message := model.NewSessionOptimizationMessage(userID, sessionID, avgFocusScore, totalWorkTime)
+
+	// SQS送信実行
+	err := uc.sqsClient.SendSessionOptimizationMessage(ctx, message)
+	if err != nil {
+		uc.logger.Errorf("セッション最適化メッセージ送信エラー: %v", err)
+		return
+	}
+
+	uc.logger.Infof("セッション最適化メッセージ送信成功: %s", message.ToLogString())
 }
 
 // ensureUserConfig はユーザー設定を確認し、存在しない場合は作成する
