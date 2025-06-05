@@ -165,6 +165,12 @@ migrate-down:
 		exit 1; \
 	fi
 
+# 新しいマイグレーションファイルを作成
+.PHONY: migrate-create
+migrate-create:
+	@read -p "マイグレーション名を入力してください: " name; \
+	./scripts/migrate.sh create $$name
+
 # クリーンアップ
 .PHONY: clean
 clean:
