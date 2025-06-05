@@ -10,6 +10,7 @@ import (
 
 // RepositoryFactory はすべてのリポジトリを管理するファクトリ
 type RepositoryFactory struct {
+	User       repository.UserRepository
 	Task       repository.TaskRepository
 	Session    repository.SessionRepository
 	Round      repository.RoundRepository
@@ -21,6 +22,7 @@ type RepositoryFactory struct {
 // NewRepositoryFactory はすべてのリポジトリを初期化する
 func NewRepositoryFactory(postgresDB *database.PostgresDB, dynamoDB *database.DynamoDB, logger logger.Logger) *RepositoryFactory {
 	// PostgresDBを使用してリポジトリを初期化
+	userRepo := postgres.NewUserRepository(postgresDB, logger)
 	taskRepo := postgres.NewTaskRepository(postgresDB, logger)
 	sessionRepo := postgres.NewSessionRepository(postgresDB, logger)
 	roundRepo := postgres.NewRoundRepository(postgresDB, logger)
@@ -39,6 +41,7 @@ func NewRepositoryFactory(postgresDB *database.PostgresDB, dynamoDB *database.Dy
 	// TODO: DynamoDBを使用してリポジトリを初期化する場合はここに追加
 
 	return &RepositoryFactory{
+		User:       userRepo,
 		Task:       taskRepo,
 		Session:    sessionRepo,
 		Round:      roundRepo,
