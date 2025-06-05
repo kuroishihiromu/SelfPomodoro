@@ -3,7 +3,6 @@ package main
 import (
 	"context"
 	"encoding/json"
-	"fmt"
 	"net/http"
 	"strings"
 
@@ -13,6 +12,7 @@ import (
 	"github.com/google/uuid"
 	"github.com/tsunakit99/selfpomodoro/internal/config"
 	"github.com/tsunakit99/selfpomodoro/internal/domain/model"
+	"github.com/tsunakit99/selfpomodoro/internal/infrastructure/auth"
 	"github.com/tsunakit99/selfpomodoro/internal/infrastructure/database"
 	"github.com/tsunakit99/selfpomodoro/internal/infrastructure/logger"
 	"github.com/tsunakit99/selfpomodoro/internal/infrastructure/repository"
@@ -20,14 +20,15 @@ import (
 	"github.com/tsunakit99/selfpomodoro/internal/usecase"
 )
 
-// TaskHandler はLambda用のタスクハンドラー
+// TaskHandler はLambda用のタスクハンドラー（Cognito認証統合版）
 type TaskHandler struct {
-	taskUseCase usecase.TaskUseCase
-	logger      logger.Logger
-	validator   *validator.Validate
+	taskUseCase    usecase.TaskUseCase
+	authMiddleware *auth.AuthMiddleware
+	logger         logger.Logger
+	validator      *validator.Validate
 }
 
-// handler はLambdaのエントリーポイント
+// handler はLambdaのエントリーポイント（Cognito認証統合版）
 func handler(ctx context.Context, request events.APIGatewayProxyRequest) (events.APIGatewayProxyResponse, error) {
 	// 依存関係の初期化
 	cfg, err := config.Load()
@@ -48,23 +49,44 @@ func handler(ctx context.Context, request events.APIGatewayProxyRequest) (events
 	}
 	defer postgresDB.Close()
 
+	// 認証ミドルウェアの初期化
+	authMiddleware := auth.NewAuthMiddleware(cfg, appLogger)
+
+	// 認証ミドルウェアのヘルスチェック（開発環境では軽量化）
+	if cfg.Environment != "development" {
+		if healthErr := authMiddleware.HealthCheck(); healthErr != nil {
+			appLogger.Warnf("認証ミドルウェア HealthCheck 失敗: %v", healthErr)
+		}
+	}
+
 	// リポジトリとユースケースの初期化
 	repositoryFactory := repository.NewRepositoryFactory(postgresDB, nil, appLogger)
 	taskUseCase := usecase.NewTaskUseCase(repositoryFactory.Task, appLogger)
 
 	// ハンドラーの初期化
 	taskHandler := &TaskHandler{
-		taskUseCase: taskUseCase,
-		logger:      appLogger,
-		validator:   validator.New(),
+		taskUseCase:    taskUseCase,
+		authMiddleware: authMiddleware,
+		logger:         appLogger,
+		validator:      validator.New(),
 	}
 
-	// ユーザーID取得
-	userID, err := getUserIDFromRequest(request)
+	// 🎯 Cognito JWT認証（dev-token後方互換）
+	userID, err := taskHandler.authMiddleware.GetUserIDFromRequest(request)
 	if err != nil {
-		appLogger.Errorf("ユーザーID取得エラー: %v", err)
-		return errorResponse(http.StatusUnauthorized, "認証エラー"), nil
+		taskHandler.logger.Errorf("認証エラー: %v", err)
+
+		// エラータイプに応じたレスポンス
+		if auth.IsTokenExpiredError(err) {
+			return errorResponse(http.StatusUnauthorized, "トークンの有効期限が切れています"), nil
+		}
+		if auth.IsInvalidTokenError(err) {
+			return errorResponse(http.StatusUnauthorized, "無効な認証トークンです"), nil
+		}
+		return errorResponse(http.StatusUnauthorized, "認証に失敗しました"), nil
 	}
+
+	taskHandler.logger.Infof("認証成功: UserID=%s", userID.String()[:8]+"...")
 
 	// ルーティング
 	switch request.HTTPMethod {
@@ -79,30 +101,6 @@ func handler(ctx context.Context, request events.APIGatewayProxyRequest) (events
 	default:
 		return errorResponse(http.StatusMethodNotAllowed, "メソッドが許可されていません"), nil
 	}
-}
-
-// getUserIDFromRequest はリクエストからユーザーIDを取得する
-func getUserIDFromRequest(request events.APIGatewayProxyRequest) (uuid.UUID, error) {
-	// 開発環境用の簡易認証（dev-tokenの場合）
-	authHeader := request.Headers["Authorization"]
-	if authHeader == "" {
-		authHeader = request.Headers["authorization"] // 小文字の場合もチェック
-	}
-
-	if authHeader == "Bearer dev-token" {
-		// 開発用固定ユーザーID
-		return uuid.Parse("00000000-0000-0000-0000-000000000001")
-	}
-
-	// 本番環境用Cognito認証（将来実装）
-	// if claims, exists := request.RequestContext.Authorizer["claims"]; exists {
-	//     claimsMap := claims.(map[string]interface{})
-	//     if sub, ok := claimsMap["sub"].(string); ok {
-	//         return uuid.Parse(sub)
-	//     }
-	// }
-
-	return uuid.Nil, fmt.Errorf("認証情報が見つかりません")
 }
 
 // handleGetTasks はタスク一覧取得を処理
