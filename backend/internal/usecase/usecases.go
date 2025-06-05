@@ -8,6 +8,7 @@ import (
 
 // UseCases はすべてのユースケースをまとめた構造体
 type UseCases struct {
+	User       UserUseCase
 	Auth       AuthUseCase
 	Task       TaskUseCase
 	Session    SessionUseCase
@@ -18,8 +19,9 @@ type UseCases struct {
 }
 
 // NewUseCases はすべてのユースケースを初期化する
-func NewUseCases(taskRepo repository.TaskRepository, sessionRepo repository.SessionRepository, roundRepo repository.RoundRepository, statisticsRepo repository.StatisticsRepository, userConfigRepo repository.UserConfigRepository, sqsClient *sqs.SQSClient, logger logger.Logger) *UseCases {
+func NewUseCases(userRepo repository.UserRepository, taskRepo repository.TaskRepository, sessionRepo repository.SessionRepository, roundRepo repository.RoundRepository, statisticsRepo repository.StatisticsRepository, userConfigRepo repository.UserConfigRepository, sqsClient *sqs.SQSClient, logger logger.Logger) *UseCases {
 	return &UseCases{
+		User:       NewUserUseCase(userRepo, logger),
 		Auth:       NewAuthUseCase(logger),
 		Task:       NewTaskUseCase(taskRepo, logger),
 		Session:    NewSessionUseCase(sessionRepo, roundRepo, userConfigRepo, sqsClient, logger),
