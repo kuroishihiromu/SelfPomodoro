@@ -1,13 +1,13 @@
+// internal/domain/model/user.go
 package model
 
 import (
 	"time"
 
 	"github.com/google/uuid"
-	"github.com/tsunakit99/selfpomodoro/internal/infrastructure/auth"
 )
 
-// User はユーザーを表すドメインモデル
+// User はユーザーを表すドメインモデル（Pure Domain - Infrastructure依存なし）
 type User struct {
 	ID         uuid.UUID `db:"id" json:"id"`                   // Cognito sub
 	Name       string    `db:"name" json:"name"`               // 表示名
@@ -18,43 +18,25 @@ type User struct {
 	UpdatedAt  time.Time `db:"updated_at" json:"updated_at"`
 }
 
-// NewUserFromCognito はCognito Claimsから新しいユーザーを作成する
-func NewUserFromCognito(userID uuid.UUID, claims *auth.CognitoClaims) *User {
+// UserCreationParams はユーザー作成時のパラメータ（外部システム非依存）
+type UserCreationParams struct {
+	UserID       uuid.UUID
+	Name         string
+	Email        string
+	Provider     string
+	ProviderID   *string
+	IsGoogleUser bool
+}
+
+// NewUser は新しいユーザーを作成する（Pure Domain Logic）
+func NewUser(params UserCreationParams) *User {
 	now := time.Now()
-
-	// プロバイダーの判定
-	provider := "Cognito_UserPool" // デフォルト
-	var providerID *string
-
-	// Google SSOの場合の判定（identities claimから判定）
-	if claims.IdentityProvider != "" {
-		provider = "Google"
-		if claims.Subject != "" {
-			providerID = &claims.Subject
-		}
-	}
-
-	// 名前の取得（優先順位: name > given_name + family_name > cognito:username > email）
-	name := claims.Name
-	if name == "" && claims.GivenName != "" {
-		name = claims.GivenName
-		if claims.FamilyName != "" {
-			name += " " + claims.FamilyName
-		}
-	}
-	if name == "" {
-		name = claims.CognitoUsername
-	}
-	if name == "" {
-		name = claims.Email
-	}
-
 	return &User{
-		ID:         userID,
-		Name:       name,
-		Email:      claims.Email,
-		Provider:   provider,
-		ProviderID: providerID,
+		ID:         params.UserID,
+		Name:       params.Name,
+		Email:      params.Email,
+		Provider:   params.Provider,
+		ProviderID: params.ProviderID,
 		CreatedAt:  now,
 		UpdatedAt:  now,
 	}
@@ -94,7 +76,7 @@ func (u *User) ToResponse() *UserResponse {
 	}
 }
 
-// UpdateProfile はユーザープロフィールを更新する
+// UpdateProfile はユーザープロフィールを更新する（Pure Domain Logic）
 func (u *User) UpdateProfile(name, email string) {
 	if name != "" {
 		u.Name = name
@@ -105,12 +87,22 @@ func (u *User) UpdateProfile(name, email string) {
 	u.UpdatedAt = time.Now()
 }
 
-// IsGoogleUser はGoogleユーザーかどうかを返す
+// IsGoogleUser はGoogleユーザーかどうかを返す（Pure Domain Logic）
 func (u *User) IsGoogleUser() bool {
 	return u.Provider == "Google"
 }
 
-// IsCognitoUser はCognitoユーザーかどうかを返す
+// IsCognitoUser はCognitoユーザーかどうかを返す（Pure Domain Logic）
 func (u *User) IsCognitoUser() bool {
 	return u.Provider == "Cognito_UserPool"
+}
+
+// ValidateEmail はメールアドレスの基本的な検証を行う（Pure Domain Logic）
+func (u *User) ValidateEmail() bool {
+	return u.Email != "" && len(u.Email) > 0
+}
+
+// ValidateName は名前の基本的な検証を行う（Pure Domain Logic）
+func (u *User) ValidateName() bool {
+	return u.Name != "" && len(u.Name) > 0
 }
