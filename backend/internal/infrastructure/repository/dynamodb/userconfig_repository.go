@@ -229,28 +229,3 @@ func (r *UserConfigRepositoryImpl) DeleteUserConfig(ctx context.Context, userID 
 	r.logger.Infof("ユーザー設定削除成功: %s", userID.String())
 	return nil
 }
-
-// GetOrCreateUserConfig はユーザー設定を取得し、存在しない場合はデフォルト値で作成する
-func (r *UserConfigRepositoryImpl) GetOrCreateUserConfig(ctx context.Context, userID uuid.UUID) (*model.UserConfig, error) {
-	// まず設定の取得を試行
-	config, err := r.GetUserConfig(ctx, userID)
-	if err != nil && !errors.Is(err, ErrUserConfigNotFound) {
-		return nil, err
-	}
-
-	// 設定が見つかった場合はそのまま返す
-	if config != nil {
-		return config, nil
-	}
-
-	// 設定が見つからない場合はデフォルト値で作成
-	r.logger.Infof("ユーザー設定が見つかりません。デフォルト値で作成します: %s", userID.String())
-
-	defaultConfig := model.NewUserConfig(userID)
-	err = r.CreateUserConfig(ctx, defaultConfig)
-	if err != nil {
-		return nil, err
-	}
-
-	return defaultConfig, nil
-}
