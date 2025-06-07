@@ -5,6 +5,7 @@ import (
 	"database/sql"
 	"errors"
 	"fmt"
+	"strings"
 	"time"
 
 	"github.com/google/uuid"
@@ -174,47 +175,83 @@ func (r *UserRepositoryImpl) Delete(ctx context.Context, id uuid.UUID) error {
 	return nil
 }
 
-// GetOrCreateUser はユーザーを取得し、存在しない場合はCognitoクレームから作成する（最重要メソッド）
-func (r *UserRepositoryImpl) GetOrCreateUser(ctx context.Context, userID uuid.UUID, claims *auth.CognitoClaims) (*model.User, error) {
-	r.logger.Infof("GetOrCreateUser開始: UserID=%s, Email=%s, Provider=%s",
-		userID.String()[:8]+"...", claims.Email, claims.GetProviderName())
-
-	// まずユーザーの取得を試行
-	user, err := r.GetByID(ctx, userID)
-	if err != nil && !errors.Is(err, ErrUserNotFound) {
-		return nil, fmt.Errorf("ユーザー取得エラー: %w", err)
+// extractDisplayName はCognitoクレームから表示名を抽出する
+func (r *UserRepositoryImpl) extractDisplayName(claims *auth.CognitoClaims) string {
+	// 1. name フィールド
+	if claims.Name != "" {
+		return claims.Name
 	}
 
-	// ユーザーが見つかった場合はそのまま返す
-	if user != nil {
-		r.logger.Infof("既存ユーザー取得成功: %s (%s)", user.Name, user.Provider)
-		return user, nil
+	// 2. given_name + family_name
+	if claims.GivenName != "" {
+		name := claims.GivenName
+		if claims.FamilyName != "" {
+			name += " " + claims.FamilyName
+		}
+		return name
 	}
 
-	// ユーザーが見つからない場合は新規作成
-	r.logger.Infof("ユーザーが見つかりません。新規作成します: UserID=%s", userID.String()[:8]+"...")
+	// 3. cognito:username
+	if claims.CognitoUsername != "" {
+		return claims.CognitoUsername
+	}
 
-	newUser := model.NewUserFromCognito(userID, claims)
+	// 4. email（最後の手段）
+	if claims.Email != "" {
+		return claims.Email
+	}
 
-	// 作成を試行（競合状態を考慮）
-	err = r.Create(ctx, newUser)
-	if err != nil {
-		// 別のリクエストが同時に作成した可能性があるため、再度取得を試行
-		if errors.Is(err, ErrUserCreationFailed) ||
-			(err != nil && fmt.Sprintf("%v", err) == "ユーザーID重複") {
-			r.logger.Warnf("ユーザー作成競合が発生、再取得を試行: %v", err)
+	// 5. ユーザーID（非常時）
+	return "User"
+}
 
-			existingUser, getErr := r.GetByID(ctx, userID)
-			if getErr == nil {
-				r.logger.Infof("競合後の再取得成功: %s", existingUser.Name)
-				return existingUser, nil
+// detectProviderType はCognitoクレームからプロバイダータイプを判定する
+func (r *UserRepositoryImpl) detectProviderType(claims *auth.CognitoClaims) (provider string, providerID *string) {
+	// Google SSO判定の複数パターン
+
+	// パターン1: identities claim
+	if len(claims.Identities) > 0 {
+		for _, identity := range claims.Identities {
+			if strings.Contains(identity.ProviderID, "google") ||
+				strings.Contains(identity.ProviderID, "Google") {
+				provider = "Google"
+				providerID = &identity.UserID
+				return
 			}
 		}
-		return nil, fmt.Errorf("ユーザー作成失敗: %w", err)
 	}
 
-	r.logger.Infof("新規ユーザー作成成功: %s (%s)", newUser.Name, newUser.Provider)
-	return newUser, nil
+	// パターン2: IdentityProvider フィールド
+	if claims.IdentityProvider != "" {
+		provider = "Google"
+		if claims.Subject != "" {
+			providerID = &claims.Subject
+		}
+		return
+	}
+
+	// パターン3: Picture（Googleプロフィール画像URL）
+	if claims.Picture != "" && strings.Contains(claims.Picture, "googleusercontent.com") {
+		provider = "Google"
+		if claims.Subject != "" {
+			providerID = &claims.Subject
+		}
+		return
+	}
+
+	// パターン4: Locale（Google特有のlocale形式）
+	if claims.Locale != "" {
+		provider = "Google"
+		if claims.Subject != "" {
+			providerID = &claims.Subject
+		}
+		return
+	}
+
+	// デフォルト: Cognito User Pool
+	provider = "Cognito_UserPool"
+	providerID = nil
+	return
 }
 
 // UpdateProfile はユーザープロフィール（名前・メール）を更新する
