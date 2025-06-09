@@ -20,7 +20,7 @@ class BayesianOptimizer:
                 )
             elif target == "session":
                 self.opt = Optimizer(
-                    dimensions=[(60.0, 480.0), (10.0, 60.0), Integer(1, 8)],
+                    dimensions=[(60.0, 480.0), (10.0, 60.0), Integer(1, 10)],
                     base_estimator=GaussianProcessRegressor(kernel=Matern(length_scale=1.0)),
                     n_initial_points=10,
                     acq_func="EI"
@@ -72,9 +72,9 @@ class BayesianOptimizer:
             # データを追加
             self.opt.tell(explanatory_variable, negative_objective)
             # 最適化
-            total_work_time, session_break_time, number_of_round = self.opt.ask()
+            total_work_time, break_time, round_count = self.opt.ask()
 
-            return total_work_time, session_break_time, number_of_round
+            return total_work_time, break_time, round_count
 
         except Exception as e:
             print(f"セッション最適化に失敗しました->\n {e}")
