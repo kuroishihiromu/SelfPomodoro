@@ -6,7 +6,7 @@ GOARCH := amd64
 CGO_ENABLED := 0
 
 # Lambda関数一覧
-FUNCTIONS := api-tasks api-sessions api-rounds api-statistics
+FUNCTIONS := api-tasks api-sessions api-rounds api-statistics post-confirmation
 
 # デフォルトのターゲット
 .PHONY: help
@@ -20,6 +20,10 @@ help:
 	@echo "個別関数操作:"
 	@echo "  make build-<function>   - 指定関数をビルド"
 	@echo "  make deploy-<function>  - 指定関数をデプロイ"
+	@echo ""
+	@echo "Cognito Trigger:"
+	@echo "  make build-post-confirmation  - PostConfirmation関数をビルド"
+	@echo "  make deploy-post-confirmation - PostConfirmation関数をデプロイ"
 	@echo ""
 	@echo "その他:"
 	@echo "  make migrate-up     - マイグレーションを適用"
@@ -72,6 +76,17 @@ build-api-statistics:
 	rm bootstrap
 	@echo "✅ api-statistics ビルド完了"
 
+# PostConfirmation Lambda関数ビルド
+.PHONY: build-post-confirmation
+build-post-confirmation:
+	@echo "🔨 post-confirmation をビルド中..."
+	@cd functions/cognito-triggers/post-confirmation && \
+	GOOS=$(GOOS) GOARCH=$(GOARCH) CGO_ENABLED=$(CGO_ENABLED) \
+	go build -ldflags="-s -w" -o bootstrap main.go && \
+	zip bootstrap.zip bootstrap && \
+	rm bootstrap
+	@echo "✅ post-confirmation ビルド完了"
+
 # デプロイコマンド
 .PHONY: deploy-all
 deploy-all: build-all
@@ -114,12 +129,30 @@ deploy-api-statistics: build-api-statistics
 	serverless deploy function --function api-statistics --aws-profile selfpomodoro-dev
 	@echo "✅ api-statistics デプロイ完了"
 
+# PostConfirmation関数デプロイ
+.PHONY: deploy-post-confirmation
+deploy-post-confirmation: build-post-confirmation
+	@echo "🚀 post-confirmation をデプロイ中..."
+	serverless deploy function --function post-confirmation --aws-profile selfpomodoro-dev
+	@echo "✅ post-confirmation デプロイ完了"
+
 # テスト実行
 .PHONY: test-all
 test-all:
 	@echo "🧪 全APIテストを実行中..."
 	@chmod +x test-all-apis.sh
 	@./test-all-apis.sh
+
+# PostConfirmation テスト
+.PHONY: test-post-confirmation
+test-post-confirmation:
+	@echo "🧪 PostConfirmation Triggerテストを実行中..."
+	@echo "テストユーザーでCognito ユーザー確認を実行..."
+	@read -p "テストユーザー名を入力してください: " username; \
+	aws cognito-idp admin-confirm-sign-up \
+		--user-pool-id ap-northeast-1_UltsO4poH \
+		--username $$username \
+		--profile selfpomodoro-dev
 
 # ログ確認
 .PHONY: logs-api-tasks
@@ -141,6 +174,11 @@ logs-api-rounds:
 logs-api-statistics:
 	@echo "📝 api-statistics のログを表示..."
 	aws logs tail /aws/lambda/selfpomodoro-serverless-dev-api-statistics --follow --profile selfpomodoro-dev
+
+.PHONY: logs-post-confirmation
+logs-post-confirmation:
+	@echo "📝 post-confirmation のログを表示..."
+	aws logs tail /aws/lambda/selfpomodoro-serverless-dev-post-confirmation --follow --profile selfpomodoro-dev
 
 # マイグレーション（既存機能維持）
 .PHONY: migrate-up
@@ -191,6 +229,17 @@ dev:
 	@sleep 10  # デプロイ完了待機
 	@make test-all
 
+# PostConfirmation開発用
+.PHONY: dev-cognito
+dev-cognito:
+	@echo "🔐 Cognito PostConfirmation 開発モード..."
+	@echo "1. PostConfirmation関数ビルド"
+	@make build-post-confirmation
+	@echo "2. PostConfirmation関数デプロイ"
+	@make deploy-post-confirmation
+	@echo "3. テスト準備完了"
+	@echo "📝 テスト実行: make test-post-confirmation"
+
 # 情報表示
 .PHONY: info
 info:
@@ -201,10 +250,14 @@ info:
 	@echo "  プロファイル: selfpomodoro-dev"
 	@echo ""
 	@echo "📁 Lambda関数:"
-	@for func in $(FUNCTIONS); do echo "  - $func"; done
+	@for func in $(FUNCTIONS); do echo "  - $$func"; done
 	@echo ""
 	@echo "🌐 API Gateway:"
-	@echo "  Base URL: https://f0vvgsmjj7.execute-api.ap-northeast-1.amazonaws.com/dev"
+	@echo "  Base URL: https://rtc4ooslz6.execute-api.ap-northeast-1.amazonaws.com/dev"
+	@echo ""
+	@echo "🔐 Cognito:"
+	@echo "  User Pool ID: ap-northeast-1_UltsO4poH"
+	@echo "  Client ID: 2dbjjcvvon3trtt5imonmpnq9g"
 
 # エラー時のヘルプ表示
 .PHONY: error-help
@@ -222,3 +275,8 @@ error-help:
 	@echo "3. テストエラー:"
 	@echo "   - .env ファイルの設定を確認"
 	@echo "   - API Gateway のエンドポイントURLを確認"
+	@echo ""
+	@echo "4. PostConfirmation Triggerエラー:"
+	@echo "   - Cognito User Pool設定を確認"
+	@echo "   - Lambda関数の権限を確認"
+	@echo "   - CloudWatch Logsでエラー詳細を確認"
