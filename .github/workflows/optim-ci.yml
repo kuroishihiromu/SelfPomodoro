@@ -67,10 +67,4 @@ jobs:
         run: |
           uv run pytest tests/services/optimize/bayesian_optimizer.py
 
-      ## api層のテスト
-
-      ## app層(main.py)のテスト
-      - name: Run bayesian_optimizer test
-        working-directory: ./optim
-        run: |
-          uv run pytest tests/main.py
+      ## api層のテスト(今のところ必要なし)
