@@ -5,7 +5,6 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/tsunakit99/selfpomodoro/internal/domain/model"
-	"github.com/tsunakit99/selfpomodoro/internal/infrastructure/auth"
 )
 
 // UserRepository はユーザー永続化のためのインターフェース
@@ -24,9 +23,6 @@ type UserRepository interface {
 
 	// Delete はユーザーを削除する（GDPR対応等）
 	Delete(ctx context.Context, id uuid.UUID) error
-
-	// GetOrCreateUser はユーザーを取得し、存在しない場合はCognitoクレームから作成する（最重要）
-	GetOrCreateUser(ctx context.Context, userID uuid.UUID, claims *auth.CognitoClaims) (*model.User, error)
 
 	// UpdateProfile はユーザープロフィール（名前・メール）を更新する
 	UpdateProfile(ctx context.Context, id uuid.UUID, name, email string) (*model.User, error)

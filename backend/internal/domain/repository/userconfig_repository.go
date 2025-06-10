@@ -20,7 +20,4 @@ type UserConfigRepository interface {
 
 	// DeleteUserConfig はユーザー設定を削除する（GDPR対応等）
 	DeleteUserConfig(ctx context.Context, userID uuid.UUID) error
-
-	// GetOrCreateUserConfig はユーザー設定を取得し、存在しない場合はデフォルト値で作成する
-	GetOrCreateUserConfig(ctx context.Context, userID uuid.UUID) (*model.UserConfig, error)
 }
