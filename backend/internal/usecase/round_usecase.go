@@ -5,10 +5,11 @@ import (
 	"errors"
 
 	"github.com/google/uuid"
+	domainErrors "github.com/tsunakit99/selfpomodoro/internal/domain/errors"
 	"github.com/tsunakit99/selfpomodoro/internal/domain/model"
 	"github.com/tsunakit99/selfpomodoro/internal/domain/repository"
 	"github.com/tsunakit99/selfpomodoro/internal/infrastructure/logger"
-	"github.com/tsunakit99/selfpomodoro/internal/infrastructure/repository/postgres"
+	rounderrors "github.com/tsunakit99/selfpomodoro/internal/infrastructure/repository/postgres/errors"
 	"github.com/tsunakit99/selfpomodoro/internal/infrastructure/sqs"
 )
 
@@ -61,7 +62,7 @@ func (uc *roundUseCase) StartRound(ctx context.Context, sessionID uuid.UUID, use
 
 	// 最後のラウンドを取得して、完了しているか確認
 	lastRound, err := uc.roundRepo.GetLastRoundBySessionID(ctx, session.ID)
-	if err != nil && !errors.Is(err, postgres.ErrNoRoundsInSession) {
+	if err != nil && !errors.Is(err, rounderrors.ErrNoRoundsInSession) {
 		uc.logger.Errorf("最後のラウンド取得エラー: %v", err)
 		return nil, err
 	}
@@ -98,9 +99,11 @@ func (uc *roundUseCase) GetRound(ctx context.Context, id uuid.UUID) (*model.Roun
 	round, err := uc.roundRepo.GetByID(ctx, id)
 	if err != nil {
 		uc.logger.Errorf("ラウンド取得エラー: %v", err)
-		return nil, err
+		if errors.Is(err, rounderrors.ErrRoundNotFound) {
+			return nil, domainErrors.NewRoundNotFoundError()
+		}
+		return nil, domainErrors.NewInternalServerError()
 	}
-
 	return round.ToResponse(), nil
 }
 
@@ -109,7 +112,7 @@ func (uc *roundUseCase) GetAllRoundsBySessionID(ctx context.Context, sessionID u
 	rounds, err := uc.roundRepo.GetAllBySessionID(ctx, sessionID)
 	if err != nil {
 		uc.logger.Errorf("ラウンド一覧取得エラー: %v", err)
-		return nil, err
+		return nil, domainErrors.NewInternalServerError()
 	}
 
 	// ラウンドをAPIレスポンス形式に変換
@@ -118,39 +121,41 @@ func (uc *roundUseCase) GetAllRoundsBySessionID(ctx context.Context, sessionID u
 		roundResponses[i] = round.ToResponse()
 	}
 
-	return &model.RoundsResponse{Rounds: roundResponses}, nil
+	return &model.RoundsResponse{
+		Rounds: roundResponses,
+	}, nil
 }
 
 // CompleteRound はラウンドを完了する(SQSメッセージ送信付き)
 func (uc *roundUseCase) CompleteRound(ctx context.Context, id uuid.UUID, userID uuid.UUID, req *model.RoundCompleteRequest) (*model.RoundResponse, error) {
-	// ラウンドを取得して存在確認とセッションIDの取得
-	round, err := uc.roundRepo.GetByID(ctx, id)
+	// ラウンドの存在確認
+	_, err := uc.roundRepo.GetByID(ctx, id)
 	if err != nil {
 		uc.logger.Errorf("ラウンド取得エラー: %v", err)
-		return nil, err
-	}
-
-	// セッションを取得してユーザーIDを確認
-	_, err = uc.sessionRepo.GetByID(ctx, round.SessionID, userID)
-	if err != nil {
-		uc.logger.Errorf("セッション取得エラー: %v", err)
-		return nil, err
+		if errors.Is(err, rounderrors.ErrRoundNotFound) {
+			return nil, domainErrors.NewRoundNotFoundError()
+		}
+		return nil, domainErrors.NewInternalServerError()
 	}
 
 	// ユーザーの作業時間と休憩時間を取得
 	workTime, breakTime, err := uc.getUserWorkAndBreakTime(ctx, userID)
 	if err != nil {
-		uc.logger.Errorf("ユーザーの作業時間と休憩時間取得エラー: %v", err)
-		return nil, err
+		uc.logger.Errorf("ユーザー設定取得エラー: %v", err)
+		return nil, domainErrors.NewInternalServerError()
 	}
 
-	// ラウンドを完了する
-	if err := uc.roundRepo.Complete(ctx, id, req.FocusScore, workTime, breakTime); err != nil {
+	// ラウンドを完了
+	err = uc.roundRepo.Complete(ctx, id, req.FocusScore, workTime, breakTime)
+	if err != nil {
 		uc.logger.Errorf("ラウンド完了エラー: %v", err)
-		return nil, err
+		if errors.Is(err, rounderrors.ErrRoundAlreadyEnded) {
+			return nil, domainErrors.NewRoundAlreadyEndedError()
+		}
+		return nil, domainErrors.NewInternalServerError()
 	}
 
-	// ✅ 完了時のみSQS送信（集中度スコアが入力されている場合）
+	// 集中度スコアが設定されている場合、SQSメッセージを送信
 	if req.FocusScore != nil {
 		uc.logger.Infof("ラウンド完了 - SQS最適化メッセージ送信開始: RoundID=%s, FocusScore=%d",
 			id.String(), *req.FocusScore)
@@ -161,26 +166,26 @@ func (uc *roundUseCase) CompleteRound(ctx context.Context, id uuid.UUID, userID 
 		uc.logger.Warn("集中度スコアが入力されていないため、SQS最適化メッセージは送信しません")
 	}
 
-	// 更新後のラウンドを取得
-	updatedRound, err := uc.roundRepo.GetByID(ctx, id)
+	// 完了したラウンドを取得して返す
+	completedRound, err := uc.roundRepo.GetByID(ctx, id)
 	if err != nil {
-		uc.logger.Errorf("完了後のラウンド取得エラー: %v", err)
-		return nil, err
+		uc.logger.Errorf("完了ラウンド取得エラー: %v", err)
+		return nil, domainErrors.NewInternalServerError()
 	}
 
-	// TODO: 最適化アルゴリズムを実行（後で実装）
-
-	// ラウンドをAPIレスポンス形式に変換
-	return updatedRound.ToResponse(), nil
+	return completedRound.ToResponse(), nil
 }
 
 // AbortRound はラウンドを中止する（SQSメッセージは送信しない）
 func (uc *roundUseCase) AbortRound(ctx context.Context, id uuid.UUID, userID uuid.UUID) (*model.RoundResponse, error) {
-	// ラウンドを取得して存在確認とセッションIDの取得
+	// ラウンドの存在確認
 	round, err := uc.roundRepo.GetByID(ctx, id)
 	if err != nil {
 		uc.logger.Errorf("ラウンド取得エラー: %v", err)
-		return nil, err
+		if errors.Is(err, rounderrors.ErrRoundNotFound) {
+			return nil, domainErrors.NewRoundNotFoundError()
+		}
+		return nil, domainErrors.NewInternalServerError()
 	}
 
 	// セッションを取得してユーザーIDでアクセス権限を確認
@@ -192,22 +197,24 @@ func (uc *roundUseCase) AbortRound(ctx context.Context, id uuid.UUID, userID uui
 
 	// ラウンドを中止する
 	if err := uc.roundRepo.AbortRound(ctx, id); err != nil {
-		uc.logger.Errorf("ラウンドスキップエラー: %v", err)
-		return nil, err
+		uc.logger.Errorf("ラウンド中止エラー: %v", err)
+		if errors.Is(err, rounderrors.ErrRoundAlreadyEnded) {
+			return nil, domainErrors.NewRoundAlreadyEndedError()
+		}
+		return nil, domainErrors.NewInternalServerError()
 	}
 
 	// ❌ 中止時はSQS送信なし（セッション全体が中止される想定）
 	uc.logger.Infof("ラウンド中止完了: %s (SQS送信なし - セッション中止を想定)", id.String())
 
-	// 更新後のラウンドを取得
-	updatedRound, err := uc.roundRepo.GetByID(ctx, id)
+	// 中止したラウンドを取得して返す
+	abortedRound, err := uc.roundRepo.GetByID(ctx, id)
 	if err != nil {
-		uc.logger.Errorf("スキップ後のラウンド取得エラー: %v", err)
-		return nil, err
+		uc.logger.Errorf("中止ラウンド取得エラー: %v", err)
+		return nil, domainErrors.NewInternalServerError()
 	}
 
-	// ラウンドをAPIレスポンス形式に変換
-	return updatedRound.ToResponse(), nil
+	return abortedRound.ToResponse(), nil
 }
 
 // sendRoundOptimizationMessage はラウンド最適化メッセージをSQSに送信する（同期）
@@ -234,23 +241,23 @@ func (uc *roundUseCase) sendRoundOptimizationMessage(ctx context.Context, userID
 func (uc *roundUseCase) getUserWorkAndBreakTime(ctx context.Context, userID uuid.UUID) (workTime int, breakTime int, err error) {
 	uc.logger.Infof("getUserWorkAndBreakTime 開始: userID=%s", userID.String())
 
-	// DynamoDBからユーザー設定を取得
+	// UserConfigを取得（GetOrCreateではない）
 	if uc.userConfigRepo != nil {
-		uc.logger.Info("UserConfigRepository が利用可能です")
-		userConfig, configErr := uc.userConfigRepo.GetOrCreateUserConfig(ctx, userID)
+		userConfig, configErr := uc.userConfigRepo.GetUserConfig(ctx, userID)
 		if configErr != nil {
-			// ユーザー設定が存在しない場合はデフォルト値を使用
-			uc.logger.Warnf("ユーザー設定取得エラー、デフォルト値を使用します: %v", configErr)
+			// UserConfig取得失敗時はデフォルト値 + 警告ログ
+			uc.logger.Warnf("UserConfig取得エラー、デフォルト値を使用します: %v", configErr)
 		} else {
-			// ユーザー設定が存在する場合はそれを使用
-			uc.logger.Infof("DynamoDB設定値取得成功: workTime=%d, breakTime=%d", userConfig.RoundWorkTime, userConfig.RoundBreakTime)
+			// UserConfig取得成功
+			uc.logger.Infof("UserConfig取得成功: workTime=%d, breakTime=%d",
+				userConfig.RoundWorkTime, userConfig.RoundBreakTime)
 			return userConfig.RoundWorkTime, userConfig.RoundBreakTime, nil
 		}
 	} else {
 		uc.logger.Warn("UserConfigRepository が nil です")
 	}
 
-	// デフォルト値を使用
+	// フォールバック：デフォルト値
 	defaultWorkTime := 25
 	defaultBreakTime := 5
 	uc.logger.Infof("デフォルト値を使用: workTime=%d, breakTime=%d", defaultWorkTime, defaultBreakTime)

@@ -5,6 +5,7 @@ import (
 	"time"
 
 	"github.com/google/uuid"
+	"github.com/tsunakit99/selfpomodoro/internal/domain/errors"
 	"github.com/tsunakit99/selfpomodoro/internal/domain/model"
 	"github.com/tsunakit99/selfpomodoro/internal/domain/repository"
 	"github.com/tsunakit99/selfpomodoro/internal/infrastructure/logger"
@@ -59,7 +60,7 @@ func (uc *statisticsUsecase) GetFocusTrend(ctx context.Context, userID uuid.UUID
 	trendItems, err := uc.statsRepo.GetFocusTrend(ctx, userID, statsPeriod)
 	if err != nil {
 		uc.logger.Error("集中度推移取得エラー", err)
-		return nil, err
+		return nil, errors.NewInternalError(err)
 	}
 
 	// 集中度推移をレスポンス形式に変換
@@ -96,7 +97,7 @@ func (uc *statisticsUsecase) GetFocusHeatmap(ctx context.Context, userID uuid.UU
 	heatmapItems, err := uc.statsRepo.GetFocusHeatmap(ctx, userID, statsPeriod)
 	if err != nil {
 		uc.logger.Error("集中度ヒートマップ取得エラー", err)
-		return nil, err
+		return nil, errors.NewInternalError(err)
 	}
 
 	// 集中度ヒートマップをレスポンス形式に変換

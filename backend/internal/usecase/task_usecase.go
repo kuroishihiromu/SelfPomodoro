@@ -3,10 +3,14 @@ package usecase
 import (
 	"context"
 
+	"errors"
+
 	"github.com/google/uuid"
+	domainErrors "github.com/tsunakit99/selfpomodoro/internal/domain/errors"
 	"github.com/tsunakit99/selfpomodoro/internal/domain/model"
 	"github.com/tsunakit99/selfpomodoro/internal/domain/repository"
 	"github.com/tsunakit99/selfpomodoro/internal/infrastructure/logger"
+	infraErrors "github.com/tsunakit99/selfpomodoro/internal/infrastructure/repository/postgres/errors"
 )
 
 // TaskUseCase はタスクに関するユースケースを定義するインターフェース
@@ -48,13 +52,13 @@ func NewTaskUseCase(taskRepo repository.TaskRepository, logger logger.Logger) Ta
 func (uc *taskUseCase) CreateTask(ctx context.Context, userID uuid.UUID, req *model.CreateTaskRequest) (*model.TaskResponse, error) {
 	task := model.NewTask(userID, req.Detail)
 
-	// DBにタスクを保存
 	if err := uc.taskRepo.Create(ctx, task); err != nil {
 		uc.logger.Errorf("タスク作成エラー: %v", err)
-		return nil, err
+		if errors.Is(err, infraErrors.ErrTaskAlreadyExists) {
+			return nil, domainErrors.NewTaskAlreadyDoneError()
+		}
+		return nil, domainErrors.NewInternalServerError()
 	}
-
-	// タスクをAPIレスポンス形式に変換
 	return task.ToResponse(), nil
 }
 
@@ -63,9 +67,11 @@ func (uc *taskUseCase) GetTask(ctx context.Context, id, userID uuid.UUID) (*mode
 	task, err := uc.taskRepo.GetByID(ctx, id, userID)
 	if err != nil {
 		uc.logger.Errorf("タスク取得エラー: %v", err)
-		return nil, err
+		if errors.Is(err, infraErrors.ErrTaskNotFound) {
+			return nil, domainErrors.NewTaskNotFoundError()
+		}
+		return nil, domainErrors.NewInternalServerError()
 	}
-
 	return task.ToResponse(), nil
 }
 
@@ -74,63 +80,52 @@ func (uc *taskUseCase) GetAllTasks(ctx context.Context, userID uuid.UUID) (*mode
 	tasks, err := uc.taskRepo.GetAllByUserID(ctx, userID)
 	if err != nil {
 		uc.logger.Errorf("タスク取得エラー: %v", err)
-		return nil, err
+		return nil, domainErrors.NewInternalServerError()
 	}
-
-	// タスクをAPIレスポンス形式に変換
 	taskResponses := make([]*model.TaskResponse, len(tasks))
 	for i, task := range tasks {
 		taskResponses[i] = task.ToResponse()
 	}
-
 	return &model.TasksResponse{Tasks: taskResponses}, nil
 }
 
 // UpdateTask はタスクの詳細を更新する
 func (uc *taskUseCase) UpdateTask(ctx context.Context, id, userID uuid.UUID, req *model.UpdateTaskRequest) (*model.TaskResponse, error) {
-	// 現在のタスクを取得
 	task, err := uc.taskRepo.GetByID(ctx, id, userID)
 	if err != nil {
 		uc.logger.Errorf("タスク取得エラー: %v", err)
-		return nil, err
+		if errors.Is(err, infraErrors.ErrTaskNotFound) {
+			return nil, domainErrors.NewTaskNotFoundError()
+		}
+		return nil, domainErrors.NewInternalServerError()
 	}
-
-	// タスクの詳細を更新
 	task.Detail = req.Detail
-
-	// DBにタスクを保存
 	if err := uc.taskRepo.Update(ctx, task); err != nil {
 		uc.logger.Errorf("タスク更新エラー: %v", err)
-		return nil, err
+		return nil, domainErrors.NewInternalServerError()
 	}
-
-	// 更新後のタスクを取得
 	updatedTask, err := uc.taskRepo.GetByID(ctx, id, userID)
 	if err != nil {
 		uc.logger.Errorf("更新後のタスク取得エラー: %v", err)
-		return nil, err
+		return nil, domainErrors.NewInternalServerError()
 	}
-
-	// タスクをAPIレスポンス形式に変換
 	return updatedTask.ToResponse(), nil
 }
 
 // ToggleTaskCompletion はタスクの完了状態を切り替える
 func (uc *taskUseCase) ToggleTaskCompletion(ctx context.Context, id, userID uuid.UUID) (*model.TaskResponse, error) {
-	// タスクの完了状態を切り替える
 	if err := uc.taskRepo.ToggleCompletion(ctx, id, userID); err != nil {
 		uc.logger.Errorf("タスク完了状態切り替えエラー: %v", err)
-		return nil, err
+		if errors.Is(err, infraErrors.ErrTaskNotFound) {
+			return nil, domainErrors.NewTaskNotFoundError()
+		}
+		return nil, domainErrors.NewInternalServerError()
 	}
-
-	// 更新後のタスクを取得
 	task, err := uc.taskRepo.GetByID(ctx, id, userID)
 	if err != nil {
 		uc.logger.Errorf("完了状態切り替え後のタスク取得エラー: %v", err)
-		return nil, err
+		return nil, domainErrors.NewInternalServerError()
 	}
-
-	// タスクをAPIレスポンス形式に変換
 	return task.ToResponse(), nil
 }
 
@@ -138,7 +133,10 @@ func (uc *taskUseCase) ToggleTaskCompletion(ctx context.Context, id, userID uuid
 func (uc *taskUseCase) DeleteTask(ctx context.Context, id, userID uuid.UUID) error {
 	if err := uc.taskRepo.Delete(ctx, id, userID); err != nil {
 		uc.logger.Errorf("タスク削除エラー: %v", err)
-		return err
+		if errors.Is(err, infraErrors.ErrTaskNotFound) {
+			return domainErrors.NewTaskNotFoundError()
+		}
+		return domainErrors.NewInternalServerError()
 	}
 	return nil
 }
