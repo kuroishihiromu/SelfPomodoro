@@ -3,7 +3,6 @@ package postgres
 import (
 	"context"
 	"database/sql"
-	"errors"
 	"fmt"
 	"strings"
 	"time"
@@ -15,15 +14,7 @@ import (
 	"github.com/tsunakit99/selfpomodoro/internal/infrastructure/auth"
 	"github.com/tsunakit99/selfpomodoro/internal/infrastructure/database"
 	"github.com/tsunakit99/selfpomodoro/internal/infrastructure/logger"
-)
-
-// ユーザーリポジトリに関するエラー
-var (
-	ErrUserNotFound       = errors.New("ユーザーが見つかりません")
-	ErrUserCreationFailed = errors.New("ユーザーの作成に失敗しました")
-	ErrUserUpdateFailed   = errors.New("ユーザーの更新に失敗しました")
-	ErrUserDeleteFailed   = errors.New("ユーザーの削除に失敗しました")
-	ErrEmailAlreadyExists = errors.New("メールアドレスが既に使用されています")
+	usererrors "github.com/tsunakit99/selfpomodoro/internal/infrastructure/repository/postgres/errors"
 )
 
 // UserRepositoryImpl はUserRepositoryインターフェースの実装
@@ -52,7 +43,7 @@ func (r *UserRepositoryImpl) GetByID(ctx context.Context, id uuid.UUID) (*model.
 	err := r.db.DB.GetContext(ctx, &user, query, id)
 	if err != nil {
 		if err == sql.ErrNoRows {
-			return nil, ErrUserNotFound
+			return nil, usererrors.ErrUserNotFound
 		}
 		r.logger.Errorf("ユーザー取得エラー: %v", err)
 		return nil, err
@@ -73,7 +64,7 @@ func (r *UserRepositoryImpl) GetByEmail(ctx context.Context, email string) (*mod
 	err := r.db.DB.GetContext(ctx, &user, query, email)
 	if err != nil {
 		if err == sql.ErrNoRows {
-			return nil, ErrUserNotFound
+			return nil, usererrors.ErrUserNotFound
 		}
 		r.logger.Errorf("ユーザー（Email）取得エラー: %v", err)
 		return nil, err
@@ -108,12 +99,12 @@ func (r *UserRepositoryImpl) Create(ctx context.Context, user *model.User) error
 					return fmt.Errorf("ユーザーID重複: %v", err)
 				}
 				if pqErr.Constraint == "users_email_key" {
-					return ErrEmailAlreadyExists
+					return usererrors.ErrEmailAlreadyExists
 				}
 			}
 		}
 		r.logger.Errorf("ユーザー作成エラー: %v", err)
-		return fmt.Errorf("%w: %v", ErrUserCreationFailed, err)
+		return fmt.Errorf("%w: %v", usererrors.ErrUserCreationFailed, err)
 	}
 
 	return nil
@@ -138,7 +129,7 @@ func (r *UserRepositoryImpl) Update(ctx context.Context, user *model.User) error
 
 	if err != nil {
 		r.logger.Errorf("ユーザー更新エラー: %v", err)
-		return fmt.Errorf("%w: %v", ErrUserUpdateFailed, err)
+		return fmt.Errorf("%w: %v", usererrors.ErrUserUpdateFailed, err)
 	}
 
 	rowsAffected, err := result.RowsAffected()
@@ -147,7 +138,7 @@ func (r *UserRepositoryImpl) Update(ctx context.Context, user *model.User) error
 	}
 
 	if rowsAffected == 0 {
-		return ErrUserNotFound
+		return usererrors.ErrUserNotFound
 	}
 
 	return nil
@@ -160,7 +151,7 @@ func (r *UserRepositoryImpl) Delete(ctx context.Context, id uuid.UUID) error {
 	result, err := r.db.DB.ExecContext(ctx, query, id)
 	if err != nil {
 		r.logger.Errorf("ユーザー削除エラー: %v", err)
-		return fmt.Errorf("%w: %v", ErrUserDeleteFailed, err)
+		return fmt.Errorf("%w: %v", usererrors.ErrUserDeleteFailed, err)
 	}
 
 	rowsAffected, err := result.RowsAffected()
@@ -169,7 +160,7 @@ func (r *UserRepositoryImpl) Delete(ctx context.Context, id uuid.UUID) error {
 	}
 
 	if rowsAffected == 0 {
-		return ErrUserNotFound
+		return usererrors.ErrUserNotFound
 	}
 
 	return nil

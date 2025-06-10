@@ -3,7 +3,6 @@ package postgres
 import (
 	"context"
 	"database/sql"
-	"errors"
 	"fmt"
 	"time"
 
@@ -12,15 +11,7 @@ import (
 	"github.com/tsunakit99/selfpomodoro/internal/domain/repository"
 	"github.com/tsunakit99/selfpomodoro/internal/infrastructure/database"
 	"github.com/tsunakit99/selfpomodoro/internal/infrastructure/logger"
-)
-
-// セッションリポジトリに関するエラー
-var (
-	ErrSessionNotFound       = errors.New("セッションが見つかりません")
-	ErrSessionAccessDenied   = errors.New("このセッションへのアクセス権限がありません")
-	ErrSessionCreationFailed = errors.New("セッションの作成に失敗しました")
-	ErrSessionUpdateFailed   = errors.New("セッションの更新に失敗しました")
-	ErrSessionDeleteFailed   = errors.New("セッションの削除に失敗しました")
+	sessionerrors "github.com/tsunakit99/selfpomodoro/internal/infrastructure/repository/postgres/errors"
 )
 
 // SessionRepositoryImpl はSessionRepositoryインターフェースの実装部分
@@ -54,7 +45,7 @@ func (r *SessionRepositoryImpl) Create(ctx context.Context, session *model.Sessi
 
 	if err != nil {
 		r.logger.Errorf("セッション作成エラー: %v", err)
-		return fmt.Errorf("%w: %v", ErrSessionCreationFailed, err)
+		return fmt.Errorf("%w: %v", sessionerrors.ErrSessionCreationFailed, err)
 	}
 	return nil
 }
@@ -71,7 +62,7 @@ func (r *SessionRepositoryImpl) GetByID(ctx context.Context, id, userID uuid.UUI
 	err := r.db.DB.GetContext(ctx, &session, query, id)
 	if err != nil {
 		if err == sql.ErrNoRows {
-			return nil, ErrSessionNotFound
+			return nil, sessionerrors.ErrSessionNotFound
 		}
 		r.logger.Errorf("セッション取得エラー: %v", err)
 		return nil, err
@@ -79,7 +70,7 @@ func (r *SessionRepositoryImpl) GetByID(ctx context.Context, id, userID uuid.UUI
 
 	// ユーザーIDの確認
 	if session.UserID != userID {
-		return nil, ErrSessionAccessDenied
+		return nil, sessionerrors.ErrSessionAccessDenied
 	}
 	return &session, nil
 }
@@ -128,7 +119,7 @@ func (r *SessionRepositoryImpl) Update(ctx context.Context, session *model.Sessi
 
 	if err != nil {
 		r.logger.Errorf("セッション更新エラー: %v", err)
-		return fmt.Errorf("%w: %v", ErrSessionUpdateFailed, err)
+		return fmt.Errorf("%w: %v", sessionerrors.ErrSessionUpdateFailed, err)
 	}
 	return nil
 }
@@ -176,7 +167,7 @@ func (r *SessionRepositoryImpl) Delete(ctx context.Context, id, userID uuid.UUID
 	_, err = r.db.DB.ExecContext(ctx, query, id)
 	if err != nil {
 		r.logger.Errorf("セッション削除エラー: %v", err)
-		return fmt.Errorf("%w: %v", ErrSessionDeleteFailed, err)
+		return fmt.Errorf("%w: %v", sessionerrors.ErrSessionDeleteFailed, err)
 	}
 	return nil
 }

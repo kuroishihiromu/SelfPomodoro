@@ -3,7 +3,6 @@ package postgres
 import (
 	"context"
 	"database/sql"
-	"errors"
 	"fmt"
 	"time"
 
@@ -12,15 +11,7 @@ import (
 	"github.com/tsunakit99/selfpomodoro/internal/domain/repository"
 	"github.com/tsunakit99/selfpomodoro/internal/infrastructure/database"
 	"github.com/tsunakit99/selfpomodoro/internal/infrastructure/logger"
-)
-
-// タスクリポジトリに関するエラー
-var (
-	ErrTaskNotFound       = errors.New("タスクが見つかりません")
-	ErrTaskAccessDenied   = errors.New("このタスクへのアクセス権限がありません")
-	ErrTaskCreationFailed = errors.New("タスクの作成に失敗しました")
-	ErrTaskUpdateFailed   = errors.New("タスクの更新に失敗しました")
-	ErrTaskDeleteFailed   = errors.New("タスクの削除に失敗しました")
+	taskerrors "github.com/tsunakit99/selfpomodoro/internal/infrastructure/repository/postgres/errors"
 )
 
 // TaskRepositoryImpl はTaskRepositoryインターフェースのの実際の実装部分
@@ -55,7 +46,7 @@ func (r *TaskRepositoryImpl) Create(ctx context.Context, task *model.Task) error
 
 	if err != nil {
 		r.logger.Errorf("タスク作成エラー: %v", err)
-		return fmt.Errorf("%w: %v", ErrTaskCreationFailed, err)
+		return fmt.Errorf("%w: %v", taskerrors.ErrTaskCreationFailed, err)
 	}
 	return nil
 }
@@ -72,7 +63,7 @@ func (r *TaskRepositoryImpl) GetByID(ctx context.Context, id, userID uuid.UUID) 
 	err := r.db.DB.GetContext(ctx, &task, query, id)
 	if err != nil {
 		if err == sql.ErrNoRows {
-			return nil, ErrTaskNotFound
+			return nil, taskerrors.ErrTaskNotFound
 		}
 		r.logger.Errorf("タスク取得エラー: %v", err)
 		return nil, err
@@ -80,7 +71,7 @@ func (r *TaskRepositoryImpl) GetByID(ctx context.Context, id, userID uuid.UUID) 
 
 	// ユーザーIDの確認
 	if task.UserID != userID {
-		return nil, ErrTaskAccessDenied
+		return nil, taskerrors.ErrTaskAccessDenied
 	}
 	return &task, nil
 }
@@ -123,7 +114,7 @@ func (r *TaskRepositoryImpl) Update(ctx context.Context, task *model.Task) error
 	)
 	if err != nil {
 		r.logger.Errorf("タスク更新エラー: %v", err)
-		return fmt.Errorf("%w: %v", ErrTaskUpdateFailed, err)
+		return fmt.Errorf("%w: %v", taskerrors.ErrTaskUpdateFailed, err)
 	}
 	return nil
 }
@@ -148,7 +139,7 @@ func (r *TaskRepositoryImpl) ToggleCompletion(ctx context.Context, id, userID uu
 	)
 	if err != nil {
 		r.logger.Errorf("タスク完了状態更新エラー: %v", err)
-		return fmt.Errorf("%w: %v", ErrTaskUpdateFailed, err)
+		return fmt.Errorf("%w: %v", taskerrors.ErrTaskUpdateFailed, err)
 	}
 	return nil
 }
@@ -169,7 +160,7 @@ func (r *TaskRepositoryImpl) Delete(ctx context.Context, id, userID uuid.UUID) e
 	_, err = r.db.DB.ExecContext(ctx, query, id)
 	if err != nil {
 		r.logger.Errorf("タスク削除エラー: %v", err)
-		return fmt.Errorf("%w: %v", ErrTaskDeleteFailed, err)
+		return fmt.Errorf("%w: %v", taskerrors.ErrTaskDeleteFailed, err)
 	}
 	return nil
 }

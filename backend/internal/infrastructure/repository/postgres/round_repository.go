@@ -3,8 +3,6 @@ package postgres
 import (
 	"context"
 	"database/sql"
-	"errors"
-	"fmt"
 	"time"
 
 	"github.com/google/uuid"
@@ -12,14 +10,7 @@ import (
 	"github.com/tsunakit99/selfpomodoro/internal/domain/repository"
 	"github.com/tsunakit99/selfpomodoro/internal/infrastructure/database"
 	"github.com/tsunakit99/selfpomodoro/internal/infrastructure/logger"
-)
-
-// ラウンドリポジトリに関するエラー
-var (
-	ErrRoundNotFound       = errors.New("ラウンドが見つかりません")
-	ErrRoundCreationFailed = errors.New("ラウンドの作成に失敗しました")
-	ErrRoundUpdateFailed   = errors.New("ラウンドの更新に失敗しました")
-	ErrNoRoundsInSession   = errors.New("セッションにラウンドが存在しません")
+	rounderrors "github.com/tsunakit99/selfpomodoro/internal/infrastructure/repository/postgres/errors"
 )
 
 // RoundRepositoryImpl はRoundRepositoryインターフェースの実装部分
@@ -54,7 +45,7 @@ func (r *RoundRepositoryImpl) Create(ctx context.Context, round *model.Round) er
 
 	if err != nil {
 		r.logger.Errorf("ラウンド作成エラー: %v", err)
-		return fmt.Errorf("%w: %v", ErrRoundCreationFailed, err)
+		return err
 	}
 	return nil
 }
@@ -72,7 +63,7 @@ func (r *RoundRepositoryImpl) GetByID(ctx context.Context, id uuid.UUID) (*model
 	err := r.db.DB.GetContext(ctx, &round, query, id)
 	if err != nil {
 		if err == sql.ErrNoRows {
-			return nil, ErrRoundNotFound
+			return nil, rounderrors.ErrRoundNotFound
 		}
 		r.logger.Errorf("ラウンド取得エラー: %v", err)
 		return nil, err
@@ -113,7 +104,7 @@ func (r *RoundRepositoryImpl) GetLastRoundBySessionID(ctx context.Context, sessi
 	err := r.db.DB.GetContext(ctx, &round, query, sessionID)
 	if err != nil {
 		if err == sql.ErrNoRows {
-			return nil, ErrNoRoundsInSession
+			return nil, rounderrors.ErrNoRoundsInSession
 		}
 		r.logger.Errorf("最終ラウンド取得エラー: %v", err)
 		return nil, err
@@ -146,7 +137,7 @@ func (r *RoundRepositoryImpl) Complete(ctx context.Context, id uuid.UUID, focusS
 	)
 	if err != nil {
 		r.logger.Errorf("ラウンド完了エラー: %v", err)
-		return fmt.Errorf("%w: %v", ErrRoundUpdateFailed, err)
+		return err
 	}
 	return nil
 }
@@ -172,7 +163,7 @@ func (r *RoundRepositoryImpl) AbortRound(ctx context.Context, id uuid.UUID) erro
 	)
 	if err != nil {
 		r.logger.Errorf("ラウンドスキップエラー: %v", err)
-		return fmt.Errorf("%w: %v", ErrRoundUpdateFailed, err)
+		return err
 	}
 	return nil
 }

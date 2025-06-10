@@ -15,14 +15,7 @@ import (
 	"github.com/tsunakit99/selfpomodoro/internal/domain/model"
 	"github.com/tsunakit99/selfpomodoro/internal/domain/repository"
 	"github.com/tsunakit99/selfpomodoro/internal/infrastructure/logger"
-)
-
-// UserConfigRepositoryエラー定義
-var (
-	ErrUserConfigNotFound     = errors.New("ユーザー設定が見つかりません")
-	ErrUserConfigCreateFailed = errors.New("ユーザー設定の作成に失敗しました")
-	ErrUserConfigUpdateFailed = errors.New("ユーザー設定の更新に失敗しました")
-	ErrUserConfigDeleteFailed = errors.New("ユーザー設定の削除に失敗しました")
+	dynamodberrors "github.com/tsunakit99/selfpomodoro/internal/infrastructure/repository/dynamodb/errors"
 )
 
 // UserConfigRepositoryImpl はDynamoDBを使用したUserConfigRepositoryの実装
@@ -57,7 +50,7 @@ func (r *UserConfigRepositoryImpl) GetUserConfig(ctx context.Context, userID uui
 	}
 
 	if result.Item == nil {
-		return nil, ErrUserConfigNotFound
+		return nil, dynamodberrors.ErrUserConfigNotFound
 	}
 
 	// 手動でDynamoDBアイテムから構造体に変換
@@ -161,7 +154,7 @@ func (r *UserConfigRepositoryImpl) CreateUserConfig(ctx context.Context, config 
 			return fmt.Errorf("ユーザー設定は既に存在します")
 		}
 		r.logger.Errorf("DynamoDB PutItem エラー: %v", err)
-		return fmt.Errorf("%w: %v", ErrUserConfigCreateFailed, err)
+		return fmt.Errorf("%w: %v", dynamodberrors.ErrUserConfigCreateFailed, err)
 	}
 
 	r.logger.Infof("ユーザー設定作成成功: %s", config.UserID)
@@ -198,7 +191,7 @@ func (r *UserConfigRepositoryImpl) UpdateUserConfig(ctx context.Context, config 
 			return fmt.Errorf("ユーザー設定が存在しません")
 		}
 		r.logger.Errorf("DynamoDB PutItem エラー: %v", err)
-		return fmt.Errorf("%w: %v", ErrUserConfigUpdateFailed, err)
+		return fmt.Errorf("%w: %v", dynamodberrors.ErrUserConfigUpdateFailed, err)
 	}
 
 	r.logger.Infof("ユーザー設定更新成功: %s", config.UserID)
@@ -220,10 +213,10 @@ func (r *UserConfigRepositoryImpl) DeleteUserConfig(ctx context.Context, userID 
 	if err != nil {
 		var conditionalCheckFailedException *types.ConditionalCheckFailedException
 		if errors.As(err, &conditionalCheckFailedException) {
-			return ErrUserConfigNotFound
+			return dynamodberrors.ErrUserConfigNotFound
 		}
 		r.logger.Errorf("DynamoDB DeleteItem エラー: %v", err)
-		return fmt.Errorf("%w: %v", ErrUserConfigDeleteFailed, err)
+		return fmt.Errorf("%w: %v", dynamodberrors.ErrUserConfigDeleteFailed, err)
 	}
 
 	r.logger.Infof("ユーザー設定削除成功: %s", userID.String())
