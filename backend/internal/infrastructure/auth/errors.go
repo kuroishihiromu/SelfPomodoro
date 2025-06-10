@@ -5,30 +5,19 @@ import (
 	"fmt"
 )
 
-// 認証関連のエラー定義
+// 技術的エラーのみを残す
 var (
-	// JWT検証エラー
-	ErrInvalidToken     = errors.New("無効なJWTトークンです")
-	ErrTokenExpired     = errors.New("JWTトークンの有効期限が切れています")
-	ErrTokenNotFound    = errors.New("Authorizationヘッダーが見つかりません")
-	ErrInvalidFormat    = errors.New("Authorizationヘッダーの形式が無効です")
-	ErrInvalidIssuer    = errors.New("トークンの発行者が無効です")
-	ErrInvalidAudience  = errors.New("トークンのaudienceが無効です")
-	ErrInvalidSignature = errors.New("トークンの署名が無効です")
-
-	// Cognito公開キー関連エラー
+	// JWKS関連エラー（外部API技術エラー）
+	ErrJWKSFetchFailed   = errors.New("JWKS取得に失敗しました")
 	ErrPublicKeyNotFound = errors.New("Cognito公開キーが見つかりません")
 	ErrPublicKeyInvalid  = errors.New("Cognito公開キーが無効です")
-	ErrJWKSFetchFailed   = errors.New("JWKS取得に失敗しました")
 
-	// Claims関連エラー
-	ErrMissingSubject  = errors.New("subjectクレームが見つかりません")
-	ErrInvalidSubject  = errors.New("subjectクレームが無効です")
-	ErrMissingTokenUse = errors.New("token_useクレームが見つかりません")
-	ErrInvalidTokenUse = errors.New("token_useクレームが無効です")
+	// JWT解析関連エラー（技術エラー）
+	ErrJWTParsingFailed = errors.New("JWT解析に失敗しました")
+	ErrSignatureInvalid = errors.New("JWT署名が無効です")
 )
 
-// AuthError は認証関連のエラーを表す構造体
+// AuthError は認証関連の技術的エラーを表す構造体
 type AuthError struct {
 	Type    string // エラータイプ
 	Message string // エラーメッセージ
@@ -57,9 +46,9 @@ func NewAuthError(errorType, message string, cause error) *AuthError {
 	}
 }
 
-// NewTokenValidationError はトークン検証エラーを作成する
-func NewTokenValidationError(cause error) *AuthError {
-	return NewAuthError("TOKEN_VALIDATION", "JWTトークンの検証に失敗しました", cause)
+// NewJWKSError はJWKS取得エラーを作成する
+func NewJWKSError(cause error) *AuthError {
+	return NewAuthError("JWKS", "JWKS取得に失敗しました", cause)
 }
 
 // NewPublicKeyError は公開キー取得エラーを作成する
@@ -67,25 +56,7 @@ func NewPublicKeyError(cause error) *AuthError {
 	return NewAuthError("PUBLIC_KEY", "Cognito公開キーの取得に失敗しました", cause)
 }
 
-// NewClaimsError はクレーム検証エラーを作成する
-func NewClaimsError(message string) *AuthError {
-	return NewAuthError("CLAIMS", message, nil)
-}
-
-// IsTokenExpiredError はトークン有効期限エラーかどうかを判定する
-func IsTokenExpiredError(err error) bool {
-	if authErr, ok := err.(*AuthError); ok {
-		return authErr.Type == "TOKEN_VALIDATION" &&
-			(errors.Is(authErr.Cause, ErrTokenExpired) ||
-				authErr.Cause != nil && errors.Is(authErr.Cause, ErrTokenExpired))
-	}
-	return errors.Is(err, ErrTokenExpired)
-}
-
-// IsInvalidTokenError は無効トークンエラーかどうかを判定する
-func IsInvalidTokenError(err error) bool {
-	if authErr, ok := err.(*AuthError); ok {
-		return authErr.Type == "TOKEN_VALIDATION"
-	}
-	return errors.Is(err, ErrInvalidToken)
+// NewJWTParsingError はJWT解析エラーを作成する
+func NewJWTParsingError(cause error) *AuthError {
+	return NewAuthError("JWT_PARSING", "JWT解析に失敗しました", cause)
 }
