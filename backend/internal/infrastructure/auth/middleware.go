@@ -9,6 +9,7 @@ import (
 	"github.com/aws/aws-lambda-go/events"
 	"github.com/google/uuid"
 	"github.com/tsunakit99/selfpomodoro/internal/config"
+	domainErrors "github.com/tsunakit99/selfpomodoro/internal/domain/errors"
 	"github.com/tsunakit99/selfpomodoro/internal/infrastructure/logger"
 )
 
@@ -51,7 +52,7 @@ func (m *AuthMiddleware) Authenticate(request events.APIGatewayProxyRequest) (*A
 	authHeader := m.getAuthorizationHeader(request)
 	if authHeader == "" {
 		m.logger.Warn("Authorizationヘッダーが見つかりません")
-		return nil, NewAuthError("MISSING_AUTH", "Authorizationヘッダーが必要です", ErrTokenNotFound)
+		return nil, domainErrors.NewTokenNotFoundError()
 	}
 
 	// 開発環境での後方互換性（dev-token）
@@ -140,14 +141,14 @@ func (m *AuthMiddleware) authenticateWithCognito(authHeader string) (*AuthResult
 	// Bearer プレフィックスの確認
 	if !strings.HasPrefix(authHeader, "Bearer ") {
 		m.logger.Error("無効なAuthorizationヘッダー形式")
-		return nil, NewAuthError("INVALID_FORMAT", "Authorizationヘッダーは 'Bearer <token>' 形式である必要があります", ErrInvalidFormat)
+		return nil, domainErrors.NewInvalidFormatError()
 	}
 
 	// JWTトークンの抽出
 	token := strings.TrimPrefix(authHeader, "Bearer ")
 	if token == "" {
 		m.logger.Error("空のJWTトークン")
-		return nil, NewAuthError("EMPTY_TOKEN", "JWTトークンが空です", ErrInvalidToken)
+		return nil, domainErrors.NewInvalidTokenError()
 	}
 
 	// JWT検証
@@ -161,7 +162,7 @@ func (m *AuthMiddleware) authenticateWithCognito(authHeader string) (*AuthResult
 	userID, err := claims.GetUserID()
 	if err != nil {
 		m.logger.Errorf("ユーザーID取得エラー: %v", err)
-		return nil, NewClaimsError("ユーザーIDの取得に失敗しました")
+		return nil, domainErrors.NewInvalidSubjectError()
 	}
 
 	m.logger.Infof("Cognito JWT認証成功: UserID=%s, TokenUse=%s", userID.String()[:8]+"...", claims.TokenUse)

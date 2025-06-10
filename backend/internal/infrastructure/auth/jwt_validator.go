@@ -14,6 +14,7 @@ import (
 
 	"github.com/golang-jwt/jwt/v5"
 	"github.com/tsunakit99/selfpomodoro/internal/infrastructure/logger"
+	authErrors "github.com/tsunakit99/selfpomodoro/internal/infrastructure/repository/auth/errors"
 )
 
 // JWKS は JSON Web Key Set を表す構造体
@@ -88,13 +89,13 @@ func NewCognitoJWTValidator(config *CognitoJWTValidatorConfig, logger logger.Log
 	}
 }
 
-// ValidateJWT はJWTトークンを検証し、クレームを返す
+// ValidateJWT はJWTトークンを検証し、クレームを返す（インフラエラー版）
 func (v *CognitoJWTValidator) ValidateJWT(tokenString string) (*CognitoClaims, error) {
 	v.logger.Infof("JWT検証開始: トークン長=%d", len(tokenString))
 
 	// トークン形式の事前チェック
 	if tokenString == "" {
-		return nil, NewTokenValidationError(ErrTokenNotFound)
+		return nil, authErrors.ErrJWTTokenNotFound
 	}
 
 	// Bearer プレフィックスを除去
@@ -106,31 +107,35 @@ func (v *CognitoJWTValidator) ValidateJWT(tokenString string) (*CognitoClaims, e
 	token, err := jwt.ParseWithClaims(tokenString, &CognitoClaims{}, v.keyFunc)
 	if err != nil {
 		v.logger.Errorf("JWT解析エラー: %v", err)
-		return nil, NewTokenValidationError(err)
+		if strings.Contains(err.Error(), "token is expired") {
+			return nil, authErrors.ErrJWTTokenExpired
+		}
+		return nil, authErrors.NewJWTParsingError(err)
 	}
 
 	// クレームの取得と検証
 	claims, ok := token.Claims.(*CognitoClaims)
 	if !ok {
-		return nil, NewTokenValidationError(ErrInvalidToken)
+		return nil, authErrors.ErrJWTTokenInvalid
 	}
 
 	// 発行者の検証
 	if claims.Issuer != v.issuerURL {
 		v.logger.Errorf("無効な発行者: expected=%s, actual=%s", v.issuerURL, claims.Issuer)
-		return nil, NewTokenValidationError(ErrInvalidIssuer)
+		return nil, authErrors.ErrJWTInvalidIssuer
 	}
 
 	// オーディエンスの検証（IDトークンの場合）
 	if claims.IsIDToken() && claims.Audience != v.clientID {
 		v.logger.Errorf("無効なオーディエンス: expected=%s, actual=%s", v.clientID, claims.Audience)
-		return nil, NewTokenValidationError(ErrInvalidAudience)
+		return nil, authErrors.ErrJWTInvalidAudience
 	}
 
 	// クレームの有効性検証
 	if err := claims.IsValid(); err != nil {
 		v.logger.Errorf("クレーム検証エラー: %v", err)
-		return nil, NewClaimsError(err.Error())
+		// Infrastructureエラーをそのまま返す（UseCase層で変換）
+		return nil, err
 	}
 
 	v.logger.Infof("JWT検証成功: %s", claims.ToLogString())
@@ -141,19 +146,19 @@ func (v *CognitoJWTValidator) ValidateJWT(tokenString string) (*CognitoClaims, e
 func (v *CognitoJWTValidator) keyFunc(token *jwt.Token) (interface{}, error) {
 	// アルゴリズムの確認
 	if _, ok := token.Method.(*jwt.SigningMethodRSA); !ok {
-		return nil, fmt.Errorf("予期しない署名方式: %v", token.Header["alg"])
+		return nil, authErrors.NewJWTParsingError(fmt.Errorf("予期しない署名方式: %v", token.Header["alg"]))
 	}
 
 	// Key IDの取得
 	kid, ok := token.Header["kid"].(string)
 	if !ok {
-		return nil, fmt.Errorf("kidヘッダーが見つかりません")
+		return nil, authErrors.ErrPublicKeyNotFound
 	}
 
 	// 公開キーの取得
 	publicKey, err := v.getPublicKey(kid)
 	if err != nil {
-		return nil, fmt.Errorf("公開キー取得エラー: %w", err)
+		return nil, err // インフラエラーをそのまま返す
 	}
 
 	return publicKey, nil
@@ -180,18 +185,18 @@ func (v *CognitoJWTValidator) fetchAndCachePublicKey(kid string) (*rsa.PublicKey
 	// JWKS取得
 	resp, err := v.httpClient.Get(v.jwksURL)
 	if err != nil {
-		return nil, NewPublicKeyError(fmt.Errorf("JWKS取得リクエストエラー: %w", err))
+		return nil, authErrors.NewHTTPError(fmt.Errorf("JWKS取得リクエストエラー: %w", err))
 	}
 	defer resp.Body.Close()
 
 	if resp.StatusCode != http.StatusOK {
-		return nil, NewPublicKeyError(fmt.Errorf("JWKS取得HTTPエラー: %d", resp.StatusCode))
+		return nil, authErrors.NewHTTPError(fmt.Errorf("JWKS取得HTTPエラー: %d", resp.StatusCode))
 	}
 
 	// JWKSデコード
 	var jwks JWKS
 	if err := json.NewDecoder(resp.Body).Decode(&jwks); err != nil {
-		return nil, NewPublicKeyError(fmt.Errorf("JWKSデコードエラー: %w", err))
+		return nil, authErrors.NewJWKSError(fmt.Errorf("JWKSデコードエラー: %w", err))
 	}
 
 	v.logger.Infof("JWKS取得成功: %d keys", len(jwks.Keys))
@@ -218,7 +223,7 @@ func (v *CognitoJWTValidator) fetchAndCachePublicKey(kid string) (*rsa.PublicKey
 	}
 
 	if targetKey == nil {
-		return nil, NewPublicKeyError(fmt.Errorf("指定されたKey ID(%s)が見つかりません", kid))
+		return nil, authErrors.NewPublicKeyError(fmt.Errorf("指定されたKey ID(%s)が見つかりません", kid))
 	}
 
 	v.logger.Infof("公開キーキャッシュ更新完了: %d keys cached", len(v.keyCache))
@@ -257,17 +262,17 @@ func (v *CognitoJWTValidator) HealthCheck(ctx context.Context) error {
 	// JWKS エンドポイントへの接続確認
 	req, err := http.NewRequestWithContext(ctx, "GET", v.jwksURL, nil)
 	if err != nil {
-		return fmt.Errorf("JWKS HealthCheck リクエスト作成エラー: %w", err)
+		return authErrors.NewHTTPError(fmt.Errorf("JWKS HealthCheck リクエスト作成エラー: %w", err))
 	}
 
 	resp, err := v.httpClient.Do(req)
 	if err != nil {
-		return fmt.Errorf("JWKS HealthCheck 接続エラー: %w", err)
+		return authErrors.NewHTTPError(fmt.Errorf("JWKS HealthCheck 接続エラー: %w", err))
 	}
 	defer resp.Body.Close()
 
 	if resp.StatusCode != http.StatusOK {
-		return fmt.Errorf("JWKS HealthCheck HTTPエラー: %d", resp.StatusCode)
+		return authErrors.NewHTTPError(fmt.Errorf("JWKS HealthCheck HTTPエラー: %d", resp.StatusCode))
 	}
 
 	v.logger.Info("CognitoJWTValidator HealthCheck 成功")
