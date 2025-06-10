@@ -14,6 +14,7 @@ var (
 	ErrUnauthorized   = errors.New("認証が必要です")
 	ErrForbidden      = errors.New("アクセス権限がありません")
 	ErrConflict       = errors.New("リソースが既に存在します")
+	ErrValidation     = errors.New("バリデーションエラーが発生しました")
 )
 
 // AppError はアプリケーションエラーを表す
@@ -105,4 +106,30 @@ func NewConflictError(message string) *AppError {
 		Message: message,
 		Status:  http.StatusConflict,
 	}
+}
+
+// NewInternalServerError は内部サーバーエラーを作成する
+func NewInternalServerError() *AppError {
+	return &AppError{
+		Err:     ErrInternalServer,
+		Message: ErrInternalServer.Error(),
+		Status:  http.StatusInternalServerError,
+	}
+}
+
+// NewValidationError はバリデーションエラーを作成する
+func NewValidationError(message string) *AppError {
+	if message == "" {
+		message = ErrValidation.Error()
+	}
+	return &AppError{
+		Err:     ErrValidation,
+		Message: message,
+		Status:  http.StatusBadRequest,
+	}
+}
+
+// Is はエラーの種類を判定する
+func Is(err, target error) bool {
+	return errors.Is(err, target)
 }
