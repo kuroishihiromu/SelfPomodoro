@@ -3,153 +3,90 @@ package main
 import (
 	"context"
 	"encoding/json"
-	"fmt"
 	"net/http"
 	"strings"
 
 	"github.com/aws/aws-lambda-go/events"
 	"github.com/aws/aws-lambda-go/lambda"
 	"github.com/google/uuid"
-	"github.com/tsunakit99/selfpomodoro/internal/config"
-	"github.com/tsunakit99/selfpomodoro/internal/infrastructure/database"
+	"github.com/tsunakit99/selfpomodoro/internal/container"
+	domainErrors "github.com/tsunakit99/selfpomodoro/internal/domain/errors"
 	"github.com/tsunakit99/selfpomodoro/internal/infrastructure/logger"
-	"github.com/tsunakit99/selfpomodoro/internal/infrastructure/repository"
-	"github.com/tsunakit99/selfpomodoro/internal/infrastructure/repository/postgres"
-	"github.com/tsunakit99/selfpomodoro/internal/infrastructure/sqs"
 	"github.com/tsunakit99/selfpomodoro/internal/usecase"
 )
 
-// SessionHandler はLambda用のセッションハンドラー
-type SessionHandler struct {
-	sessionUseCase usecase.SessionUseCase
-	logger         logger.Logger
+// Global container (Lambda再利用最適化)
+var globalContainer container.Container
+
+// init はLambda init phaseで実行
+func init() {
+	globalContainer = container.NewLambdaContainer()
 }
 
-// handler はLambdaのエントリーポイント
+// SessionHandler はDI Container使用版のセッションハンドラー
+type SessionHandler struct {
+	useCases *usecase.UseCases
+	logger   logger.Logger
+}
+
+// handler はLambdaのエントリーポイント（DI Container版）
 func handler(ctx context.Context, request events.APIGatewayProxyRequest) (events.APIGatewayProxyResponse, error) {
-	// 依存関係の初期化
-	cfg, err := config.Load()
-	if err != nil {
-		return errorResponse(http.StatusInternalServerError, "設定読み込みエラー"), nil
+	// 1. Container初期化
+	if err := globalContainer.Initialize(ctx); err != nil {
+		return errorResponse(http.StatusInternalServerError, "サービス初期化エラー"), nil
 	}
 
-	appLogger, err := logger.NewLogger(cfg.LogLevel, cfg.Environment)
-	if err != nil {
-		return errorResponse(http.StatusInternalServerError, "ロガー初期化エラー"), nil
-	}
+	// 2. Dependencies取得（Infrastructure依存なし！）
+	useCases := globalContainer.GetUseCases()
+	logger := globalContainer.GetLogger()
 
-	// PostgreSQL接続
-	postgresDB, err := database.NewPostgresDB(cfg, appLogger)
-	if err != nil {
-		appLogger.Errorf("PostgreSQL接続エラー: %v", err)
-		return errorResponse(http.StatusInternalServerError, "データベース接続エラー"), nil
-	}
-	defer postgresDB.Close()
-
-	// DynamoDB接続（UserConfig用）
-	var dynamoDB *database.DynamoDB
-	dynamoDB, err = database.NewDynamoDB(cfg, appLogger)
-	if err != nil {
-		appLogger.Warnf("DynamoDB接続エラー: %v", err)
-		appLogger.Warn("DynamoDBなしで続行します（デフォルト設定使用）")
-		dynamoDB = nil
-	}
-	if dynamoDB != nil {
-		defer dynamoDB.Close()
-	}
-
-	// SQS接続（最適化用）
-	var sqsClient *sqs.SQSClient
-	sqsClient, err = sqs.NewSQSClient(cfg, appLogger)
-	if err != nil {
-		appLogger.Warnf("SQS接続エラー: %v", err)
-		appLogger.Warn("SQSなしで続行します（最適化機能無効）")
-		sqsClient = nil
-	}
-	if sqsClient != nil {
-		defer sqsClient.Close()
-
-		// SQS接続確認（開発環境のみ）
-		if cfg.Environment != "production" {
-			if healthErr := sqsClient.HealthCheck(ctx); healthErr != nil {
-				appLogger.Warnf("SQS接続確認失敗: %v", healthErr)
-			}
-		}
-	}
-
-	// リポジトリとユースケースの初期化
-	repositoryFactory := repository.NewRepositoryFactory(postgresDB, dynamoDB, appLogger)
-	sessionUseCase := usecase.NewSessionUseCase(
-		repositoryFactory.Session,
-		repositoryFactory.Round,
-		repositoryFactory.UserConfig, // DynamoDB UserConfig追加
-		sqsClient,
-		appLogger,
-	)
-
-	// ハンドラーの初期化
+	// 3. Handler初期化
 	sessionHandler := &SessionHandler{
-		sessionUseCase: sessionUseCase,
-		logger:         appLogger,
+		useCases: useCases,
+		logger:   logger,
 	}
 
-	// ユーザーID取得
-	userID, err := getUserIDFromRequest(request)
+	// 4. 認証・User存在確認（統一処理）
+	userID, err := sessionHandler.authenticateAndValidateUser(ctx, request)
 	if err != nil {
-		appLogger.Errorf("ユーザーID取得エラー: %v", err)
-		return errorResponse(http.StatusUnauthorized, "認証エラー"), nil
+		return sessionHandler.handleError(err), nil
 	}
 
-	// ルーティング
+	// 5. 操作ルーティング
+	return sessionHandler.routeOperation(ctx, request, userID)
+}
+
+// authenticateAndValidateUser は認証・User存在確認の統一処理
+func (h *SessionHandler) authenticateAndValidateUser(ctx context.Context, request events.APIGatewayProxyRequest) (uuid.UUID, error) {
+	return h.useCases.Auth.AuthenticateAndValidateUser(ctx, request)
+}
+
+// routeOperation は操作ルーティング
+func (h *SessionHandler) routeOperation(ctx context.Context, request events.APIGatewayProxyRequest, userID uuid.UUID) (events.APIGatewayProxyResponse, error) {
 	switch request.HTTPMethod {
 	case "GET":
-		return sessionHandler.handleGetSessions(ctx, request, userID)
+		return h.handleGetSessions(ctx, request, userID)
 	case "POST":
-		return sessionHandler.handleStartSession(ctx, userID)
+		return h.handleStartSession(ctx, userID)
 	case "PATCH":
-		return sessionHandler.handleCompleteSession(ctx, request, userID)
+		return h.handleCompleteSession(ctx, request, userID)
 	case "DELETE":
-		return sessionHandler.handleDeleteSession(ctx, request, userID)
+		return h.handleDeleteSession(ctx, request, userID)
 	default:
 		return errorResponse(http.StatusMethodNotAllowed, "メソッドが許可されていません"), nil
 	}
 }
 
-// getUserIDFromRequest はリクエストからユーザーIDを取得する
-func getUserIDFromRequest(request events.APIGatewayProxyRequest) (uuid.UUID, error) {
-	// 開発環境用の簡易認証（dev-tokenの場合）
-	authHeader := request.Headers["Authorization"]
-	if authHeader == "" {
-		authHeader = request.Headers["authorization"] // 小文字の場合もチェック
-	}
-
-	if authHeader == "Bearer dev-token" {
-		// 開発用固定ユーザーID
-		return uuid.Parse("00000000-0000-0000-0000-000000000001")
-	}
-
-	// 本番環境用Cognito認証（将来実装）
-	// if claims, exists := request.RequestContext.Authorizer["claims"]; exists {
-	//     claimsMap := claims.(map[string]interface{})
-	//     if sub, ok := claimsMap["sub"].(string); ok {
-	//         return uuid.Parse(sub)
-	//     }
-	// }
-
-	return uuid.Nil, fmt.Errorf("認証情報が見つかりません")
-}
-
-// handleGetSessions はセッション取得を処理（一覧または個別）
+// handleGetSessions はセッション取得処理（一覧または個別）
 func (h *SessionHandler) handleGetSessions(ctx context.Context, request events.APIGatewayProxyRequest, userID uuid.UUID) (events.APIGatewayProxyResponse, error) {
-	// パスパラメータから session_id を確認
 	sessionIDStr := request.PathParameters["session_id"]
 
 	if sessionIDStr == "" {
 		// セッション一覧取得
-		sessionsResponse, err := h.sessionUseCase.GetAllSessions(ctx, userID)
+		sessionsResponse, err := h.useCases.Session.GetAllSessions(ctx, userID)
 		if err != nil {
 			h.logger.Errorf("セッション一覧取得エラー: %v", err)
-			return errorResponse(http.StatusInternalServerError, "セッション一覧の取得に失敗しました"), nil
+			return h.handleError(err), nil
 		}
 		return successResponse(http.StatusOK, sessionsResponse), nil
 	} else {
@@ -159,38 +96,31 @@ func (h *SessionHandler) handleGetSessions(ctx context.Context, request events.A
 			return errorResponse(http.StatusBadRequest, "無効なセッションID"), nil
 		}
 
-		sessionResponse, err := h.sessionUseCase.GetSession(ctx, sessionID, userID)
+		sessionResponse, err := h.useCases.Session.GetSession(ctx, sessionID, userID)
 		if err != nil {
-			if isSessionNotFoundError(err) {
-				return errorResponse(http.StatusNotFound, "セッションが見つかりません"), nil
-			}
-			if isSessionAccessDeniedError(err) {
-				return errorResponse(http.StatusForbidden, "このセッションへのアクセス権限がありません"), nil
-			}
 			h.logger.Errorf("セッション取得エラー: %v", err)
-			return errorResponse(http.StatusInternalServerError, "セッション取得に失敗しました"), nil
+			return h.handleError(err), nil
 		}
 		return successResponse(http.StatusOK, sessionResponse), nil
 	}
 }
 
-// handleStartSession はセッション開始を処理（UserConfig確認付き）
+// handleStartSession はセッション開始処理
 func (h *SessionHandler) handleStartSession(ctx context.Context, userID uuid.UUID) (events.APIGatewayProxyResponse, error) {
 	h.logger.Infof("セッション開始要求: ユーザーID=%s", userID.String())
 
-	sessionResponse, err := h.sessionUseCase.StartSession(ctx, userID)
+	sessionResponse, err := h.useCases.Session.StartSession(ctx, userID)
 	if err != nil {
 		h.logger.Errorf("セッション開始エラー: %v", err)
-		return errorResponse(http.StatusInternalServerError, "セッション開始に失敗しました"), nil
+		return h.handleError(err), nil
 	}
 
 	h.logger.Infof("セッション開始成功: セッションID=%s", sessionResponse.ID.String())
 	return successResponse(http.StatusCreated, sessionResponse), nil
 }
 
-// handleCompleteSession はセッション完了を処理（SQS最適化メッセージ送信付き）
+// handleCompleteSession はセッション完了処理
 func (h *SessionHandler) handleCompleteSession(ctx context.Context, request events.APIGatewayProxyRequest, userID uuid.UUID) (events.APIGatewayProxyResponse, error) {
-	// パスパラメータからセッションIDを取得
 	sessionIDStr := request.PathParameters["session_id"]
 	if sessionIDStr == "" {
 		return errorResponse(http.StatusBadRequest, "セッションIDが指定されていません"), nil
@@ -208,31 +138,25 @@ func (h *SessionHandler) handleCompleteSession(ctx context.Context, request even
 
 	h.logger.Infof("セッション完了要求: セッションID=%s", sessionID.String())
 
-	sessionResponse, err := h.sessionUseCase.CompleteSession(ctx, sessionID, userID)
+	sessionResponse, err := h.useCases.Session.CompleteSession(ctx, sessionID, userID)
 	if err != nil {
-		if isSessionNotFoundError(err) {
-			return errorResponse(http.StatusNotFound, "セッションが見つかりません"), nil
-		}
-		if isSessionAccessDeniedError(err) {
-			return errorResponse(http.StatusForbidden, "このセッションへのアクセス権限がありません"), nil
-		}
 		h.logger.Errorf("セッション完了エラー: %v", err)
-		return errorResponse(http.StatusInternalServerError, "セッション完了に失敗しました"), nil
+		return h.handleError(err), nil
 	}
 
-	// SQS送信の有無をログ出力
+	// SQS送信ログ出力
 	if sessionResponse.RoundCount != nil && *sessionResponse.RoundCount > 0 {
-		h.logger.Infof("セッション完了成功: セッションID=%s, ラウンド数=%d, 平均集中度=%.1f, 総作業時間=%d分 (SQS最適化メッセージ送信済み)",
+		h.logger.Infof("セッション完了成功: SessionID=%s, RoundCount=%d, AvgFocus=%.1f, TotalWork=%dmin (SQS送信済み)",
 			sessionID.String(), *sessionResponse.RoundCount, *sessionResponse.AverageFocus, *sessionResponse.TotalWorkMin)
 	} else {
-		h.logger.Infof("セッション完了成功: セッションID=%s, ラウンド数=0 (完了ラウンドなし・SQS送信なし)",
+		h.logger.Infof("セッション完了成功: SessionID=%s, RoundCount=0 (SQS送信なし)",
 			sessionID.String())
 	}
 
 	return successResponse(http.StatusOK, sessionResponse), nil
 }
 
-// handleDeleteSession はセッション削除を処理
+// handleDeleteSession はセッション削除処理
 func (h *SessionHandler) handleDeleteSession(ctx context.Context, request events.APIGatewayProxyRequest, userID uuid.UUID) (events.APIGatewayProxyResponse, error) {
 	sessionIDStr := request.PathParameters["session_id"]
 	if sessionIDStr == "" {
@@ -244,28 +168,23 @@ func (h *SessionHandler) handleDeleteSession(ctx context.Context, request events
 		return errorResponse(http.StatusBadRequest, "無効なセッションID"), nil
 	}
 
-	err = h.sessionUseCase.DeleteSession(ctx, sessionID, userID)
+	err = h.useCases.Session.DeleteSession(ctx, sessionID, userID)
 	if err != nil {
-		if isSessionNotFoundError(err) {
-			return errorResponse(http.StatusNotFound, "セッションが見つかりません"), nil
-		}
-		if isSessionAccessDeniedError(err) {
-			return errorResponse(http.StatusForbidden, "このセッションへのアクセス権限がありません"), nil
-		}
 		h.logger.Errorf("セッション削除エラー: %v", err)
-		return errorResponse(http.StatusInternalServerError, "セッション削除に失敗しました"), nil
+		return h.handleError(err), nil
 	}
 
 	return successResponse(http.StatusOK, map[string]string{"message": "セッションが削除されました"}), nil
 }
 
-// ヘルパー関数
-func isSessionNotFoundError(err error) bool {
-	return strings.Contains(err.Error(), postgres.ErrSessionNotFound.Error())
-}
+// handleError はドメインエラーを統一処理
+func (h *SessionHandler) handleError(err error) events.APIGatewayProxyResponse {
+	if appErr, ok := err.(*domainErrors.AppError); ok {
+		return errorResponse(appErr.Status, appErr.Error())
+	}
 
-func isSessionAccessDeniedError(err error) bool {
-	return strings.Contains(err.Error(), postgres.ErrSessionAccessDenied.Error())
+	h.logger.Errorf("予期しないエラータイプ: %T, %v", err, err)
+	return errorResponse(http.StatusInternalServerError, "内部エラーが発生しました")
 }
 
 func successResponse(statusCode int, data interface{}) events.APIGatewayProxyResponse {

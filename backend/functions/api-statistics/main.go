@@ -3,7 +3,6 @@ package main
 import (
 	"context"
 	"encoding/json"
-	"fmt"
 	"net/http"
 	"strings"
 	"time"
@@ -11,63 +10,55 @@ import (
 	"github.com/aws/aws-lambda-go/events"
 	"github.com/aws/aws-lambda-go/lambda"
 	"github.com/google/uuid"
-	"github.com/tsunakit99/selfpomodoro/internal/config"
-	"github.com/tsunakit99/selfpomodoro/internal/infrastructure/database"
+	"github.com/tsunakit99/selfpomodoro/internal/container"
+	domainErrors "github.com/tsunakit99/selfpomodoro/internal/domain/errors"
 	"github.com/tsunakit99/selfpomodoro/internal/infrastructure/logger"
-	"github.com/tsunakit99/selfpomodoro/internal/infrastructure/repository"
 	"github.com/tsunakit99/selfpomodoro/internal/usecase"
 )
 
-// StatisticsHandler はLambda用の統計ハンドラー
-type StatisticsHandler struct {
-	statsUseCase usecase.StatisticsUsecase
-	logger       logger.Logger
+// Global container (Lambda再利用最適化)
+var globalContainer container.Container
+
+// init はLambda init phaseで実行
+func init() {
+	globalContainer = container.NewLambdaContainer()
 }
 
-// handler はLambdaのエントリーポイント
+// StatisticsHandler はDI Container使用版の統計ハンドラー
+type StatisticsHandler struct {
+	useCases *usecase.UseCases
+	logger   logger.Logger
+}
+
+// handler はLambdaのエントリーポイント（DI Container版）
 func handler(ctx context.Context, request events.APIGatewayProxyRequest) (events.APIGatewayProxyResponse, error) {
-	// 依存関係の初期化
-	cfg, err := config.Load()
-	if err != nil {
-		return errorResponse(http.StatusInternalServerError, "設定読み込みエラー"), nil
+	// 1. Container初期化
+	if err := globalContainer.Initialize(ctx); err != nil {
+		return errorResponse(http.StatusInternalServerError, "サービス初期化エラー"), nil
 	}
 
-	appLogger, err := logger.NewLogger(cfg.LogLevel, cfg.Environment)
-	if err != nil {
-		return errorResponse(http.StatusInternalServerError, "ロガー初期化エラー"), nil
-	}
+	// 2. Dependencies取得（Infrastructure依存なし！）
+	useCases := globalContainer.GetUseCases()
+	logger := globalContainer.GetLogger()
 
-	// PostgreSQL接続
-	postgresDB, err := database.NewPostgresDB(cfg, appLogger)
-	if err != nil {
-		appLogger.Errorf("PostgreSQL接続エラー: %v", err)
-		return errorResponse(http.StatusInternalServerError, "データベース接続エラー"), nil
-	}
-	defer postgresDB.Close()
-
-	// リポジトリとユースケースの初期化
-	repositoryFactory := repository.NewRepositoryFactory(postgresDB, nil, appLogger)
-	statsUseCase := usecase.NewStatisticsUsecase(repositoryFactory.Statistics, appLogger)
-
-	// ハンドラーの初期化
+	// 3. Handler初期化
 	statsHandler := &StatisticsHandler{
-		statsUseCase: statsUseCase,
-		logger:       appLogger,
+		useCases: useCases,
+		logger:   logger,
 	}
 
-	// ユーザーID取得
-	userID, err := getUserIDFromRequest(request)
+	// 4. 認証・User存在確認（統一処理）
+	userID, err := statsHandler.authenticateAndValidateUser(ctx, request)
 	if err != nil {
-		appLogger.Errorf("ユーザーID取得エラー: %v", err)
-		return errorResponse(http.StatusUnauthorized, "認証エラー"), nil
+		return statsHandler.handleError(err), nil
 	}
 
-	// GET以外は許可しない
+	// 5. GET以外は許可しない
 	if request.HTTPMethod != "GET" {
 		return errorResponse(http.StatusMethodNotAllowed, "GETメソッドのみ許可されています"), nil
 	}
 
-	// パスによるルーティング
+	// 6. パスによるルーティング
 	if strings.Contains(request.Path, "/focus-trend") {
 		return statsHandler.handleGetFocusTrend(ctx, request, userID)
 	} else if strings.Contains(request.Path, "/focus-heatmap") {
@@ -77,20 +68,9 @@ func handler(ctx context.Context, request events.APIGatewayProxyRequest) (events
 	return errorResponse(http.StatusNotFound, "無効なパス"), nil
 }
 
-// getUserIDFromRequest はリクエストからユーザーIDを取得する
-func getUserIDFromRequest(request events.APIGatewayProxyRequest) (uuid.UUID, error) {
-	// 開発環境用の簡易認証（dev-tokenの場合）
-	authHeader := request.Headers["Authorization"]
-	if authHeader == "" {
-		authHeader = request.Headers["authorization"] // 小文字の場合もチェック
-	}
-
-	if authHeader == "Bearer dev-token" {
-		// 開発用固定ユーザーID
-		return uuid.Parse("00000000-0000-0000-0000-000000000001")
-	}
-
-	return uuid.Nil, fmt.Errorf("認証情報が見つかりません")
+// authenticateAndValidateUser は認証・User存在確認の統一処理
+func (h *StatisticsHandler) authenticateAndValidateUser(ctx context.Context, request events.APIGatewayProxyRequest) (uuid.UUID, error) {
+	return h.useCases.Auth.AuthenticateAndValidateUser(ctx, request)
 }
 
 // handleGetFocusTrend は集中度トレンド取得を処理
@@ -125,10 +105,10 @@ func (h *StatisticsHandler) handleGetFocusTrend(ctx context.Context, request eve
 	}
 
 	// ユースケースを呼び出して集中度トレンドを取得
-	response, err := h.statsUseCase.GetFocusTrend(ctx, userID, period, startDate, endDate)
+	response, err := h.useCases.Statistics.GetFocusTrend(ctx, userID, period, startDate, endDate)
 	if err != nil {
 		h.logger.Errorf("集中度トレンド取得エラー: %v", err)
-		return errorResponse(http.StatusInternalServerError, "集中度トレンド取得に失敗しました"), nil
+		return h.handleError(err), nil
 	}
 
 	return successResponse(http.StatusOK, response), nil
@@ -166,13 +146,23 @@ func (h *StatisticsHandler) handleGetFocusHeatmap(ctx context.Context, request e
 	}
 
 	// ユースケースを呼び出して集中度ヒートマップを取得
-	response, err := h.statsUseCase.GetFocusHeatmap(ctx, userID, period, startDate, endDate)
+	response, err := h.useCases.Statistics.GetFocusHeatmap(ctx, userID, period, startDate, endDate)
 	if err != nil {
 		h.logger.Errorf("集中度ヒートマップ取得エラー: %v", err)
-		return errorResponse(http.StatusInternalServerError, "集中度ヒートマップ取得に失敗しました"), nil
+		return h.handleError(err), nil
 	}
 
 	return successResponse(http.StatusOK, response), nil
+}
+
+// handleError はドメインエラーを統一処理
+func (h *StatisticsHandler) handleError(err error) events.APIGatewayProxyResponse {
+	if appErr, ok := err.(*domainErrors.AppError); ok {
+		return errorResponse(appErr.Status, appErr.Error())
+	}
+
+	h.logger.Errorf("予期しないエラータイプ: %T, %v", err, err)
+	return errorResponse(http.StatusInternalServerError, "内部エラーが発生しました")
 }
 
 func successResponse(statusCode int, data interface{}) events.APIGatewayProxyResponse {
