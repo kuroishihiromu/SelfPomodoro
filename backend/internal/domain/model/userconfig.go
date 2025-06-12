@@ -1,12 +1,31 @@
 package model
 
 import (
+	"fmt"
 	"time"
 
 	"github.com/google/uuid"
 )
 
-// UserConfig はユーザーのポモドーロ設定を表すドメインモデル
+// デフォルト値定数（ドメインルール）
+const (
+	DefaultWorkTime         = 25 // デフォルト作業時間（分）
+	DefaultBreakTime        = 5  // デフォルト休憩時間（分）
+	DefaultSessionRounds    = 3  // デフォルトラウンド数
+	DefaultSessionBreakTime = 15 // デフォルト長休憩時間（分）
+
+	// バリデーション制約
+	MinWorkTime         = 1
+	MaxWorkTime         = 120
+	MinBreakTime        = 1
+	MaxBreakTime        = 60
+	MinSessionRounds    = 1
+	MaxSessionRounds    = 10
+	MinSessionBreakTime = 5
+	MaxSessionBreakTime = 120
+)
+
+// UserConfig はユーザーのポモドーロ設定を表すドメインモデル（強化版）
 type UserConfig struct {
 	UserID           string    `dynamodb:"user_id" json:"user_id"`
 	RoundWorkTime    int       `dynamodb:"round_work_time" json:"round_work_time"`       // 作業時間（分）
@@ -22,16 +41,65 @@ func NewUserConfig(userID uuid.UUID) *UserConfig {
 	now := time.Now()
 	return &UserConfig{
 		UserID:           userID.String(),
-		RoundWorkTime:    25, // デフォルト25分
-		RoundBreakTime:   5,  // デフォルト5分
-		SessionRounds:    3,  // デフォルト3ラウンド
-		SessionBreakTime: 15, // デフォルト15分長休憩
+		RoundWorkTime:    DefaultWorkTime,
+		RoundBreakTime:   DefaultBreakTime,
+		SessionRounds:    DefaultSessionRounds,
+		SessionBreakTime: DefaultSessionBreakTime,
 		CreatedAt:        now,
 		UpdatedAt:        now,
 	}
 }
 
-// UpdateSettings は設定を更新する
+// NewDefaultUserConfig はデフォルト設定のUserConfigを作成（明示的なファクトリー）
+func NewDefaultUserConfig(userID uuid.UUID) *UserConfig {
+	return NewUserConfig(userID)
+}
+
+// ドメインルール：安全なデフォルト値取得メソッド群
+
+// GetWorkTimeOrDefault は作業時間またはデフォルト値を返す
+func (uc *UserConfig) GetWorkTimeOrDefault() int {
+	if uc == nil || uc.RoundWorkTime <= 0 {
+		return DefaultWorkTime
+	}
+	return uc.RoundWorkTime
+}
+
+// GetBreakTimeOrDefault は休憩時間またはデフォルト値を返す
+func (uc *UserConfig) GetBreakTimeOrDefault() int {
+	if uc == nil || uc.RoundBreakTime <= 0 {
+		return DefaultBreakTime
+	}
+	return uc.RoundBreakTime
+}
+
+// GetSessionRoundsOrDefault はセッションラウンド数またはデフォルト値を返す
+func (uc *UserConfig) GetSessionRoundsOrDefault() int {
+	if uc == nil || uc.SessionRounds <= 0 {
+		return DefaultSessionRounds
+	}
+	return uc.SessionRounds
+}
+
+// GetSessionBreakTimeOrDefault はセッション長休憩時間またはデフォルト値を返す
+func (uc *UserConfig) GetSessionBreakTimeOrDefault() int {
+	if uc == nil || uc.SessionBreakTime <= 0 {
+		return DefaultSessionBreakTime
+	}
+	return uc.SessionBreakTime
+}
+
+// ドメインルール：最適化データのベース値提供
+
+// GetOptimizationBaseValues は最適化用のベース値を返す
+func (uc *UserConfig) GetOptimizationBaseValues() (workTime int, breakTime int, sessionRounds int, sessionBreakTime int) {
+	return uc.GetWorkTimeOrDefault(),
+		uc.GetBreakTimeOrDefault(),
+		uc.GetSessionRoundsOrDefault(),
+		uc.GetSessionBreakTimeOrDefault()
+}
+
+// UpdateSettings は設定を更新する（ドメインルール適用）
 func (uc *UserConfig) UpdateSettings(workTime, breakTime, sessionRounds, sessionBreakTime int) {
 	uc.RoundWorkTime = workTime
 	uc.RoundBreakTime = breakTime
@@ -39,6 +107,33 @@ func (uc *UserConfig) UpdateSettings(workTime, breakTime, sessionRounds, session
 	uc.SessionBreakTime = sessionBreakTime
 	uc.UpdatedAt = time.Now()
 }
+
+// IsValid は設定値が有効かどうかチェックする（ドメインルール）
+func (uc *UserConfig) IsValid() bool {
+	return uc.RoundWorkTime >= MinWorkTime && uc.RoundWorkTime <= MaxWorkTime &&
+		uc.RoundBreakTime >= MinBreakTime && uc.RoundBreakTime <= MaxBreakTime &&
+		uc.SessionRounds >= MinSessionRounds && uc.SessionRounds <= MaxSessionRounds &&
+		uc.SessionBreakTime >= MinSessionBreakTime && uc.SessionBreakTime <= MaxSessionBreakTime
+}
+
+// ValidateSettings は設定値のバリデーションを行う
+func (uc *UserConfig) ValidateSettings() error {
+	if uc.RoundWorkTime < MinWorkTime || uc.RoundWorkTime > MaxWorkTime {
+		return fmt.Errorf("作業時間は%d分から%d分の間で設定してください", MinWorkTime, MaxWorkTime)
+	}
+	if uc.RoundBreakTime < MinBreakTime || uc.RoundBreakTime > MaxBreakTime {
+		return fmt.Errorf("休憩時間は%d分から%d分の間で設定してください", MinBreakTime, MaxBreakTime)
+	}
+	if uc.SessionRounds < MinSessionRounds || uc.SessionRounds > MaxSessionRounds {
+		return fmt.Errorf("セッションラウンド数は%d回から%d回の間で設定してください", MinSessionRounds, MaxSessionRounds)
+	}
+	if uc.SessionBreakTime < MinSessionBreakTime || uc.SessionBreakTime > MaxSessionBreakTime {
+		return fmt.Errorf("セッション長休憩時間は%d分から%d分の間で設定してください", MinSessionBreakTime, MaxSessionBreakTime)
+	}
+	return nil
+}
+
+// 既存のレスポンス変換メソッドは維持
 
 // CreateUserConfigRequest はユーザー設定作成リクエストを表す
 type CreateUserConfigRequest struct {
@@ -78,12 +173,4 @@ func (uc *UserConfig) ToResponse() *UserConfigResponse {
 		CreatedAt:        uc.CreatedAt,
 		UpdatedAt:        uc.UpdatedAt,
 	}
-}
-
-// IsValid は設定値が有効かどうかチェックする
-func (uc *UserConfig) IsValid() bool {
-	return uc.RoundWorkTime > 0 && uc.RoundWorkTime <= 120 &&
-		uc.RoundBreakTime > 0 && uc.RoundBreakTime <= 60 &&
-		uc.SessionRounds > 0 && uc.SessionRounds <= 10 &&
-		uc.SessionBreakTime >= 5 && uc.SessionBreakTime <= 120
 }
