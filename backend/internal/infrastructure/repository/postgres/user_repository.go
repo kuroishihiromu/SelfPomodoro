@@ -3,7 +3,6 @@ package postgres
 import (
 	"context"
 	"database/sql"
-	"fmt"
 	"strings"
 	"time"
 
@@ -11,13 +10,13 @@ import (
 	"github.com/lib/pq"
 	"github.com/tsunakit99/selfpomodoro/internal/domain/model"
 	"github.com/tsunakit99/selfpomodoro/internal/domain/repository"
+	appErrors "github.com/tsunakit99/selfpomodoro/internal/errors"
 	"github.com/tsunakit99/selfpomodoro/internal/infrastructure/auth"
 	"github.com/tsunakit99/selfpomodoro/internal/infrastructure/database"
 	"github.com/tsunakit99/selfpomodoro/internal/infrastructure/logger"
-	usererrors "github.com/tsunakit99/selfpomodoro/internal/infrastructure/repository/postgres/errors"
 )
 
-// UserRepositoryImpl はUserRepositoryインターフェースの実装
+// UserRepositoryImpl はUserRepositoryインターフェースの実装（新エラーハンドリング対応版）
 type UserRepositoryImpl struct {
 	db     *database.PostgresDB
 	logger logger.Logger
@@ -31,7 +30,7 @@ func NewUserRepository(db *database.PostgresDB, logger logger.Logger) repository
 	}
 }
 
-// GetByID はIDによってユーザーを取得する
+// GetByID はIDによってユーザーを取得する（新エラーハンドリング対応版）
 func (r *UserRepositoryImpl) GetByID(ctx context.Context, id uuid.UUID) (*model.User, error) {
 	query := `
 		SELECT id, name, email, provider, provider_id, created_at, updated_at
@@ -43,16 +42,17 @@ func (r *UserRepositoryImpl) GetByID(ctx context.Context, id uuid.UUID) (*model.
 	err := r.db.DB.GetContext(ctx, &user, query, id)
 	if err != nil {
 		if err == sql.ErrNoRows {
-			return nil, usererrors.ErrUserNotFound
+			r.logger.Debugf("ユーザーが見つかりません: %s", id.String())
+			return nil, appErrors.ErrRecordNotFound // Infrastructure Error
 		}
 		r.logger.Errorf("ユーザー取得エラー: %v", err)
-		return nil, err
+		return nil, appErrors.NewDatabaseQueryError(err)
 	}
 
 	return &user, nil
 }
 
-// GetByEmail はメールアドレスによってユーザーを取得する
+// GetByEmail はメールアドレスによってユーザーを取得する（新エラーハンドリング対応版）
 func (r *UserRepositoryImpl) GetByEmail(ctx context.Context, email string) (*model.User, error) {
 	query := `
 		SELECT id, name, email, provider, provider_id, created_at, updated_at
@@ -64,16 +64,17 @@ func (r *UserRepositoryImpl) GetByEmail(ctx context.Context, email string) (*mod
 	err := r.db.DB.GetContext(ctx, &user, query, email)
 	if err != nil {
 		if err == sql.ErrNoRows {
-			return nil, usererrors.ErrUserNotFound
+			r.logger.Debugf("ユーザー（Email）が見つかりません: %s", email)
+			return nil, appErrors.ErrRecordNotFound // Infrastructure Error
 		}
 		r.logger.Errorf("ユーザー（Email）取得エラー: %v", err)
-		return nil, err
+		return nil, appErrors.NewDatabaseQueryError(err)
 	}
 
 	return &user, nil
 }
 
-// Create は新しいユーザーを作成する
+// Create は新しいユーザーを作成する（新エラーハンドリング対応版）
 func (r *UserRepositoryImpl) Create(ctx context.Context, user *model.User) error {
 	query := `
 		INSERT INTO users (id, name, email, provider, provider_id, created_at, updated_at)
@@ -91,26 +92,33 @@ func (r *UserRepositoryImpl) Create(ctx context.Context, user *model.User) error
 	)
 
 	if err != nil {
-		// PostgreSQL重複エラーチェック
+		// PostgreSQL固有のエラーハンドリング
 		if pqErr, ok := err.(*pq.Error); ok {
 			switch pqErr.Code {
 			case "23505": // unique_violation
 				if pqErr.Constraint == "users_pkey" {
-					return fmt.Errorf("ユーザーID重複: %v", err)
+					r.logger.Errorf("ユーザーID重複: %v", err)
+					return appErrors.NewUniqueConstraintError(err)
 				}
 				if pqErr.Constraint == "users_email_key" {
-					return usererrors.ErrEmailAlreadyExists
+					r.logger.Errorf("メールアドレス重複: %v", err)
+					return appErrors.NewUniqueConstraintError(err)
 				}
+				r.logger.Errorf("ユーザー作成一意制約違反: %v", err)
+				return appErrors.NewUniqueConstraintError(err)
+			case "23503": // foreign_key_violation
+				r.logger.Errorf("ユーザー作成外部キー制約違反: %v", err)
+				return appErrors.NewDatabaseError("create_user_fk", err)
 			}
 		}
 		r.logger.Errorf("ユーザー作成エラー: %v", err)
-		return fmt.Errorf("%w: %v", usererrors.ErrUserCreationFailed, err)
+		return appErrors.NewDatabaseError("create_user", err)
 	}
 
 	return nil
 }
 
-// Update はユーザー情報を更新する
+// Update はユーザー情報を更新する（新エラーハンドリング対応版）
 func (r *UserRepositoryImpl) Update(ctx context.Context, user *model.User) error {
 	query := `
 		UPDATE users
@@ -128,45 +136,63 @@ func (r *UserRepositoryImpl) Update(ctx context.Context, user *model.User) error
 	)
 
 	if err != nil {
+		// PostgreSQL固有のエラーハンドリング
+		if pqErr, ok := err.(*pq.Error); ok {
+			switch pqErr.Code {
+			case "23505": // unique_violation
+				if pqErr.Constraint == "users_email_key" {
+					r.logger.Errorf("メールアドレス重複（更新）: %v", err)
+					return appErrors.NewUniqueConstraintError(err)
+				}
+				r.logger.Errorf("ユーザー更新一意制約違反: %v", err)
+				return appErrors.NewUniqueConstraintError(err)
+			}
+		}
 		r.logger.Errorf("ユーザー更新エラー: %v", err)
-		return fmt.Errorf("%w: %v", usererrors.ErrUserUpdateFailed, err)
+		return appErrors.NewDatabaseError("update_user", err)
 	}
 
+	// 更新された行数の確認
 	rowsAffected, err := result.RowsAffected()
 	if err != nil {
-		return fmt.Errorf("更新結果確認エラー: %v", err)
+		r.logger.Errorf("ユーザー更新結果確認エラー: %v", err)
+		return appErrors.NewDatabaseError("update_user_check", err)
 	}
 
 	if rowsAffected == 0 {
-		return usererrors.ErrUserNotFound
+		r.logger.Warnf("ユーザー更新対象なし: %s", user.ID.String())
+		return appErrors.ErrRecordNotFound
 	}
 
 	return nil
 }
 
-// Delete はユーザーを削除する
+// Delete はユーザーを削除する（新エラーハンドリング対応版）
 func (r *UserRepositoryImpl) Delete(ctx context.Context, id uuid.UUID) error {
 	query := `DELETE FROM users WHERE id = $1`
 
 	result, err := r.db.DB.ExecContext(ctx, query, id)
 	if err != nil {
 		r.logger.Errorf("ユーザー削除エラー: %v", err)
-		return fmt.Errorf("%w: %v", usererrors.ErrUserDeleteFailed, err)
+		return appErrors.NewDatabaseError("delete_user", err)
 	}
 
+	// 削除された行数の確認
 	rowsAffected, err := result.RowsAffected()
 	if err != nil {
-		return fmt.Errorf("削除結果確認エラー: %v", err)
+		r.logger.Errorf("ユーザー削除結果確認エラー: %v", err)
+		return appErrors.NewDatabaseError("delete_user_check", err)
 	}
 
 	if rowsAffected == 0 {
-		return usererrors.ErrUserNotFound
+		r.logger.Warnf("ユーザー削除対象なし: %s", id.String())
+		return appErrors.ErrRecordNotFound
 	}
 
 	return nil
 }
 
-// extractDisplayName はCognitoクレームから表示名を抽出する
+// extractDisplayName はCognitoクレームから表示名を抽出する（ヘルパーメソッド維持）
 func (r *UserRepositoryImpl) extractDisplayName(claims *auth.CognitoClaims) string {
 	// 1. name フィールド
 	if claims.Name != "" {
@@ -196,7 +222,7 @@ func (r *UserRepositoryImpl) extractDisplayName(claims *auth.CognitoClaims) stri
 	return "User"
 }
 
-// detectProviderType はCognitoクレームからプロバイダータイプを判定する
+// detectProviderType はCognitoクレームからプロバイダータイプを判定する（ヘルパーメソッド維持）
 func (r *UserRepositoryImpl) detectProviderType(claims *auth.CognitoClaims) (provider string, providerID *string) {
 	// Google SSO判定の複数パターン
 
@@ -245,12 +271,12 @@ func (r *UserRepositoryImpl) detectProviderType(claims *auth.CognitoClaims) (pro
 	return
 }
 
-// UpdateProfile はユーザープロフィール（名前・メール）を更新する
+// UpdateProfile はユーザープロフィール（名前・メール）を更新する（新エラーハンドリング対応版）
 func (r *UserRepositoryImpl) UpdateProfile(ctx context.Context, id uuid.UUID, name, email string) (*model.User, error) {
 	// 現在のユーザー情報を取得
 	user, err := r.GetByID(ctx, id)
 	if err != nil {
-		return nil, err
+		return nil, err // GetByIDのInfrastructure Errorをそのまま返す
 	}
 
 	// プロフィール更新
@@ -259,13 +285,13 @@ func (r *UserRepositoryImpl) UpdateProfile(ctx context.Context, id uuid.UUID, na
 	// データベース更新
 	err = r.Update(ctx, user)
 	if err != nil {
-		return nil, err
+		return nil, err // UpdateのInfrastructure Errorをそのまま返す
 	}
 
 	return user, nil
 }
 
-// ExistsByID はユーザーの存在確認を行う（軽量版）
+// ExistsByID はユーザーの存在確認を行う（軽量版）（新エラーハンドリング対応版）
 func (r *UserRepositoryImpl) ExistsByID(ctx context.Context, id uuid.UUID) (bool, error) {
 	query := `SELECT EXISTS(SELECT 1 FROM users WHERE id = $1)`
 
@@ -273,13 +299,13 @@ func (r *UserRepositoryImpl) ExistsByID(ctx context.Context, id uuid.UUID) (bool
 	err := r.db.DB.GetContext(ctx, &exists, query, id)
 	if err != nil {
 		r.logger.Errorf("ユーザー存在確認エラー: %v", err)
-		return false, err
+		return false, appErrors.NewDatabaseQueryError(err)
 	}
 
 	return exists, nil
 }
 
-// GetUsersByProvider はプロバイダー別にユーザーを取得する（管理用）
+// GetUsersByProvider はプロバイダー別にユーザーを取得する（管理用）（新エラーハンドリング対応版）
 func (r *UserRepositoryImpl) GetUsersByProvider(ctx context.Context, provider string, limit, offset int) ([]*model.User, error) {
 	query := `
 		SELECT id, name, email, provider, provider_id, created_at, updated_at
@@ -293,7 +319,7 @@ func (r *UserRepositoryImpl) GetUsersByProvider(ctx context.Context, provider st
 	err := r.db.DB.SelectContext(ctx, &users, query, provider, limit, offset)
 	if err != nil {
 		r.logger.Errorf("プロバイダー別ユーザー取得エラー: %v", err)
-		return nil, err
+		return nil, appErrors.NewDatabaseQueryError(err)
 	}
 
 	return users, nil

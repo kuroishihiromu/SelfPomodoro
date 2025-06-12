@@ -2,17 +2,17 @@ package postgres
 
 import (
 	"context"
-	"fmt"
 	"time"
 
 	"github.com/google/uuid"
 	"github.com/tsunakit99/selfpomodoro/internal/domain/model"
 	"github.com/tsunakit99/selfpomodoro/internal/domain/repository"
+	appErrors "github.com/tsunakit99/selfpomodoro/internal/errors"
 	"github.com/tsunakit99/selfpomodoro/internal/infrastructure/database"
 	"github.com/tsunakit99/selfpomodoro/internal/infrastructure/logger"
 )
 
-// StatisticsRepositoryImpl はStatisticsRepositoryインターフェースの実装
+// StatisticsRepositoryImpl はStatisticsRepositoryインターフェースの実装（新エラーハンドリング対応版）
 type StatisticsRepositoryImpl struct {
 	db     *database.PostgresDB
 	logger logger.Logger
@@ -26,7 +26,7 @@ func NewStatisticsRepository(db *database.PostgresDB, logger logger.Logger) repo
 	}
 }
 
-// GetFocusTrend は指定期間内の日別集中度統計を取得する
+// GetFocusTrend は指定期間内の日別集中度統計を取得する（新エラーハンドリング対応版）
 func (r *StatisticsRepositoryImpl) GetFocusTrend(ctx context.Context, userID uuid.UUID, period *model.StatisticsPeriod) ([]*model.FocusTrendItem, error) {
 	query := `
 		SELECT
@@ -56,7 +56,7 @@ func (r *StatisticsRepositoryImpl) GetFocusTrend(ctx context.Context, userID uui
 	err := r.db.DB.SelectContext(ctx, &results, query, userID, period.StartDate, period.EndDate)
 	if err != nil {
 		r.logger.Errorf("集中度トレンド取得エラー: %v", err)
-		return nil, fmt.Errorf("集中度トレンド取得エラー: %w", err)
+		return nil, appErrors.NewDatabaseQueryError(err) // Infrastructure Error
 	}
 
 	// 結果をモデルに変換
@@ -71,10 +71,13 @@ func (r *StatisticsRepositoryImpl) GetFocusTrend(ctx context.Context, userID uui
 	// データがない日付を補完
 	trendItems = r.fillMissingDates(trendItems, period)
 
+	r.logger.Infof("集中度トレンド取得成功: period=%s～%s, items=%d",
+		period.StartDate.Format("2006-01-02"), period.EndDate.Format("2006-01-02"), len(trendItems))
+
 	return trendItems, nil
 }
 
-// GetFocusHeatmap は指定期間内の時間帯別集中度統計を取得する
+// GetFocusHeatmap は指定期間内の時間帯別集中度統計を取得する（新エラーハンドリング対応版）
 func (r *StatisticsRepositoryImpl) GetFocusHeatmap(ctx context.Context, userID uuid.UUID, period *model.StatisticsPeriod) ([]*model.FocusHeatmapItem, error) {
 	query := `
 		SELECT
@@ -106,7 +109,7 @@ func (r *StatisticsRepositoryImpl) GetFocusHeatmap(ctx context.Context, userID u
 	err := r.db.DB.SelectContext(ctx, &results, query, userID, period.StartDate, period.EndDate)
 	if err != nil {
 		r.logger.Errorf("集中度ヒートマップ取得エラー: %v", err)
-		return nil, fmt.Errorf("集中度ヒートマップ取得エラー: %w", err)
+		return nil, appErrors.NewDatabaseQueryError(err) // Infrastructure Error
 	}
 
 	// 結果をモデルに変換
@@ -119,10 +122,13 @@ func (r *StatisticsRepositoryImpl) GetFocusHeatmap(ctx context.Context, userID u
 		}
 	}
 
+	r.logger.Infof("集中度ヒートマップ取得成功: period=%s～%s, items=%d",
+		period.StartDate.Format("2006-01-02"), period.EndDate.Format("2006-01-02"), len(heatmapItems))
+
 	return heatmapItems, nil
 }
 
-// GetAvgFocusScoreByDate は指定日の平均集中度を取得する
+// GetAvgFocusScoreByDate は指定日の平均集中度を取得する（新エラーハンドリング対応版）
 func (r *StatisticsRepositoryImpl) GetAvgFocusScoreByDate(ctx context.Context, userID uuid.UUID, date time.Time) (float64, error) {
 	// 日付の範囲を設定
 	startOfDay := time.Date(date.Year(), date.Month(), date.Day(), 0, 0, 0, 0, date.Location())
@@ -142,16 +148,20 @@ func (r *StatisticsRepositoryImpl) GetAvgFocusScoreByDate(ctx context.Context, u
 			AND r.is_aborted = FALSE
 	`
 
-	var AvgFocusScore float64
-	err := r.db.DB.GetContext(ctx, &AvgFocusScore, query, userID, startOfDay, endOfDay)
+	var avgFocusScore float64
+	err := r.db.DB.GetContext(ctx, &avgFocusScore, query, userID, startOfDay, endOfDay)
 	if err != nil {
 		r.logger.Errorf("指定日の平均集中度取得エラー: %v", err)
-		return 0, fmt.Errorf("指定日の平均集中度取得エラー: %w", err)
+		return 0, appErrors.NewDatabaseQueryError(err) // Infrastructure Error
 	}
-	return AvgFocusScore, nil
+
+	r.logger.Debugf("指定日の平均集中度取得成功: date=%s, avgFocus=%.1f",
+		date.Format("2006-01-02"), avgFocusScore)
+
+	return avgFocusScore, nil
 }
 
-// GetAvgFocusScoreByHour は指定日時の平均集中度を取得する
+// GetAvgFocusScoreByHour は指定日時の平均集中度を取得する（新エラーハンドリング対応版）
 func (r *StatisticsRepositoryImpl) GetAvgFocusScoreByHour(ctx context.Context, userID uuid.UUID, date time.Time, hour int) (float64, error) {
 	// 指定時間の範囲を設定
 	startOfHour := time.Date(date.Year(), date.Month(), date.Day(), hour, 0, 0, 0, date.Location())
@@ -171,16 +181,20 @@ func (r *StatisticsRepositoryImpl) GetAvgFocusScoreByHour(ctx context.Context, u
 			AND r.is_aborted = FALSE
 	`
 
-	var AvgFocusScore float64
-	err := r.db.DB.GetContext(ctx, &AvgFocusScore, query, userID, startOfHour, endOfHour)
+	var avgFocusScore float64
+	err := r.db.DB.GetContext(ctx, &avgFocusScore, query, userID, startOfHour, endOfHour)
 	if err != nil {
 		r.logger.Errorf("指定日時の平均集中度取得エラー: %v", err)
-		return 0, fmt.Errorf("指定日時の平均集中度取得エラー: %w", err)
+		return 0, appErrors.NewDatabaseQueryError(err) // Infrastructure Error
 	}
-	return AvgFocusScore, nil
+
+	r.logger.Debugf("指定日時の平均集中度取得成功: date=%s %02d:00, avgFocus=%.1f",
+		date.Format("2006-01-02"), hour, avgFocusScore)
+
+	return avgFocusScore, nil
 }
 
-// fillMissingDates は指定された期間内の日付を補完する(0値)
+// fillMissingDates は指定された期間内の日付を補完する(0値)（ヘルパーメソッド）
 func (r *StatisticsRepositoryImpl) fillMissingDates(items []*model.FocusTrendItem, period *model.StatisticsPeriod) []*model.FocusTrendItem {
 	// 既存データの日付をマップに格納
 	dateMap := make(map[string]bool)
@@ -213,9 +227,9 @@ func (r *StatisticsRepositoryImpl) fillMissingDates(items []*model.FocusTrendIte
 	return result
 }
 
-// sortByDate は日付でソートする
+// sortByDate は日付でソート（ヘルパーメソッド）
 func (r *StatisticsRepositoryImpl) sortByDate(items []*model.FocusTrendItem) []*model.FocusTrendItem {
-	// ソート
+	// バブルソート（シンプルな実装）
 	n := len(items)
 	for i := 0; i < n-1; i++ {
 		for j := 0; j < n-i-1; j++ {

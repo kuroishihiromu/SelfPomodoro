@@ -14,11 +14,11 @@ import (
 	"github.com/tsunakit99/selfpomodoro/internal/config"
 	"github.com/tsunakit99/selfpomodoro/internal/domain/model"
 	"github.com/tsunakit99/selfpomodoro/internal/domain/repository"
+	appErrors "github.com/tsunakit99/selfpomodoro/internal/errors"
 	"github.com/tsunakit99/selfpomodoro/internal/infrastructure/logger"
-	dynamodberrors "github.com/tsunakit99/selfpomodoro/internal/infrastructure/repository/dynamodb/errors"
 )
 
-// UserConfigRepositoryImpl はDynamoDBを使用したUserConfigRepositoryの実装
+// UserConfigRepositoryImpl はDynamoDBを使用したUserConfigRepositoryの実装（新エラーハンドリング対応版）
 type UserConfigRepositoryImpl struct {
 	client    *dynamodb.Client
 	tableName string
@@ -34,7 +34,7 @@ func NewUserConfigRepository(client *dynamodb.Client, cfg *config.Config, logger
 	}
 }
 
-// GetUserConfig はユーザーIDからユーザー設定を取得する（手動マッピング）
+// GetUserConfig はユーザーIDからユーザー設定を取得する（新エラーハンドリング対応版）
 func (r *UserConfigRepositoryImpl) GetUserConfig(ctx context.Context, userID uuid.UUID) (*model.UserConfig, error) {
 	input := &dynamodb.GetItemInput{
 		TableName: aws.String(r.tableName),
@@ -46,11 +46,12 @@ func (r *UserConfigRepositoryImpl) GetUserConfig(ctx context.Context, userID uui
 	result, err := r.client.GetItem(ctx, input)
 	if err != nil {
 		r.logger.Errorf("DynamoDB GetItem エラー: %v", err)
-		return nil, fmt.Errorf("ユーザー設定取得エラー: %w", err)
+		return nil, appErrors.NewDynamoDBOperationError("get_user_config", err)
 	}
 
 	if result.Item == nil {
-		return nil, dynamodberrors.ErrUserConfigNotFound
+		r.logger.Debugf("ユーザー設定が見つかりません: %s", userID.String())
+		return nil, appErrors.ErrDynamoDBItemNotFound // Infrastructure Error
 	}
 
 	// 手動でDynamoDBアイテムから構造体に変換
@@ -123,7 +124,7 @@ func (r *UserConfigRepositoryImpl) GetUserConfig(ctx context.Context, userID uui
 	return config, nil
 }
 
-// CreateUserConfig は新しいユーザー設定を作成する（手動マッピング）
+// CreateUserConfig は新しいユーザー設定を作成する（新エラーハンドリング対応版）
 func (r *UserConfigRepositoryImpl) CreateUserConfig(ctx context.Context, config *model.UserConfig) error {
 	r.logger.Infof("CreateUserConfig 入力データ: UserID=%s, WorkTime=%d, BreakTime=%d",
 		config.UserID, config.RoundWorkTime, config.RoundBreakTime)
@@ -149,19 +150,23 @@ func (r *UserConfigRepositoryImpl) CreateUserConfig(ctx context.Context, config 
 
 	_, err := r.client.PutItem(ctx, input)
 	if err != nil {
+		// DynamoDB固有のエラーハンドリング
 		var conditionalCheckFailedException *types.ConditionalCheckFailedException
 		if errors.As(err, &conditionalCheckFailedException) {
-			return fmt.Errorf("ユーザー設定は既に存在します")
+			r.logger.Errorf("ユーザー設定作成条件チェック失敗（既存）: %v", err)
+			return appErrors.NewDynamoDBConditionError(err)
 		}
+
+		// その他のDynamoDBエラー
 		r.logger.Errorf("DynamoDB PutItem エラー: %v", err)
-		return fmt.Errorf("%w: %v", dynamodberrors.ErrUserConfigCreateFailed, err)
+		return appErrors.NewDynamoDBOperationError("create_user_config", err)
 	}
 
 	r.logger.Infof("ユーザー設定作成成功: %s", config.UserID)
 	return nil
 }
 
-// UpdateUserConfig はユーザー設定を更新する（手動マッピング）
+// UpdateUserConfig はユーザー設定を更新する（新エラーハンドリング対応版）
 func (r *UserConfigRepositoryImpl) UpdateUserConfig(ctx context.Context, config *model.UserConfig) error {
 	// 更新時刻を設定
 	config.UpdatedAt = time.Now()
@@ -186,19 +191,23 @@ func (r *UserConfigRepositoryImpl) UpdateUserConfig(ctx context.Context, config 
 
 	_, err := r.client.PutItem(ctx, input)
 	if err != nil {
+		// DynamoDB固有のエラーハンドリング
 		var conditionalCheckFailedException *types.ConditionalCheckFailedException
 		if errors.As(err, &conditionalCheckFailedException) {
-			return fmt.Errorf("ユーザー設定が存在しません")
+			r.logger.Errorf("ユーザー設定更新条件チェック失敗（存在しない）: %v", err)
+			return appErrors.ErrDynamoDBItemNotFound // Infrastructure Error（存在しない）
 		}
+
+		// その他のDynamoDBエラー
 		r.logger.Errorf("DynamoDB PutItem エラー: %v", err)
-		return fmt.Errorf("%w: %v", dynamodberrors.ErrUserConfigUpdateFailed, err)
+		return appErrors.NewDynamoDBOperationError("update_user_config", err)
 	}
 
 	r.logger.Infof("ユーザー設定更新成功: %s", config.UserID)
 	return nil
 }
 
-// DeleteUserConfig はユーザー設定を削除する
+// DeleteUserConfig はユーザー設定を削除する（新エラーハンドリング対応版）
 func (r *UserConfigRepositoryImpl) DeleteUserConfig(ctx context.Context, userID uuid.UUID) error {
 	input := &dynamodb.DeleteItemInput{
 		TableName: aws.String(r.tableName),
@@ -211,12 +220,16 @@ func (r *UserConfigRepositoryImpl) DeleteUserConfig(ctx context.Context, userID 
 
 	_, err := r.client.DeleteItem(ctx, input)
 	if err != nil {
+		// DynamoDB固有のエラーハンドリング
 		var conditionalCheckFailedException *types.ConditionalCheckFailedException
 		if errors.As(err, &conditionalCheckFailedException) {
-			return dynamodberrors.ErrUserConfigNotFound
+			r.logger.Errorf("ユーザー設定削除条件チェック失敗（存在しない）: %v", err)
+			return appErrors.ErrDynamoDBItemNotFound // Infrastructure Error（存在しない）
 		}
+
+		// その他のDynamoDBエラー
 		r.logger.Errorf("DynamoDB DeleteItem エラー: %v", err)
-		return fmt.Errorf("%w: %v", dynamodberrors.ErrUserConfigDeleteFailed, err)
+		return appErrors.NewDynamoDBOperationError("delete_user_config", err)
 	}
 
 	r.logger.Infof("ユーザー設定削除成功: %s", userID.String())

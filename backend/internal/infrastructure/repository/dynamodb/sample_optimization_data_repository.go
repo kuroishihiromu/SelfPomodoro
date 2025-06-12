@@ -3,6 +3,7 @@ package dynamodb
 import (
 	"context"
 	"fmt"
+	"strings"
 	"time"
 
 	"github.com/aws/aws-sdk-go-v2/service/dynamodb"
@@ -11,10 +12,11 @@ import (
 	"github.com/tsunakit99/selfpomodoro/internal/config"
 	"github.com/tsunakit99/selfpomodoro/internal/domain/model"
 	"github.com/tsunakit99/selfpomodoro/internal/domain/repository"
+	appErrors "github.com/tsunakit99/selfpomodoro/internal/errors"
 	"github.com/tsunakit99/selfpomodoro/internal/infrastructure/logger"
 )
 
-// SampleOptimizationDataRepositoryImpl はDynamoDBを使用したSampleOptimizationDataRepositoryの実装
+// SampleOptimizationDataRepositoryImpl はDynamoDBを使用したSampleOptimizationDataRepositoryの実装（新エラーハンドリング対応版）
 type SampleOptimizationDataRepositoryImpl struct {
 	client                   *dynamodb.Client
 	roundOptimizationTable   string
@@ -22,7 +24,7 @@ type SampleOptimizationDataRepositoryImpl struct {
 	logger                   logger.Logger
 }
 
-// 固定サンプルデータ定義
+// 固定サンプルデータ定義（変更なし）
 var (
 	// 10日間のサンプルパターン（日数, セッション数, 基準集中度）
 	sampleDayPatterns = []struct {
@@ -67,7 +69,7 @@ func NewSampleOptimizationDataRepository(client *dynamodb.Client, cfg *config.Co
 	}
 }
 
-// CreateSampleOptimizationData はサンプル最適化データを作成する（固定パターン）
+// CreateSampleOptimizationData はサンプル最適化データを作成する（新エラーハンドリング対応版）
 func (r *SampleOptimizationDataRepositoryImpl) CreateSampleOptimizationData(ctx context.Context, userID uuid.UUID) error {
 	r.logger.Infof("サンプル最適化データ作成開始: UserID=%s", userID.String()[:8]+"...")
 
@@ -75,15 +77,15 @@ func (r *SampleOptimizationDataRepositoryImpl) CreateSampleOptimizationData(ctx 
 	roundLogs, sessionLogs := r.generateSampleData(userID)
 
 	// ラウンド最適化ログを一括作成
-	err := r.CreateRoundOptimizationLogs(ctx, roundLogs)
-	if err != nil {
-		return fmt.Errorf("ラウンド最適化ログ作成失敗: %w", err)
+	if err := r.CreateRoundOptimizationLogs(ctx, roundLogs); err != nil {
+		r.logger.Errorf("ラウンド最適化ログ作成失敗: %v", err)
+		return appErrors.NewDynamoDBOperationError("create_round_logs", err)
 	}
 
 	// セッション最適化ログを一括作成
-	err = r.CreateSessionOptimizationLogs(ctx, sessionLogs)
-	if err != nil {
-		return fmt.Errorf("セッション最適化ログ作成失敗: %w", err)
+	if err := r.CreateSessionOptimizationLogs(ctx, sessionLogs); err != nil {
+		r.logger.Errorf("セッション最適化ログ作成失敗: %v", err)
+		return appErrors.NewDynamoDBOperationError("create_session_logs", err)
 	}
 
 	r.logger.Infof("サンプル最適化データ作成完了: ラウンド=%d件, セッション=%d件",
@@ -91,7 +93,7 @@ func (r *SampleOptimizationDataRepositoryImpl) CreateSampleOptimizationData(ctx 
 	return nil
 }
 
-// generateSampleData は固定パターンからサンプルデータを生成する
+// generateSampleData は固定パターンからサンプルデータを生成する（変更なし）
 func (r *SampleOptimizationDataRepositoryImpl) generateSampleData(userID uuid.UUID) ([]*model.RoundOptimizationLog, []*model.SessionOptimizationLog) {
 	var roundLogs []*model.RoundOptimizationLog
 	var sessionLogs []*model.SessionOptimizationLog
@@ -127,7 +129,7 @@ func (r *SampleOptimizationDataRepositoryImpl) generateSampleData(userID uuid.UU
 	return roundLogs, sessionLogs
 }
 
-// generateSessionLog はセッション最適化ログを生成する
+// generateSessionLog はセッション最適化ログを生成する（変更なし）
 func (r *SampleOptimizationDataRepositoryImpl) generateSessionLog(userID uuid.UUID, timestamp time.Time, dayPattern struct {
 	day              int
 	sessions         int
@@ -156,7 +158,7 @@ func (r *SampleOptimizationDataRepositoryImpl) generateSessionLog(userID uuid.UU
 	)
 }
 
-// generateRoundLog はラウンド最適化ログを生成する
+// generateRoundLog はラウンド最適化ログを生成する（変更なし）
 func (r *SampleOptimizationDataRepositoryImpl) generateRoundLog(userID uuid.UUID, timestamp time.Time, dayPattern struct {
 	day              int
 	sessions         int
@@ -199,7 +201,7 @@ func (r *SampleOptimizationDataRepositoryImpl) generateRoundLog(userID uuid.UUID
 	)
 }
 
-// CreateRoundOptimizationLogs はラウンド最適化ログを一括作成する
+// CreateRoundOptimizationLogs はラウンド最適化ログを一括作成する（新エラーハンドリング対応版）
 func (r *SampleOptimizationDataRepositoryImpl) CreateRoundOptimizationLogs(ctx context.Context, logs []*model.RoundOptimizationLog) error {
 	if len(logs) == 0 {
 		return nil
@@ -216,17 +218,18 @@ func (r *SampleOptimizationDataRepositoryImpl) CreateRoundOptimizationLogs(ctx c
 		}
 
 		batch := logs[i:end]
-		err := r.batchWriteRoundLogs(ctx, batch)
-		if err != nil {
-			return fmt.Errorf("ラウンドログバッチ作成失敗: %w", err)
+		if err := r.batchWriteRoundLogs(ctx, batch); err != nil {
+			r.logger.Errorf("ラウンドログバッチ作成失敗: batch %d-%d, error: %v", i, end-1, err)
+			return appErrors.NewDynamoDBOperationError("batch_write_round_logs", err)
 		}
+		r.logger.Debugf("ラウンドログバッチ作成成功: %d-%d件", i, end-1)
 	}
 
 	r.logger.Infof("ラウンド最適化ログ一括作成完了: %d件", len(logs))
 	return nil
 }
 
-// CreateSessionOptimizationLogs はセッション最適化ログを一括作成する
+// CreateSessionOptimizationLogs はセッション最適化ログを一括作成する（新エラーハンドリング対応版）
 func (r *SampleOptimizationDataRepositoryImpl) CreateSessionOptimizationLogs(ctx context.Context, logs []*model.SessionOptimizationLog) error {
 	if len(logs) == 0 {
 		return nil
@@ -243,17 +246,18 @@ func (r *SampleOptimizationDataRepositoryImpl) CreateSessionOptimizationLogs(ctx
 		}
 
 		batch := logs[i:end]
-		err := r.batchWriteSessionLogs(ctx, batch)
-		if err != nil {
-			return fmt.Errorf("セッションログバッチ作成失敗: %w", err)
+		if err := r.batchWriteSessionLogs(ctx, batch); err != nil {
+			r.logger.Errorf("セッションログバッチ作成失敗: batch %d-%d, error: %v", i, end-1, err)
+			return appErrors.NewDynamoDBOperationError("batch_write_session_logs", err)
 		}
+		r.logger.Debugf("セッションログバッチ作成成功: %d-%d件", i, end-1)
 	}
 
 	r.logger.Infof("セッション最適化ログ一括作成完了: %d件", len(logs))
 	return nil
 }
 
-// batchWriteRoundLogs はラウンドログをバッチ書き込みする
+// batchWriteRoundLogs はラウンドログをバッチ書き込みする（新エラーハンドリング対応版）
 func (r *SampleOptimizationDataRepositoryImpl) batchWriteRoundLogs(ctx context.Context, logs []*model.RoundOptimizationLog) error {
 	var writeRequests []types.WriteRequest
 
@@ -279,10 +283,30 @@ func (r *SampleOptimizationDataRepositoryImpl) batchWriteRoundLogs(ctx context.C
 	}
 
 	_, err := r.client.BatchWriteItem(ctx, input)
-	return err
+	if err != nil {
+		// DynamoDB固有のエラー分類
+		r.logger.Errorf("DynamoDB BatchWriteItem失敗（ラウンドログ）: テーブル=%s, 件数=%d, エラー=%v",
+			r.roundOptimizationTable, len(logs), err)
+
+		// AWS SDK v2 エラーの詳細分類
+		if r.isDynamoDBThrottlingError(err) {
+			return appErrors.NewDynamoDBError("throttling", err)
+		}
+		if r.isDynamoDBTableNotFoundError(err) {
+			return appErrors.NewDynamoDBError("table_not_found", err)
+		}
+		if r.isDynamoDBAccessDeniedError(err) {
+			return appErrors.NewDynamoDBError("access_denied", err)
+		}
+
+		// その他のDynamoDBエラー
+		return appErrors.NewDynamoDBError("batch_write", err)
+	}
+
+	return nil
 }
 
-// batchWriteSessionLogs はセッションログをバッチ書き込みする
+// batchWriteSessionLogs はセッションログをバッチ書き込みする（新エラーハンドリング対応版）
 func (r *SampleOptimizationDataRepositoryImpl) batchWriteSessionLogs(ctx context.Context, logs []*model.SessionOptimizationLog) error {
 	var writeRequests []types.WriteRequest
 
@@ -309,5 +333,78 @@ func (r *SampleOptimizationDataRepositoryImpl) batchWriteSessionLogs(ctx context
 	}
 
 	_, err := r.client.BatchWriteItem(ctx, input)
-	return err
+	if err != nil {
+		// DynamoDB固有のエラー分類
+		r.logger.Errorf("DynamoDB BatchWriteItem失敗（セッションログ）: テーブル=%s, 件数=%d, エラー=%v",
+			r.sessionOptimizationTable, len(logs), err)
+
+		// AWS SDK v2 エラーの詳細分類
+		if r.isDynamoDBThrottlingError(err) {
+			return appErrors.NewDynamoDBError("throttling", err)
+		}
+		if r.isDynamoDBTableNotFoundError(err) {
+			return appErrors.NewDynamoDBError("table_not_found", err)
+		}
+		if r.isDynamoDBAccessDeniedError(err) {
+			return appErrors.NewDynamoDBError("access_denied", err)
+		}
+
+		// その他のDynamoDBエラー
+		return appErrors.NewDynamoDBError("batch_write", err)
+	}
+
+	return nil
+}
+
+// =================================
+// DynamoDB エラー分類ヘルパー関数
+// =================================
+
+// isDynamoDBThrottlingError はスロットリングエラーかどうかを判定
+func (r *SampleOptimizationDataRepositoryImpl) isDynamoDBThrottlingError(err error) bool {
+	// AWS SDK v2での実装（具体的なエラー型は要確認）
+	return err.Error() != "" &&
+		(containsString(err.Error(), "throttling") ||
+			containsString(err.Error(), "ProvisionedThroughputExceededException") ||
+			containsString(err.Error(), "RequestLimitExceeded"))
+}
+
+// isDynamoDBTableNotFoundError はテーブルが存在しないエラーかどうかを判定
+func (r *SampleOptimizationDataRepositoryImpl) isDynamoDBTableNotFoundError(err error) bool {
+	return err.Error() != "" &&
+		(containsString(err.Error(), "ResourceNotFoundException") ||
+			containsString(err.Error(), "table not found") ||
+			containsString(err.Error(), "Requested resource not found"))
+}
+
+// isDynamoDBAccessDeniedError はアクセス権限エラーかどうかを判定
+func (r *SampleOptimizationDataRepositoryImpl) isDynamoDBAccessDeniedError(err error) bool {
+	return err.Error() != "" &&
+		(containsString(err.Error(), "AccessDeniedException") ||
+			containsString(err.Error(), "access denied") ||
+			containsString(err.Error(), "User is not authorized"))
+}
+
+// containsString は文字列に指定された部分文字列が含まれているかを大小文字区別なしで判定
+func containsString(s, substr string) bool {
+	return len(s) >= len(substr) &&
+		len(substr) > 0 &&
+		indexOfString(strings.ToLower(s), strings.ToLower(substr)) >= 0
+}
+
+// indexOfString は部分文字列のインデックスを返す（見つからない場合は-1）
+func indexOfString(s, substr string) int {
+	if len(substr) == 0 {
+		return 0
+	}
+	if len(substr) > len(s) {
+		return -1
+	}
+
+	for i := 0; i <= len(s)-len(substr); i++ {
+		if s[i:i+len(substr)] == substr {
+			return i
+		}
+	}
+	return -1
 }
