@@ -3,26 +3,18 @@ package postgres
 import (
 	"context"
 	"database/sql"
-	"errors"
-	"fmt"
 	"time"
 
 	"github.com/google/uuid"
+	"github.com/lib/pq"
 	"github.com/tsunakit99/selfpomodoro/internal/domain/model"
 	"github.com/tsunakit99/selfpomodoro/internal/domain/repository"
+	appErrors "github.com/tsunakit99/selfpomodoro/internal/errors"
 	"github.com/tsunakit99/selfpomodoro/internal/infrastructure/database"
 	"github.com/tsunakit99/selfpomodoro/internal/infrastructure/logger"
 )
 
-// ラウンドリポジトリに関するエラー
-var (
-	ErrRoundNotFound       = errors.New("ラウンドが見つかりません")
-	ErrRoundCreationFailed = errors.New("ラウンドの作成に失敗しました")
-	ErrRoundUpdateFailed   = errors.New("ラウンドの更新に失敗しました")
-	ErrNoRoundsInSession   = errors.New("セッションにラウンドが存在しません")
-)
-
-// RoundRepositoryImpl はRoundRepositoryインターフェースの実装部分
+// RoundRepositoryImpl はRoundRepositoryインターフェースの実装（新エラーハンドリング対応版）
 type RoundRepositoryImpl struct {
 	db     *database.PostgresDB
 	logger logger.Logger
@@ -36,7 +28,7 @@ func NewRoundRepository(db *database.PostgresDB, logger logger.Logger) repositor
 	}
 }
 
-// Create は新しいラウンドを作成する
+// Create は新しいラウンドを作成する（新エラーハンドリング対応版）
 func (r *RoundRepositoryImpl) Create(ctx context.Context, round *model.Round) error {
 	query := `
 		INSERT INTO rounds (id, session_id, round_order, start_time, created_at, updated_at)
@@ -53,14 +45,24 @@ func (r *RoundRepositoryImpl) Create(ctx context.Context, round *model.Round) er
 	)
 
 	if err != nil {
+		// PostgreSQL固有のエラーハンドリング
+		if pqErr, ok := err.(*pq.Error); ok {
+			switch pqErr.Code {
+			case "23505": // unique_violation
+				r.logger.Errorf("ラウンド作成一意制約違反: %v", err)
+				return appErrors.NewUniqueConstraintError(err)
+			case "23503": // foreign_key_violation
+				r.logger.Errorf("ラウンド作成外部キー制約違反: %v", err)
+				return appErrors.NewDatabaseError("create_round_fk", err)
+			}
+		}
 		r.logger.Errorf("ラウンド作成エラー: %v", err)
-		return fmt.Errorf("%w: %v", ErrRoundCreationFailed, err)
+		return appErrors.NewDatabaseError("create_round", err)
 	}
 	return nil
 }
 
-// GetByID は指定されたIDのラウンドを取得する
-// GetByID はIDによってラウンドを取得するメソッド
+// GetByID は指定されたIDのラウンドを取得する（新エラーハンドリング対応版）
 func (r *RoundRepositoryImpl) GetByID(ctx context.Context, id uuid.UUID) (*model.Round, error) {
 	query := `
 		SELECT id, session_id, round_order, start_time, end_time, work_time, break_time, focus_score, is_aborted, created_at, updated_at
@@ -72,16 +74,17 @@ func (r *RoundRepositoryImpl) GetByID(ctx context.Context, id uuid.UUID) (*model
 	err := r.db.DB.GetContext(ctx, &round, query, id)
 	if err != nil {
 		if err == sql.ErrNoRows {
-			return nil, ErrRoundNotFound
+			r.logger.Debugf("ラウンドが見つかりません: %s", id.String())
+			return nil, appErrors.ErrRecordNotFound // Infrastructure Error
 		}
 		r.logger.Errorf("ラウンド取得エラー: %v", err)
-		return nil, err
+		return nil, appErrors.NewDatabaseQueryError(err)
 	}
 
 	return &round, nil
 }
 
-// GetAllBySessionID はセッションIDに紐づくすべてのラウンドを取得するメソッド
+// GetAllBySessionID はセッションIDに紐づくすべてのラウンドを取得する（新エラーハンドリング対応版）
 func (r *RoundRepositoryImpl) GetAllBySessionID(ctx context.Context, sessionID uuid.UUID) ([]*model.Round, error) {
 	query := `
 		SELECT id, session_id, round_order, start_time, end_time, work_time, break_time, focus_score, is_aborted, created_at, updated_at
@@ -94,12 +97,12 @@ func (r *RoundRepositoryImpl) GetAllBySessionID(ctx context.Context, sessionID u
 	err := r.db.DB.SelectContext(ctx, &rounds, query, sessionID)
 	if err != nil {
 		r.logger.Errorf("ラウンド一覧取得エラー: %v", err)
-		return nil, err
+		return nil, appErrors.NewDatabaseQueryError(err)
 	}
 	return rounds, nil
 }
 
-// GetLastRoundBySessionID はセッションの最後のラウンドを取得するメソッド
+// GetLastRoundBySessionID はセッションの最後のラウンドを取得する（新エラーハンドリング対応版）
 func (r *RoundRepositoryImpl) GetLastRoundBySessionID(ctx context.Context, sessionID uuid.UUID) (*model.Round, error) {
 	query := `
 		SELECT id, session_id, round_order, start_time, end_time, work_time, break_time, focus_score, is_aborted, created_at, updated_at
@@ -113,21 +116,28 @@ func (r *RoundRepositoryImpl) GetLastRoundBySessionID(ctx context.Context, sessi
 	err := r.db.DB.GetContext(ctx, &round, query, sessionID)
 	if err != nil {
 		if err == sql.ErrNoRows {
-			return nil, ErrNoRoundsInSession
+			r.logger.Debugf("セッションにラウンドが見つかりません: %s", sessionID.String())
+			return nil, appErrors.ErrRecordNotFound // Infrastructure Error（NoRoundsInSession）
 		}
 		r.logger.Errorf("最終ラウンド取得エラー: %v", err)
-		return nil, err
+		return nil, appErrors.NewDatabaseQueryError(err)
 	}
 
 	return &round, nil
 }
 
-// Complete はラウンドを完了するメソッド
+// Complete はラウンドを完了する（新エラーハンドリング対応版）
 func (r *RoundRepositoryImpl) Complete(ctx context.Context, id uuid.UUID, focusScore *int, workTime, breakTime int) error {
 	// ラウンドが存在するか確認
-	_, err := r.GetByID(ctx, id)
+	round, err := r.GetByID(ctx, id)
 	if err != nil {
-		return err // GetByIDのエラーをそのまま返す
+		return err // GetByIDのInfrastructure Errorをそのまま返す
+	}
+
+	// ラウンドが既に完了しているかチェック
+	if round.IsCompleted() {
+		r.logger.Warnf("ラウンドは既に完了しています: %s", id.String())
+		return appErrors.ErrRecordNotFound // ビジネス的には409だが、Infrastructure層では404として扱う
 	}
 
 	query := `
@@ -136,7 +146,7 @@ func (r *RoundRepositoryImpl) Complete(ctx context.Context, id uuid.UUID, focusS
 		WHERE id = $6
 	`
 
-	_, err = r.db.DB.ExecContext(ctx, query,
+	result, err := r.db.DB.ExecContext(ctx, query,
 		time.Now(),
 		focusScore,
 		workTime,
@@ -146,17 +156,36 @@ func (r *RoundRepositoryImpl) Complete(ctx context.Context, id uuid.UUID, focusS
 	)
 	if err != nil {
 		r.logger.Errorf("ラウンド完了エラー: %v", err)
-		return fmt.Errorf("%w: %v", ErrRoundUpdateFailed, err)
+		return appErrors.NewDatabaseError("complete_round", err)
 	}
+
+	// 更新された行数の確認
+	rowsAffected, err := result.RowsAffected()
+	if err != nil {
+		r.logger.Errorf("ラウンド完了結果確認エラー: %v", err)
+		return appErrors.NewDatabaseError("complete_round_check", err)
+	}
+
+	if rowsAffected == 0 {
+		r.logger.Warnf("ラウンド完了対象なし: %s", id.String())
+		return appErrors.ErrRecordNotFound
+	}
+
 	return nil
 }
 
-// AbortRound はラウンドを中止としてマークするメソッド
+// AbortRound はラウンドを中止する（新エラーハンドリング対応版）
 func (r *RoundRepositoryImpl) AbortRound(ctx context.Context, id uuid.UUID) error {
 	// ラウンドが存在するか確認
-	_, err := r.GetByID(ctx, id)
+	round, err := r.GetByID(ctx, id)
 	if err != nil {
-		return err // GetByIDのエラーをそのまま返す
+		return err // GetByIDのInfrastructure Errorをそのまま返す
+	}
+
+	// ラウンドが既に終了しているかチェック
+	if round.IsCompleted() || round.IsAbortedRound() {
+		r.logger.Warnf("ラウンドは既に終了しています: %s", id.String())
+		return appErrors.ErrRecordNotFound // ビジネス的には409だが、Infrastructure層では404として扱う
 	}
 
 	query := `
@@ -165,21 +194,34 @@ func (r *RoundRepositoryImpl) AbortRound(ctx context.Context, id uuid.UUID) erro
 		WHERE id = $3
 	`
 
-	_, err = r.db.DB.ExecContext(ctx, query,
+	result, err := r.db.DB.ExecContext(ctx, query,
 		time.Now(),
 		time.Now(),
 		id,
 	)
 	if err != nil {
-		r.logger.Errorf("ラウンドスキップエラー: %v", err)
-		return fmt.Errorf("%w: %v", ErrRoundUpdateFailed, err)
+		r.logger.Errorf("ラウンド中止エラー: %v", err)
+		return appErrors.NewDatabaseError("abort_round", err)
 	}
+
+	// 更新された行数の確認
+	rowsAffected, err := result.RowsAffected()
+	if err != nil {
+		r.logger.Errorf("ラウンド中止結果確認エラー: %v", err)
+		return appErrors.NewDatabaseError("abort_round_check", err)
+	}
+
+	if rowsAffected == 0 {
+		r.logger.Warnf("ラウンド中止対象なし: %s", id.String())
+		return appErrors.ErrRecordNotFound
+	}
+
 	return nil
 }
 
-// CalculateSessionStats はセッションIDに基づいてラウンドの統計情報を計算するメソッド
+// CalculateSessionStats はセッションIDに基づいてラウンドの統計情報を計算する（新エラーハンドリング対応版）
 func (r *RoundRepositoryImpl) CalculateSessionStats(ctx context.Context, sessionID uuid.UUID) (float64, int, int, int, error) {
-	// セッションに属するすべての完了済み（スキップされていない）ラウンドを取得
+	// セッションに属するすべての完了済み（中止されていない）ラウンドを取得
 	query := `
 		SELECT id, session_id, round_order, start_time, end_time, work_time, break_time, focus_score, is_aborted, created_at, updated_at
 		FROM rounds
@@ -191,7 +233,7 @@ func (r *RoundRepositoryImpl) CalculateSessionStats(ctx context.Context, session
 	err := r.db.DB.SelectContext(ctx, &rounds, query, sessionID)
 	if err != nil {
 		r.logger.Errorf("ラウンド統計情報取得エラー: %v", err)
-		return 0, 0, 0, 0, err
+		return 0, 0, 0, 0, appErrors.NewDatabaseQueryError(err)
 	}
 
 	// ラウンドが無い場合

@@ -3,27 +3,18 @@ package postgres
 import (
 	"context"
 	"database/sql"
-	"errors"
-	"fmt"
 	"time"
 
 	"github.com/google/uuid"
+	"github.com/lib/pq"
 	"github.com/tsunakit99/selfpomodoro/internal/domain/model"
 	"github.com/tsunakit99/selfpomodoro/internal/domain/repository"
+	appErrors "github.com/tsunakit99/selfpomodoro/internal/errors"
 	"github.com/tsunakit99/selfpomodoro/internal/infrastructure/database"
 	"github.com/tsunakit99/selfpomodoro/internal/infrastructure/logger"
 )
 
-// タスクリポジトリに関するエラー
-var (
-	ErrTaskNotFound       = errors.New("タスクが見つかりません")
-	ErrTaskAccessDenied   = errors.New("このタスクへのアクセス権限がありません")
-	ErrTaskCreationFailed = errors.New("タスクの作成に失敗しました")
-	ErrTaskUpdateFailed   = errors.New("タスクの更新に失敗しました")
-	ErrTaskDeleteFailed   = errors.New("タスクの削除に失敗しました")
-)
-
-// TaskRepositoryImpl はTaskRepositoryインターフェースのの実際の実装部分
+// TaskRepositoryImpl はTaskRepositoryインターフェースの実際の実装部分
 type TaskRepositoryImpl struct {
 	db     *database.PostgresDB
 	logger logger.Logger
@@ -54,8 +45,19 @@ func (r *TaskRepositoryImpl) Create(ctx context.Context, task *model.Task) error
 	)
 
 	if err != nil {
+		// PostgreSQL固有のエラーハンドリング
+		if pqErr, ok := err.(*pq.Error); ok {
+			switch pqErr.Code {
+			case "23505": // unique_violation
+				r.logger.Errorf("タスク作成一意制約違反: %v", err)
+				return appErrors.NewUniqueConstraintError(err)
+			case "23503": // foreign_key_violation
+				r.logger.Errorf("タスク作成外部キー制約違反: %v", err)
+				return appErrors.NewDatabaseError("create_task_fk", err)
+			}
+		}
 		r.logger.Errorf("タスク作成エラー: %v", err)
-		return fmt.Errorf("%w: %v", ErrTaskCreationFailed, err)
+		return appErrors.NewDatabaseError("create_task", err)
 	}
 	return nil
 }
@@ -72,16 +74,20 @@ func (r *TaskRepositoryImpl) GetByID(ctx context.Context, id, userID uuid.UUID) 
 	err := r.db.DB.GetContext(ctx, &task, query, id)
 	if err != nil {
 		if err == sql.ErrNoRows {
-			return nil, ErrTaskNotFound
+			r.logger.Debugf("タスクが見つかりません: %s", id.String())
+			return nil, appErrors.ErrRecordNotFound // Infrastructure Error
 		}
 		r.logger.Errorf("タスク取得エラー: %v", err)
-		return nil, err
+		return nil, appErrors.NewDatabaseQueryError(err)
 	}
 
-	// ユーザーIDの確認
+	// ユーザーIDの確認（アクセス権限チェック）
 	if task.UserID != userID {
-		return nil, ErrTaskAccessDenied
+		r.logger.Warnf("タスクアクセス権限エラー: TaskID=%s, RequestUserID=%s, OwnerUserID=%s",
+			id.String(), userID.String(), task.UserID.String())
+		return nil, appErrors.ErrRecordNotFound // アクセス権限エラーも404として扱う
 	}
+
 	return &task, nil
 }
 
@@ -91,13 +97,14 @@ func (r *TaskRepositoryImpl) GetAllByUserID(ctx context.Context, userID uuid.UUI
 		SELECT id, user_id, detail, is_completed, created_at, updated_at
 		FROM tasks
 		WHERE user_id = $1
+		ORDER BY created_at DESC
 	`
 
 	var tasks []*model.Task
 	err := r.db.DB.SelectContext(ctx, &tasks, query, userID)
 	if err != nil {
 		r.logger.Errorf("タスク一覧取得エラー: %v", err)
-		return nil, err
+		return nil, appErrors.NewDatabaseQueryError(err)
 	}
 	return tasks, nil
 }
@@ -107,7 +114,7 @@ func (r *TaskRepositoryImpl) Update(ctx context.Context, task *model.Task) error
 	// 最初にタスクの所有者を確認
 	_, err := r.GetByID(ctx, task.ID, task.UserID)
 	if err != nil {
-		return err // GetByIDのエラーをそのまま返す
+		return err // GetByIDのInfrastructure Errorをそのまま返す
 	}
 
 	query := `
@@ -116,15 +123,28 @@ func (r *TaskRepositoryImpl) Update(ctx context.Context, task *model.Task) error
 		WHERE id = $3
 	`
 
-	_, err = r.db.DB.ExecContext(ctx, query,
+	result, err := r.db.DB.ExecContext(ctx, query,
 		task.Detail,
 		time.Now(),
 		task.ID,
 	)
 	if err != nil {
 		r.logger.Errorf("タスク更新エラー: %v", err)
-		return fmt.Errorf("%w: %v", ErrTaskUpdateFailed, err)
+		return appErrors.NewDatabaseError("update_task", err)
 	}
+
+	// 更新された行数の確認
+	rowsAffected, err := result.RowsAffected()
+	if err != nil {
+		r.logger.Errorf("タスク更新結果確認エラー: %v", err)
+		return appErrors.NewDatabaseError("update_task_check", err)
+	}
+
+	if rowsAffected == 0 {
+		r.logger.Warnf("タスク更新対象なし: %s", task.ID.String())
+		return appErrors.ErrRecordNotFound
+	}
+
 	return nil
 }
 
@@ -133,7 +153,7 @@ func (r *TaskRepositoryImpl) ToggleCompletion(ctx context.Context, id, userID uu
 	// 最初にタスクの所有者を確認
 	_, err := r.GetByID(ctx, id, userID)
 	if err != nil {
-		return err // GetByIDのエラーをそのまま返す
+		return err // GetByIDのInfrastructure Errorをそのまま返す
 	}
 
 	query := `
@@ -142,14 +162,27 @@ func (r *TaskRepositoryImpl) ToggleCompletion(ctx context.Context, id, userID uu
 		WHERE id = $2
 	`
 
-	_, err = r.db.DB.ExecContext(ctx, query,
+	result, err := r.db.DB.ExecContext(ctx, query,
 		time.Now(),
 		id,
 	)
 	if err != nil {
 		r.logger.Errorf("タスク完了状態更新エラー: %v", err)
-		return fmt.Errorf("%w: %v", ErrTaskUpdateFailed, err)
+		return appErrors.NewDatabaseError("toggle_task", err)
 	}
+
+	// 更新された行数の確認
+	rowsAffected, err := result.RowsAffected()
+	if err != nil {
+		r.logger.Errorf("タスク完了状態更新結果確認エラー: %v", err)
+		return appErrors.NewDatabaseError("toggle_task_check", err)
+	}
+
+	if rowsAffected == 0 {
+		r.logger.Warnf("タスク完了状態更新対象なし: %s", id.String())
+		return appErrors.ErrRecordNotFound
+	}
+
 	return nil
 }
 
@@ -158,7 +191,7 @@ func (r *TaskRepositoryImpl) Delete(ctx context.Context, id, userID uuid.UUID) e
 	// 最初にタスクの所有者を確認
 	_, err := r.GetByID(ctx, id, userID)
 	if err != nil {
-		return err // GetByIDのエラーをそのまま返す
+		return err // GetByIDのInfrastructure Errorをそのまま返す
 	}
 
 	query := `
@@ -166,10 +199,23 @@ func (r *TaskRepositoryImpl) Delete(ctx context.Context, id, userID uuid.UUID) e
 		WHERE id = $1
 	`
 
-	_, err = r.db.DB.ExecContext(ctx, query, id)
+	result, err := r.db.DB.ExecContext(ctx, query, id)
 	if err != nil {
 		r.logger.Errorf("タスク削除エラー: %v", err)
-		return fmt.Errorf("%w: %v", ErrTaskDeleteFailed, err)
+		return appErrors.NewDatabaseError("delete_task", err)
 	}
+
+	// 削除された行数の確認
+	rowsAffected, err := result.RowsAffected()
+	if err != nil {
+		r.logger.Errorf("タスク削除結果確認エラー: %v", err)
+		return appErrors.NewDatabaseError("delete_task_check", err)
+	}
+
+	if rowsAffected == 0 {
+		r.logger.Warnf("タスク削除対象なし: %s", id.String())
+		return appErrors.ErrRecordNotFound
+	}
+
 	return nil
 }
