@@ -6,7 +6,7 @@ import (
 
 	"github.com/golang-jwt/jwt/v5"
 	"github.com/google/uuid"
-	domainErrors "github.com/tsunakit99/selfpomodoro/internal/domain/errors"
+	appErrors "github.com/tsunakit99/selfpomodoro/internal/errors"
 )
 
 // CognitoClaims はCognito JWTのクレームを表す構造体
@@ -60,26 +60,26 @@ func (c *CognitoClaims) IsValid() error {
 
 	// 必須フィールドの確認
 	if c.Subject == "" {
-		return domainErrors.ErrMissingSubject
+		return appErrors.ErrMissingSubject
 	}
 
 	if c.TokenUse == "" {
-		return domainErrors.ErrMissingTokenUse
+		return appErrors.ErrMissingTokenUse
 	}
 
 	// token_useの値をチェック（accessまたはidのみ許可）
 	if c.TokenUse != "access" && c.TokenUse != "id" {
-		return domainErrors.ErrInvalidTokenUse
+		return appErrors.ErrInvalidTokenUse
 	}
 
 	// 有効期限の確認
 	if c.ExpiresAt != 0 && now.Unix() > c.ExpiresAt {
-		return domainErrors.ErrTokenExpired
+		return appErrors.ErrTokenExpired
 	}
 
 	// subjectがUUID形式かどうかチェック
 	if _, err := uuid.Parse(c.Subject); err != nil {
-		return domainErrors.ErrInvalidSubject
+		return appErrors.ErrInvalidSubject
 	}
 
 	return nil

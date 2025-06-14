@@ -2,15 +2,13 @@ package usecase
 
 import (
 	"context"
-
 	"errors"
 
 	"github.com/google/uuid"
-	domainErrors "github.com/tsunakit99/selfpomodoro/internal/domain/errors"
 	"github.com/tsunakit99/selfpomodoro/internal/domain/model"
 	"github.com/tsunakit99/selfpomodoro/internal/domain/repository"
+	appErrors "github.com/tsunakit99/selfpomodoro/internal/errors"
 	"github.com/tsunakit99/selfpomodoro/internal/infrastructure/logger"
-	sessionerrors "github.com/tsunakit99/selfpomodoro/internal/infrastructure/repository/postgres/errors"
 	"github.com/tsunakit99/selfpomodoro/internal/infrastructure/sqs"
 )
 
@@ -32,7 +30,7 @@ type SessionUseCase interface {
 	DeleteSession(ctx context.Context, id, userID uuid.UUID) error
 }
 
-// sessionUseCase はSessionUseCaseインターフェースの実装
+// sessionUseCase はSessionUseCaseインターフェースの実装（新エラーハンドリング対応版）
 type sessionUseCase struct {
 	sessionRepo    repository.SessionRepository
 	roundRepo      repository.RoundRepository
@@ -58,66 +56,69 @@ func NewSessionUseCase(
 	}
 }
 
-// StartSession は新しいセッションを開始する（UserConfig デフォルト値フォールバック付き）
+// StartSession は新しいセッションを開始する（新エラーハンドリング対応版）
 func (uc *sessionUseCase) StartSession(ctx context.Context, userID uuid.UUID) (*model.SessionResponse, error) {
-	// UserConfig取得（存在前提・フォールバック付き）
-	var userConfig *model.UserConfig
-	if uc.userConfigRepo != nil {
-		config, err := uc.userConfigRepo.GetUserConfig(ctx, userID)
-		if err != nil {
-			uc.logger.Warnf("UserConfig取得失敗、デフォルト値でセッション開始: %v", err)
-			// フォールバック：デフォルト値のUserConfigを作成
-			userConfig = model.NewUserConfig(userID)
-		} else {
-			userConfig = config
-		}
-	} else {
-		uc.logger.Warn("UserConfigRepository が初期化されていません - デフォルト値使用")
-		// フォールバック：デフォルト値のUserConfigを作成
-		userConfig = model.NewUserConfig(userID)
-	}
+	// ✅ ドメインロジック活用：UserConfig安全取得（デフォルト値フォールバック）
+	userConfig := uc.getUserConfigWithFallback(ctx, userID)
 
-	// ユーザー設定確認ログ（フォールバック対応）
+	// ユーザー設定確認ログ
 	uc.logger.Infof("セッション開始 - ユーザー設定確認完了: work=%d分, break=%d分, rounds=%d",
-		userConfig.RoundWorkTime, userConfig.RoundBreakTime, userConfig.SessionRounds)
+		userConfig.GetWorkTimeOrDefault(), userConfig.GetBreakTimeOrDefault(), userConfig.GetSessionRoundsOrDefault())
 
-	// セッションを作成
+	// ✅ ドメインファクトリー使用
 	session := model.NewSession(userID)
 
 	// DBにセッションを保存
 	if err := uc.sessionRepo.Create(ctx, session); err != nil {
 		uc.logger.Errorf("セッション開始エラー: %v", err)
-		if errors.Is(err, sessionerrors.ErrSessionInProgress) {
-			return nil, domainErrors.NewSessionInProgressError()
+
+		// Infrastructure Error → Domain Error 変換
+		if errors.Is(err, appErrors.ErrUniqueConstraint) {
+			return nil, appErrors.NewSessionInProgressError()
 		}
-		return nil, domainErrors.NewInternalServerError()
+		if appErrors.IsDatabaseError(err) {
+			return nil, appErrors.NewInternalError(err)
+		}
+
+		return nil, appErrors.NewInternalError(err)
 	}
 
 	uc.logger.Infof("セッション開始成功: %s", session.ID.String())
 	return session.ToResponse(), nil
 }
 
-// GetSession はセッションを取得する
+// GetSession はセッションを取得する（新エラーハンドリング対応版）
 func (uc *sessionUseCase) GetSession(ctx context.Context, id, userID uuid.UUID) (*model.SessionResponse, error) {
 	session, err := uc.sessionRepo.GetByID(ctx, id, userID)
 	if err != nil {
 		uc.logger.Errorf("セッション取得エラー: %v", err)
-		if errors.Is(err, sessionerrors.ErrSessionNotFound) {
-			return nil, domainErrors.NewSessionNotFoundError()
+
+		// Infrastructure Error → Domain Error 変換
+		if errors.Is(err, appErrors.ErrRecordNotFound) {
+			return nil, appErrors.NewSessionNotFoundError()
 		}
-		return nil, domainErrors.NewInternalServerError()
+		if appErrors.IsDatabaseError(err) {
+			return nil, appErrors.NewInternalError(err)
+		}
+
+		return nil, appErrors.NewInternalError(err)
 	}
 
-	// セッションをレスポンス用に変換
 	return session.ToResponse(), nil
 }
 
-// GetAllSessions はユーザの全セッションを取得する
+// GetAllSessions はユーザの全セッションを取得する（新エラーハンドリング対応版）
 func (uc *sessionUseCase) GetAllSessions(ctx context.Context, userID uuid.UUID) (*model.SessionsResponse, error) {
 	sessions, err := uc.sessionRepo.GetAllByUserID(ctx, userID)
 	if err != nil {
 		uc.logger.Errorf("セッション一覧取得エラー: %v", err)
-		return nil, domainErrors.NewInternalServerError()
+
+		// Infrastructure Error → Domain Error 変換
+		if appErrors.IsDatabaseError(err) {
+			return nil, appErrors.NewInternalError(err)
+		}
+
+		return nil, appErrors.NewInternalError(err)
 	}
 
 	// セッションをレスポンス用に変換
@@ -129,41 +130,74 @@ func (uc *sessionUseCase) GetAllSessions(ctx context.Context, userID uuid.UUID) 
 	return &model.SessionsResponse{Sessions: sessionResponses}, nil
 }
 
-// CompleteSession はセッションを完了する（SQSメッセージ送信付き）
+// CompleteSession はセッションを完了する（新エラーハンドリング対応版）
 func (uc *sessionUseCase) CompleteSession(ctx context.Context, id, userID uuid.UUID) (*model.SessionResponse, error) {
-	_, err := uc.sessionRepo.GetByID(ctx, id, userID)
+	// セッション取得
+	session, err := uc.sessionRepo.GetByID(ctx, id, userID)
 	if err != nil {
 		uc.logger.Errorf("セッション取得エラー: %v", err)
-		if errors.Is(err, sessionerrors.ErrSessionNotFound) {
-			return nil, domainErrors.NewSessionNotFoundError()
+
+		// Infrastructure Error → Domain Error 変換
+		if errors.Is(err, appErrors.ErrRecordNotFound) {
+			return nil, appErrors.NewSessionNotFoundError()
 		}
-		return nil, domainErrors.NewInternalServerError()
-	}
-
-	// ラウンドの統計情報を計算
-	averageFocus, totalWorkMin, roundCount, breakTime, err := uc.roundRepo.CalculateSessionStats(ctx, id)
-	if err != nil {
-		uc.logger.Errorf("セッション統計情報取得エラー: %v", err)
-		return nil, domainErrors.NewInternalServerError()
-	}
-
-	// セッションを完了する
-	err = uc.sessionRepo.Complete(ctx, id, userID, averageFocus, totalWorkMin, roundCount, breakTime)
-	if err != nil {
-		uc.logger.Errorf("セッション完了エラー: %v", err)
-		if errors.Is(err, sessionerrors.ErrSessionAlreadyEnded) {
-			return nil, domainErrors.NewSessionAlreadyEndedError()
+		if appErrors.IsDatabaseError(err) {
+			return nil, appErrors.NewInternalError(err)
 		}
-		return nil, domainErrors.NewInternalServerError()
+
+		return nil, appErrors.NewInternalError(err)
 	}
 
-	// ✅ 完了したラウンドが存在する場合のみSQS送信
-	if roundCount > 0 {
+	// ✅ ドメインロジック活用：状態チェック
+	if session.IsCompleted() {
+		uc.logger.Errorf("セッションは既に完了しています: %s", id.String())
+		return nil, appErrors.NewSessionAlreadyEndedError()
+	}
+
+	// ✅ ドメインロジック活用：ラウンド取得と統計計算
+	rounds, err := uc.roundRepo.GetAllBySessionID(ctx, id)
+	if err != nil {
+		uc.logger.Errorf("セッションラウンド取得エラー: %v", err)
+
+		// Infrastructure Error → Domain Error 変換
+		if appErrors.IsDatabaseError(err) {
+			return nil, appErrors.NewInternalError(err)
+		}
+
+		return nil, appErrors.NewInternalError(err)
+	}
+
+	// ✅ ドメインロジック活用：セッション統計計算（Repository依存なし！）
+	stats := session.CalculateStatistics(rounds)
+	uc.logger.Infof("セッション統計計算完了: 平均集中度=%.1f, 総作業時間=%d分, ラウンド数=%d, 休憩時間=%d分",
+		stats.AverageFocus, stats.TotalWorkMin, stats.RoundCount, stats.TotalBreakTime)
+
+	// ✅ ドメインロジック活用：セッション完了処理
+	session.CompleteWithStatistics(stats)
+
+	// データベース更新
+	err = uc.sessionRepo.Complete(ctx, id, userID, stats.AverageFocus, stats.TotalWorkMin, stats.RoundCount, stats.TotalBreakTime)
+	if err != nil {
+		uc.logger.Errorf("セッション完了永続化エラー: %v", err)
+
+		// Infrastructure Error → Domain Error 変換
+		if errors.Is(err, appErrors.ErrRecordNotFound) {
+			return nil, appErrors.NewSessionNotFoundError()
+		}
+		if appErrors.IsDatabaseError(err) {
+			return nil, appErrors.NewInternalError(err)
+		}
+
+		return nil, appErrors.NewInternalError(err)
+	}
+
+	// ✅ ドメインロジック活用：最適化メッセージ送信判定
+	if session.ShouldSendOptimizationMessage() {
+		avgFocus, totalWork, _ := session.GetOptimizationMessageData()
 		uc.logger.Infof("セッション完了 - SQS最適化メッセージ送信開始: SessionID=%s, RoundCount=%d, AvgFocus=%.1f, TotalWork=%dmin",
-			id.String(), roundCount, averageFocus, totalWorkMin)
+			id.String(), stats.RoundCount, avgFocus, totalWork)
 
-		// 同期でSQS送信
-		uc.sendSessionOptimizationMessage(ctx, userID, id, averageFocus, totalWorkMin)
+		uc.sendSessionOptimizationMessage(ctx, userID, id, avgFocus, totalWork)
 	} else {
 		uc.logger.Warn("完了したラウンドが存在しないため、SQS最適化メッセージは送信しません")
 	}
@@ -172,30 +206,60 @@ func (uc *sessionUseCase) CompleteSession(ctx context.Context, id, userID uuid.U
 	updatedSession, err := uc.sessionRepo.GetByID(ctx, id, userID)
 	if err != nil {
 		uc.logger.Errorf("完了後のセッション取得エラー: %v", err)
-		return nil, domainErrors.NewInternalServerError()
+
+		// Infrastructure Error → Domain Error 変換
+		if errors.Is(err, appErrors.ErrRecordNotFound) {
+			return nil, appErrors.NewSessionNotFoundError()
+		}
+		if appErrors.IsDatabaseError(err) {
+			return nil, appErrors.NewInternalError(err)
+		}
+
+		return nil, appErrors.NewInternalError(err)
 	}
 
-	uc.logger.Infof("セッション完了成功: %s (平均集中度: %.1f, 総作業時間: %d分, ラウンド数: %d)",
-		id.String(), averageFocus, totalWorkMin, roundCount)
+	// ✅ ドメインロジック活用：セッション品質評価ログ
+	quality := updatedSession.GetSessionQuality()
+	efficiency := updatedSession.GetEfficiency()
+	uc.logger.Infof("セッション完了成功: SessionID=%s, 品質=%s, 効率=%.1f%%, 平均集中度=%.1f, 総作業時間=%d分, ラウンド数=%d",
+		id.String(), quality, efficiency, stats.AverageFocus, stats.TotalWorkMin, stats.RoundCount)
 
-	// TODO: セッション最適化Lambda実行
-	// TODO: 最適化ログの記録
-
-	// セッションをレスポンス用に変換
 	return updatedSession.ToResponse(), nil
 }
 
-// DeleteSession はセッションを削除する
+// DeleteSession はセッションを削除する（新エラーハンドリング対応版）
 func (uc *sessionUseCase) DeleteSession(ctx context.Context, id, userID uuid.UUID) error {
 	if err := uc.sessionRepo.Delete(ctx, id, userID); err != nil {
 		uc.logger.Errorf("セッション削除エラー: %v", err)
-		if errors.Is(err, sessionerrors.ErrSessionNotFound) {
-			return domainErrors.NewSessionNotFoundError()
+
+		// Infrastructure Error → Domain Error 変換
+		if errors.Is(err, appErrors.ErrRecordNotFound) {
+			return appErrors.NewSessionNotFoundError()
 		}
-		return domainErrors.NewInternalServerError()
+		if appErrors.IsDatabaseError(err) {
+			return appErrors.NewInternalError(err)
+		}
+
+		return appErrors.NewInternalError(err)
 	}
 	uc.logger.Infof("セッション削除成功: %s", id.String())
 	return nil
+}
+
+// ✅ ドメインロジック活用：UserConfig安全取得（フォールバック）
+func (uc *sessionUseCase) getUserConfigWithFallback(ctx context.Context, userID uuid.UUID) *model.UserConfig {
+	if uc.userConfigRepo == nil {
+		uc.logger.Warn("UserConfigRepository が nil です - デフォルト設定使用")
+		return model.NewDefaultUserConfig(userID)
+	}
+
+	userConfig, err := uc.userConfigRepo.GetUserConfig(ctx, userID)
+	if err != nil {
+		uc.logger.Warnf("UserConfig取得エラー、デフォルト設定を使用: %v", err)
+		return model.NewDefaultUserConfig(userID)
+	}
+
+	return userConfig
 }
 
 // sendSessionOptimizationMessage はセッション最適化メッセージをSQSに送信する（同期）

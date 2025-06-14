@@ -8,9 +8,9 @@ import (
 	"github.com/aws/aws-lambda-go/events"
 	"github.com/google/uuid"
 	"github.com/tsunakit99/selfpomodoro/internal/config"
-	domainErrors "github.com/tsunakit99/selfpomodoro/internal/domain/errors"
 	"github.com/tsunakit99/selfpomodoro/internal/domain/model"
 	"github.com/tsunakit99/selfpomodoro/internal/domain/repository"
+	appErrors "github.com/tsunakit99/selfpomodoro/internal/errors"
 	"github.com/tsunakit99/selfpomodoro/internal/infrastructure/logger"
 )
 
@@ -32,7 +32,7 @@ type AuthUseCase interface {
 	CheckAuthHealth(ctx context.Context) error
 }
 
-// authUseCase はAuthUseCaseの実装
+// authUseCase はAuthUseCaseの実装（新エラーハンドリング完全対応版）
 type authUseCase struct {
 	authRepo repository.AuthRepository
 	userRepo repository.UserRepository // User存在確認用
@@ -50,36 +50,54 @@ func NewAuthUseCase(authRepo repository.AuthRepository, userRepo repository.User
 	}
 }
 
-// AuthenticateRequest はAPIリクエストを認証してユーザーIDを返す
+// AuthenticateRequest はAPIリクエストを認証してユーザーIDを返す（新エラーハンドリング対応版）
 func (uc *authUseCase) AuthenticateRequest(ctx context.Context, request events.APIGatewayProxyRequest) (uuid.UUID, error) {
 	// Authorization ヘッダー取得
 	authHeader := uc.getAuthorizationHeader(request)
 	if authHeader == "" {
-		return uuid.Nil, domainErrors.NewTokenNotFoundError()
+		return uuid.Nil, appErrors.NewTokenNotFoundError()
 	}
 
 	// 開発環境での後方互換性（dev-token）
 	if uc.isDevelopmentEnvironment() && authHeader == "Bearer dev-token" {
 		devUserID, err := uuid.Parse("00000000-0000-0000-0000-000000000001")
 		if err != nil {
-			return uuid.Nil, domainErrors.NewInternalError(err)
+			return uuid.Nil, appErrors.NewInternalError(err)
 		}
 		uc.logger.Info("開発環境: dev-token認証を使用")
 		return devUserID, nil
 	}
 
-	// Repository経由で認証（Domain Errorがそのまま返される）
+	// Repository経由で認証
 	userID, err := uc.authRepo.ValidateToken(ctx, authHeader)
 	if err != nil {
 		uc.logger.Errorf("認証失敗: %v", err)
-		return uuid.Nil, err // AuthRepositoryが適切なDomain Errorを返すことを前提
+
+		// Infrastructure Error → Domain Error 変換
+		if appErrors.IsJWTError(err) {
+			if appErrors.IsTokenExpiredError(err) {
+				return uuid.Nil, appErrors.NewTokenExpiredError()
+			}
+			if appErrors.IsInvalidTokenError(err) {
+				return uuid.Nil, appErrors.NewInvalidTokenError()
+			}
+			return uuid.Nil, appErrors.NewUnauthorizedError("JWT認証エラー")
+		}
+		if appErrors.IsJWKSError(err) {
+			return uuid.Nil, appErrors.NewUnauthorizedError("公開キー取得エラー")
+		}
+		if appErrors.IsHTTPError(err) {
+			return uuid.Nil, appErrors.NewInternalError(err)
+		}
+
+		return uuid.Nil, appErrors.NewUnauthorizedError("認証に失敗しました")
 	}
 
 	uc.logger.Infof("認証成功: UserID=%s", userID.String()[:8]+"...")
 	return userID, nil
 }
 
-// AuthenticateAndValidateUser は認証とUser存在確認を統合して行う（統一パターン）
+// AuthenticateAndValidateUser は認証とUser存在確認を統合して行う（新エラーハンドリング対応版）
 func (uc *authUseCase) AuthenticateAndValidateUser(ctx context.Context, request events.APIGatewayProxyRequest) (uuid.UUID, error) {
 	// 1. 認証処理
 	userID, err := uc.AuthenticateRequest(ctx, request)
@@ -91,22 +109,28 @@ func (uc *authUseCase) AuthenticateAndValidateUser(ctx context.Context, request 
 	exists, err := uc.userRepo.ExistsByID(ctx, userID)
 	if err != nil {
 		uc.logger.Errorf("User存在確認エラー: %v", err)
-		return uuid.Nil, domainErrors.NewInternalError(err)
+
+		// Infrastructure Error → Domain Error 変換
+		if appErrors.IsDatabaseError(err) {
+			return uuid.Nil, appErrors.NewInternalError(err)
+		}
+
+		return uuid.Nil, appErrors.NewInternalError(err)
 	}
 	if !exists {
 		uc.logger.Warnf("存在しないユーザーのアクセス: %s", userID.String())
-		return uuid.Nil, domainErrors.NewUserNotFoundError()
+		return uuid.Nil, appErrors.NewUserNotFoundError()
 	}
 
 	uc.logger.Infof("認証・User存在確認成功: UserID=%s", userID.String()[:8]+"...")
 	return userID, nil
 }
 
-// AuthenticateAndGetUser はAPIリクエストを認証してユーザー情報を返す
+// AuthenticateAndGetUser はAPIリクエストを認証してユーザー情報を返す（新エラーハンドリング対応版）
 func (uc *authUseCase) AuthenticateAndGetUser(ctx context.Context, request events.APIGatewayProxyRequest) (*model.AuthUser, error) {
 	authHeader := uc.getAuthorizationHeader(request)
 	if authHeader == "" {
-		return nil, domainErrors.NewTokenNotFoundError()
+		return nil, appErrors.NewTokenNotFoundError()
 	}
 
 	// 開発環境での後方互換性
@@ -123,7 +147,26 @@ func (uc *authUseCase) AuthenticateAndGetUser(ctx context.Context, request event
 	// Repository経由でクレーム取得
 	claims, err := uc.authRepo.ValidateTokenAndGetClaims(ctx, authHeader)
 	if err != nil {
-		return nil, err
+		uc.logger.Errorf("クレーム取得エラー: %v", err)
+
+		// Infrastructure Error → Domain Error 変換（AuthenticateRequestと同様）
+		if appErrors.IsJWTError(err) {
+			if appErrors.IsTokenExpiredError(err) {
+				return nil, appErrors.NewTokenExpiredError()
+			}
+			if appErrors.IsInvalidTokenError(err) {
+				return nil, appErrors.NewInvalidTokenError()
+			}
+			return nil, appErrors.NewUnauthorizedError("JWT認証エラー")
+		}
+		if appErrors.IsJWKSError(err) {
+			return nil, appErrors.NewUnauthorizedError("公開キー取得エラー")
+		}
+		if appErrors.IsHTTPError(err) {
+			return nil, appErrors.NewInternalError(err)
+		}
+
+		return nil, appErrors.NewUnauthorizedError("認証に失敗しました")
 	}
 
 	authUser := &model.AuthUser{
@@ -137,20 +180,35 @@ func (uc *authUseCase) AuthenticateAndGetUser(ctx context.Context, request event
 	return authUser, nil
 }
 
-// ValidateToken はトークンの有効性を検証する
+// ValidateToken はトークンの有効性を検証する（新エラーハンドリング対応版）
 func (uc *authUseCase) ValidateToken(ctx context.Context, token string) (*model.AuthClaims, error) {
 	claims, err := uc.authRepo.ValidateTokenAndGetClaims(ctx, token)
 	if err != nil {
 		uc.logger.Errorf("トークン検証失敗: %v", err)
-		return nil, err
+
+		// Infrastructure Error → Domain Error 変換
+		if appErrors.IsJWTError(err) {
+			if appErrors.IsTokenExpiredError(err) {
+				return nil, appErrors.NewTokenExpiredError()
+			}
+			if appErrors.IsInvalidTokenError(err) {
+				return nil, appErrors.NewInvalidTokenError()
+			}
+			return nil, appErrors.NewUnauthorizedError("JWT検証エラー")
+		}
+		if appErrors.IsJWKSError(err) {
+			return nil, appErrors.NewUnauthorizedError("公開キー取得エラー")
+		}
+
+		return nil, appErrors.NewInternalError(err)
 	}
 	return claims, nil
 }
 
-// CheckAuthHealth は認証サービスの接続確認を行う
+// CheckAuthHealth は認証サービスの接続確認を行う（新エラーハンドリング対応版）
 func (uc *authUseCase) CheckAuthHealth(ctx context.Context) error {
 	if uc.authRepo == nil {
-		return domainErrors.NewInternalError(fmt.Errorf("AuthRepositoryが初期化されていません"))
+		return appErrors.NewInternalError(fmt.Errorf("AuthRepositoryが初期化されていません"))
 	}
 
 	// 開発環境の場合はスキップ
@@ -163,7 +221,13 @@ func (uc *authUseCase) CheckAuthHealth(ctx context.Context) error {
 	err := uc.authRepo.HealthCheck(ctx)
 	if err != nil {
 		uc.logger.Errorf("認証サービス接続確認失敗: %v", err)
-		return domainErrors.NewInternalError(fmt.Errorf("認証サービス接続確認失敗: %w", err))
+
+		// Infrastructure Error → Domain Error 変換
+		if appErrors.IsHTTPError(err) || appErrors.IsJWKSError(err) {
+			return appErrors.NewInternalError(fmt.Errorf("認証サービス接続確認失敗: %w", err))
+		}
+
+		return appErrors.NewInternalError(fmt.Errorf("認証サービス接続確認失敗: %w", err))
 	}
 
 	uc.logger.Info("認証サービス接続確認成功")
