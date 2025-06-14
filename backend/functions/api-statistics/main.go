@@ -11,7 +11,7 @@ import (
 	"github.com/aws/aws-lambda-go/lambda"
 	"github.com/google/uuid"
 	"github.com/tsunakit99/selfpomodoro/internal/container"
-	domainErrors "github.com/tsunakit99/selfpomodoro/internal/domain/errors"
+	httpError "github.com/tsunakit99/selfpomodoro/internal/handler"
 	"github.com/tsunakit99/selfpomodoro/internal/infrastructure/logger"
 	"github.com/tsunakit99/selfpomodoro/internal/usecase"
 )
@@ -34,7 +34,7 @@ type StatisticsHandler struct {
 func handler(ctx context.Context, request events.APIGatewayProxyRequest) (events.APIGatewayProxyResponse, error) {
 	// 1. Container初期化
 	if err := globalContainer.Initialize(ctx); err != nil {
-		return errorResponse(http.StatusInternalServerError, "サービス初期化エラー"), nil
+		return createErrorResponse(http.StatusInternalServerError, "INTERNAL_ERROR", "サービス初期化エラー"), nil
 	}
 
 	// 2. Dependencies取得（Infrastructure依存なし！）
@@ -53,24 +53,30 @@ func handler(ctx context.Context, request events.APIGatewayProxyRequest) (events
 		return statsHandler.handleError(err), nil
 	}
 
-	// 5. GET以外は許可しない
-	if request.HTTPMethod != "GET" {
-		return errorResponse(http.StatusMethodNotAllowed, "GETメソッドのみ許可されています"), nil
-	}
-
-	// 6. パスによるルーティング
-	if strings.Contains(request.Path, "/focus-trend") {
-		return statsHandler.handleGetFocusTrend(ctx, request, userID)
-	} else if strings.Contains(request.Path, "/focus-heatmap") {
-		return statsHandler.handleGetFocusHeatmap(ctx, request, userID)
-	}
-
-	return errorResponse(http.StatusNotFound, "無効なパス"), nil
+	// 5. ルーティング
+	return statsHandler.routeOperation(ctx, request, userID)
 }
 
 // authenticateAndValidateUser は認証・User存在確認の統一処理
 func (h *StatisticsHandler) authenticateAndValidateUser(ctx context.Context, request events.APIGatewayProxyRequest) (uuid.UUID, error) {
 	return h.useCases.Auth.AuthenticateAndValidateUser(ctx, request)
+}
+
+// routeOperation は操作ルーティング
+func (h *StatisticsHandler) routeOperation(ctx context.Context, request events.APIGatewayProxyRequest, userID uuid.UUID) (events.APIGatewayProxyResponse, error) {
+	// GET以外は許可しない
+	if request.HTTPMethod != "GET" {
+		return createErrorResponse(http.StatusMethodNotAllowed, "METHOD_NOT_ALLOWED", "GETメソッドのみ許可されています"), nil
+	}
+
+	// パスによるルーティング
+	if strings.Contains(request.Path, "/focus-trend") {
+		return h.handleGetFocusTrend(ctx, request, userID)
+	} else if strings.Contains(request.Path, "/focus-heatmap") {
+		return h.handleGetFocusHeatmap(ctx, request, userID)
+	}
+
+	return createErrorResponse(http.StatusNotFound, "NOT_FOUND", "無効なパス"), nil
 }
 
 // handleGetFocusTrend は集中度トレンド取得を処理
@@ -111,7 +117,7 @@ func (h *StatisticsHandler) handleGetFocusTrend(ctx context.Context, request eve
 		return h.handleError(err), nil
 	}
 
-	return successResponse(http.StatusOK, response), nil
+	return createSuccessResponse(http.StatusOK, response), nil
 }
 
 // handleGetFocusHeatmap は集中度ヒートマップ取得を処理
@@ -152,44 +158,59 @@ func (h *StatisticsHandler) handleGetFocusHeatmap(ctx context.Context, request e
 		return h.handleError(err), nil
 	}
 
-	return successResponse(http.StatusOK, response), nil
+	return createSuccessResponse(http.StatusOK, response), nil
 }
 
-// handleError はドメインエラーを統一処理
+// handleError はエラーを統一処理（error_mapper.go使用版）
 func (h *StatisticsHandler) handleError(err error) events.APIGatewayProxyResponse {
-	if appErr, ok := err.(*domainErrors.AppError); ok {
-		return errorResponse(appErr.Status, appErr.Error())
+	// error_mapper.goを使用してHTTPエラーにマッピング
+	httpErr := httpError.MapErrorToHTTP(err)
+
+	// ログ出力（サーバーエラーのみ詳細ログ）
+	if httpError.IsServerError(err) {
+		h.logger.Errorf("サーバーエラー: %v", err)
+	} else if httpError.IsClientError(err) {
+		h.logger.Warnf("クライアントエラー: %s - %s", httpErr.Code, httpErr.Message)
 	}
 
-	h.logger.Errorf("予期しないエラータイプ: %T, %v", err, err)
-	return errorResponse(http.StatusInternalServerError, "内部エラーが発生しました")
+	// 統一されたエラーレスポンス作成
+	return createErrorResponse(httpErr.StatusCode, httpErr.Code, httpErr.Message)
 }
 
-func successResponse(statusCode int, data interface{}) events.APIGatewayProxyResponse {
+// createSuccessResponse は成功レスポンスを作成
+func createSuccessResponse(statusCode int, data interface{}) events.APIGatewayProxyResponse {
 	body, _ := json.Marshal(data)
 	return events.APIGatewayProxyResponse{
 		StatusCode: statusCode,
-		Headers: map[string]string{
-			"Content-Type":                 "application/json",
-			"Access-Control-Allow-Origin":  "*",
-			"Access-Control-Allow-Headers": "Content-Type,Authorization",
-			"Access-Control-Allow-Methods": "GET,POST,PATCH,DELETE,OPTIONS",
-		},
-		Body: string(body),
+		Headers:    getCORSHeaders(),
+		Body:       string(body),
 	}
 }
 
-func errorResponse(statusCode int, message string) events.APIGatewayProxyResponse {
-	body, _ := json.Marshal(map[string]string{"error": message})
+// createErrorResponse はエラーレスポンスを作成（統一フォーマット）
+func createErrorResponse(statusCode int, code, message string) events.APIGatewayProxyResponse {
+	// エラーレスポンスの統一フォーマット
+	errorBody := map[string]interface{}{
+		"error": map[string]string{
+			"code":    code,
+			"message": message,
+		},
+	}
+
+	body, _ := json.Marshal(errorBody)
 	return events.APIGatewayProxyResponse{
 		StatusCode: statusCode,
-		Headers: map[string]string{
-			"Content-Type":                 "application/json",
-			"Access-Control-Allow-Origin":  "*",
-			"Access-Control-Allow-Headers": "Content-Type,Authorization",
-			"Access-Control-Allow-Methods": "GET,POST,PATCH,DELETE,OPTIONS",
-		},
-		Body: string(body),
+		Headers:    getCORSHeaders(),
+		Body:       string(body),
+	}
+}
+
+func getCORSHeaders() map[string]string {
+	return map[string]string{
+		"Content-Type":                 "application/json",
+		"Access-Control-Allow-Origin":  "*",
+		"Access-Control-Allow-Headers": "Content-Type,Authorization",
+		"Access-Control-Allow-Methods": "GET,POST,PATCH,DELETE,OPTIONS",
 	}
 }
 

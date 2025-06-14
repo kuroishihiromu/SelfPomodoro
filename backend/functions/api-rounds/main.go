@@ -11,8 +11,8 @@ import (
 	"github.com/go-playground/validator/v10"
 	"github.com/google/uuid"
 	"github.com/tsunakit99/selfpomodoro/internal/container"
-	domainErrors "github.com/tsunakit99/selfpomodoro/internal/domain/errors"
 	"github.com/tsunakit99/selfpomodoro/internal/domain/model"
+	httpError "github.com/tsunakit99/selfpomodoro/internal/handler"
 	"github.com/tsunakit99/selfpomodoro/internal/infrastructure/logger"
 	"github.com/tsunakit99/selfpomodoro/internal/usecase"
 )
@@ -36,7 +36,7 @@ type RoundHandler struct {
 func handler(ctx context.Context, request events.APIGatewayProxyRequest) (events.APIGatewayProxyResponse, error) {
 	// 1. Container初期化
 	if err := globalContainer.Initialize(ctx); err != nil {
-		return errorResponse(http.StatusInternalServerError, "サービス初期化エラー"), nil
+		return createErrorResponse(http.StatusInternalServerError, "INTERNAL_ERROR", "サービス初期化エラー"), nil
 	}
 
 	// 2. Dependencies取得（Infrastructure依存なし！）
@@ -57,15 +57,7 @@ func handler(ctx context.Context, request events.APIGatewayProxyRequest) (events
 	}
 
 	// 5. パスによるルーティング判定
-	if strings.Contains(request.Path, "/sessions/") && strings.Contains(request.Path, "/rounds") {
-		// /sessions/{session_id}/rounds パターン
-		return roundHandler.handleSessionRounds(ctx, request, userID)
-	} else if strings.Contains(request.Path, "/rounds/") {
-		// /rounds/{round_id} パターン
-		return roundHandler.handleIndividualRound(ctx, request, userID)
-	}
-
-	return errorResponse(http.StatusNotFound, "無効なパス"), nil
+	return roundHandler.routeOperation(ctx, request, userID)
 }
 
 // authenticateAndValidateUser は認証・User存在確認の統一処理
@@ -73,58 +65,58 @@ func (h *RoundHandler) authenticateAndValidateUser(ctx context.Context, request 
 	return h.useCases.Auth.AuthenticateAndValidateUser(ctx, request)
 }
 
-// handleSessionRounds はセッション関連のラウンド操作を処理
-func (h *RoundHandler) handleSessionRounds(ctx context.Context, request events.APIGatewayProxyRequest, userID uuid.UUID) (events.APIGatewayProxyResponse, error) {
+// routeOperation は操作ルーティング
+func (h *RoundHandler) routeOperation(ctx context.Context, request events.APIGatewayProxyRequest, userID uuid.UUID) (events.APIGatewayProxyResponse, error) {
+	// パスパラメータからセッションIDとラウンドIDを取得
 	sessionIDStr := request.PathParameters["session_id"]
-	if sessionIDStr == "" {
-		return errorResponse(http.StatusBadRequest, "セッションIDが指定されていません"), nil
-	}
-
-	sessionID, err := uuid.Parse(sessionIDStr)
-	if err != nil {
-		return errorResponse(http.StatusBadRequest, "無効なセッションID"), nil
-	}
-
-	switch request.HTTPMethod {
-	case "GET":
-		// セッションのラウンド一覧取得
-		return h.handleGetRoundsBySession(ctx, sessionID)
-	case "POST":
-		// ラウンド開始
-		return h.handleStartRound(ctx, sessionID, userID)
-	default:
-		return errorResponse(http.StatusMethodNotAllowed, "メソッドが許可されていません"), nil
-	}
-}
-
-// handleIndividualRound は個別ラウンド操作を処理
-func (h *RoundHandler) handleIndividualRound(ctx context.Context, request events.APIGatewayProxyRequest, userID uuid.UUID) (events.APIGatewayProxyResponse, error) {
 	roundIDStr := request.PathParameters["round_id"]
-	if roundIDStr == "" {
-		return errorResponse(http.StatusBadRequest, "ラウンドIDが指定されていません"), nil
-	}
 
-	roundID, err := uuid.Parse(roundIDStr)
-	if err != nil {
-		return errorResponse(http.StatusBadRequest, "無効なラウンドID"), nil
-	}
-
-	switch request.HTTPMethod {
-	case "GET":
-		// ラウンド取得
-		return h.handleGetRound(ctx, roundID)
-	case "PATCH":
-		// ラウンド完了
-		return h.handleCompleteRound(ctx, request, roundID, userID)
-	case "POST":
-		if strings.Contains(request.Path, "/abort") {
-			// ラウンド中止
-			return h.handleAbortRound(ctx, roundID, userID)
+	// セッション関連のラウンド操作
+	if strings.Contains(request.Path, "/sessions/") && strings.Contains(request.Path, "/rounds") {
+		if sessionIDStr == "" {
+			return createErrorResponse(http.StatusBadRequest, "MISSING_SESSION_ID", "セッションIDが指定されていません"), nil
 		}
-		return errorResponse(http.StatusNotFound, "無効なパス"), nil
-	default:
-		return errorResponse(http.StatusMethodNotAllowed, "メソッドが許可されていません"), nil
+		sessionID, err := uuid.Parse(sessionIDStr)
+		if err != nil {
+			return createErrorResponse(http.StatusBadRequest, "INVALID_SESSION_ID", "無効なセッションID"), nil
+		}
+
+		switch request.HTTPMethod {
+		case "GET":
+			return h.handleGetRoundsBySession(ctx, sessionID)
+		case "POST":
+			return h.handleStartRound(ctx, sessionID, userID)
+		default:
+			return createErrorResponse(http.StatusMethodNotAllowed, "METHOD_NOT_ALLOWED", "メソッドが許可されていません"), nil
+		}
 	}
+
+	// 個別ラウンド操作
+	if roundIDStr != "" {
+		roundID, err := uuid.Parse(roundIDStr)
+		if err != nil {
+			return createErrorResponse(http.StatusBadRequest, "INVALID_ROUND_ID", "無効なラウンドID"), nil
+		}
+
+		switch request.HTTPMethod {
+		case "GET":
+			return h.handleGetRound(ctx, roundID)
+		case "PATCH":
+			if !strings.Contains(request.Path, "/complete") {
+				return createErrorResponse(http.StatusNotFound, "NOT_FOUND", "無効なパス"), nil
+			}
+			return h.handleCompleteRound(ctx, request, roundID, userID)
+		case "POST":
+			if !strings.Contains(request.Path, "/abort") {
+				return createErrorResponse(http.StatusNotFound, "NOT_FOUND", "無効なパス"), nil
+			}
+			return h.handleAbortRound(ctx, roundID, userID)
+		default:
+			return createErrorResponse(http.StatusMethodNotAllowed, "METHOD_NOT_ALLOWED", "メソッドが許可されていません"), nil
+		}
+	}
+
+	return createErrorResponse(http.StatusNotFound, "NOT_FOUND", "無効なパス"), nil
 }
 
 // handleGetRoundsBySession はセッションのラウンド一覧取得を処理
@@ -134,7 +126,7 @@ func (h *RoundHandler) handleGetRoundsBySession(ctx context.Context, sessionID u
 		h.logger.Errorf("ラウンド一覧取得エラー: %v", err)
 		return h.handleError(err), nil
 	}
-	return successResponse(http.StatusOK, roundsResponse), nil
+	return createSuccessResponse(http.StatusOK, roundsResponse), nil
 }
 
 // handleStartRound はラウンド開始を処理
@@ -148,8 +140,8 @@ func (h *RoundHandler) handleStartRound(ctx context.Context, sessionID uuid.UUID
 		return h.handleError(err), nil
 	}
 
-	h.logger.Infof("ラウンド開始成功: ラウンドID=%s, ラウンド順序=%d", roundResponse.ID.String(), roundResponse.RoundOrder)
-	return successResponse(http.StatusCreated, roundResponse), nil
+	h.logger.Infof("ラウンド開始成功: ラウンドID=%s", roundResponse.ID.String())
+	return createSuccessResponse(http.StatusCreated, roundResponse), nil
 }
 
 // handleGetRound はラウンド取得を処理
@@ -159,22 +151,18 @@ func (h *RoundHandler) handleGetRound(ctx context.Context, roundID uuid.UUID) (e
 		h.logger.Errorf("ラウンド取得エラー: %v", err)
 		return h.handleError(err), nil
 	}
-	return successResponse(http.StatusOK, roundResponse), nil
+	return createSuccessResponse(http.StatusOK, roundResponse), nil
 }
 
 // handleCompleteRound はラウンド完了を処理
 func (h *RoundHandler) handleCompleteRound(ctx context.Context, request events.APIGatewayProxyRequest, roundID uuid.UUID, userID uuid.UUID) (events.APIGatewayProxyResponse, error) {
-	if !strings.Contains(request.Path, "/complete") {
-		return errorResponse(http.StatusNotFound, "無効なパス"), nil
-	}
-
 	var req model.RoundCompleteRequest
 	if err := json.Unmarshal([]byte(request.Body), &req); err != nil {
-		return errorResponse(http.StatusBadRequest, "無効なリクエスト形式"), nil
+		return createErrorResponse(http.StatusBadRequest, "INVALID_REQUEST_FORMAT", "無効なリクエスト形式"), nil
 	}
 
-	if err := h.validator.Struct(req); err != nil {
-		return errorResponse(http.StatusBadRequest, "集中度スコアは0から100の間である必要があります"), nil
+	if req.FocusScore == nil {
+		return createErrorResponse(http.StatusBadRequest, "VALIDATION_ERROR", "集中度スコアは必須です"), nil
 	}
 
 	h.logger.Infof("ラウンド完了要求: ラウンドID=%s, 集中度スコア=%v", roundID.String(), req.FocusScore)
@@ -194,7 +182,7 @@ func (h *RoundHandler) handleCompleteRound(ctx context.Context, request events.A
 			roundID.String(), *roundResponse.WorkTime, *roundResponse.BreakTime)
 	}
 
-	return successResponse(http.StatusOK, roundResponse), nil
+	return createSuccessResponse(http.StatusOK, roundResponse), nil
 }
 
 // handleAbortRound はラウンド中止を処理
@@ -208,44 +196,60 @@ func (h *RoundHandler) handleAbortRound(ctx context.Context, roundID uuid.UUID, 
 	}
 
 	h.logger.Infof("ラウンド中止成功: ラウンドID=%s (SQS送信なし)", roundID.String())
-	return successResponse(http.StatusOK, roundResponse), nil
+	return createSuccessResponse(http.StatusOK, roundResponse), nil
 }
 
-// handleError はドメインエラーを統一処理
+// handleError はエラーを統一処理（error_mapper.go使用版）
 func (h *RoundHandler) handleError(err error) events.APIGatewayProxyResponse {
-	if appErr, ok := err.(*domainErrors.AppError); ok {
-		return errorResponse(appErr.Status, appErr.Error())
+	// error_mapper.goを使用してHTTPエラーにマッピング
+	httpErr := httpError.MapErrorToHTTP(err)
+
+	// ログ出力（サーバーエラーのみ詳細ログ）
+	if httpError.IsServerError(err) {
+		h.logger.Errorf("サーバーエラー: %v", err)
+	} else if httpError.IsClientError(err) {
+		h.logger.Warnf("クライアントエラー: %s - %s", httpErr.Code, httpErr.Message)
 	}
 
-	h.logger.Errorf("予期しないエラータイプ: %T, %v", err, err)
-	return errorResponse(http.StatusInternalServerError, "内部エラーが発生しました")
+	// 統一されたエラーレスポンス作成
+	return createErrorResponse(httpErr.StatusCode, httpErr.Code, httpErr.Message)
 }
 
-func successResponse(statusCode int, data interface{}) events.APIGatewayProxyResponse {
+// createSuccessResponse は成功レスポンスを作成
+func createSuccessResponse(statusCode int, data interface{}) events.APIGatewayProxyResponse {
 	body, _ := json.Marshal(data)
 	return events.APIGatewayProxyResponse{
 		StatusCode: statusCode,
-		Headers: map[string]string{
-			"Content-Type":                 "application/json",
-			"Access-Control-Allow-Origin":  "*",
-			"Access-Control-Allow-Headers": "Content-Type,Authorization",
-			"Access-Control-Allow-Methods": "GET,POST,PATCH,DELETE,OPTIONS",
-		},
-		Body: string(body),
+		Headers:    getCORSHeaders(),
+		Body:       string(body),
 	}
 }
 
-func errorResponse(statusCode int, message string) events.APIGatewayProxyResponse {
-	body, _ := json.Marshal(map[string]string{"error": message})
+// createErrorResponse はエラーレスポンスを作成（統一フォーマット）
+func createErrorResponse(statusCode int, code, message string) events.APIGatewayProxyResponse {
+	// エラーレスポンスの統一フォーマット
+	errorBody := map[string]interface{}{
+		"error": map[string]string{
+			"code":    code,
+			"message": message,
+		},
+	}
+
+	body, _ := json.Marshal(errorBody)
 	return events.APIGatewayProxyResponse{
 		StatusCode: statusCode,
-		Headers: map[string]string{
-			"Content-Type":                 "application/json",
-			"Access-Control-Allow-Origin":  "*",
-			"Access-Control-Allow-Headers": "Content-Type,Authorization",
-			"Access-Control-Allow-Methods": "GET,POST,PATCH,DELETE,OPTIONS",
-		},
-		Body: string(body),
+		Headers:    getCORSHeaders(),
+		Body:       string(body),
+	}
+}
+
+// getCORSHeaders はCORSヘッダーを取得
+func getCORSHeaders() map[string]string {
+	return map[string]string{
+		"Content-Type":                 "application/json",
+		"Access-Control-Allow-Origin":  "*",
+		"Access-Control-Allow-Headers": "Content-Type,Authorization",
+		"Access-Control-Allow-Methods": "GET,POST,PATCH,DELETE,OPTIONS",
 	}
 }
 

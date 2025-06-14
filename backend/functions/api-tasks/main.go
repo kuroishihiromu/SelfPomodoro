@@ -11,8 +11,8 @@ import (
 	"github.com/go-playground/validator/v10"
 	"github.com/google/uuid"
 	"github.com/tsunakit99/selfpomodoro/internal/container"
-	domainErrors "github.com/tsunakit99/selfpomodoro/internal/domain/errors"
 	"github.com/tsunakit99/selfpomodoro/internal/domain/model"
+	httpError "github.com/tsunakit99/selfpomodoro/internal/handler"
 	"github.com/tsunakit99/selfpomodoro/internal/infrastructure/logger"
 	"github.com/tsunakit99/selfpomodoro/internal/usecase"
 )
@@ -25,19 +25,19 @@ func init() {
 	globalContainer = container.NewLambdaContainer()
 }
 
-// TaskHandler はDI Container使用版のタスクハンドラー
+// TaskHandler はDI Container使用版のタスクハンドラー（新エラーハンドリング対応版）
 type TaskHandler struct {
 	useCases  *usecase.UseCases
 	logger    logger.Logger
 	validator *validator.Validate
 }
 
-// handler はLambdaのエントリーポイント（DI Container版）
+// handler はLambdaのエントリーポイント（DI Container版・新エラーハンドリング対応版）
 func handler(ctx context.Context, request events.APIGatewayProxyRequest) (events.APIGatewayProxyResponse, error) {
 	// 1. Container初期化（遅延初期化でエラー安全）
 	if err := globalContainer.Initialize(ctx); err != nil {
 		// 初期化エラーは詳細ログ + 汎用エラーレスポンス
-		return errorResponse(http.StatusInternalServerError, "サービス初期化エラー"), nil
+		return createErrorResponse(http.StatusInternalServerError, "INTERNAL_ERROR", "サービス初期化エラー"), nil
 	}
 
 	// 2. Dependencies取得（Infrastructure依存なし！）
@@ -79,7 +79,7 @@ func (h *TaskHandler) routeOperation(ctx context.Context, request events.APIGate
 	case "DELETE":
 		return h.handleDeleteTask(ctx, request, userID)
 	default:
-		return errorResponse(http.StatusMethodNotAllowed, "メソッドが許可されていません"), nil
+		return createErrorResponse(http.StatusMethodNotAllowed, "METHOD_NOT_ALLOWED", "メソッドが許可されていません"), nil
 	}
 }
 
@@ -90,18 +90,18 @@ func (h *TaskHandler) handleGetTasks(ctx context.Context, userID uuid.UUID) (eve
 		h.logger.Errorf("タスク一覧取得エラー: %v", err)
 		return h.handleError(err), nil
 	}
-	return successResponse(http.StatusOK, tasksResponse), nil
+	return createSuccessResponse(http.StatusOK, tasksResponse), nil
 }
 
 // handleCreateTask はタスク作成（UseCaseに委譲）
 func (h *TaskHandler) handleCreateTask(ctx context.Context, request events.APIGatewayProxyRequest, userID uuid.UUID) (events.APIGatewayProxyResponse, error) {
 	var req model.CreateTaskRequest
 	if err := json.Unmarshal([]byte(request.Body), &req); err != nil {
-		return errorResponse(http.StatusBadRequest, "無効なリクエスト形式"), nil
+		return createErrorResponse(http.StatusBadRequest, "INVALID_REQUEST_FORMAT", "無効なリクエスト形式"), nil
 	}
 
 	if err := h.validator.Struct(req); err != nil {
-		return errorResponse(http.StatusBadRequest, "タスク詳細は必須です"), nil
+		return createErrorResponse(http.StatusBadRequest, "VALIDATION_ERROR", "タスク詳細は必須です"), nil
 	}
 
 	taskResponse, err := h.useCases.Task.CreateTask(ctx, userID, &req)
@@ -109,19 +109,19 @@ func (h *TaskHandler) handleCreateTask(ctx context.Context, request events.APIGa
 		h.logger.Errorf("タスク作成エラー: %v", err)
 		return h.handleError(err), nil
 	}
-	return successResponse(http.StatusCreated, taskResponse), nil
+	return createSuccessResponse(http.StatusCreated, taskResponse), nil
 }
 
 // handleUpdateOrToggleTask はタスク更新・切り替え（UseCaseに委譲）
 func (h *TaskHandler) handleUpdateOrToggleTask(ctx context.Context, request events.APIGatewayProxyRequest, userID uuid.UUID) (events.APIGatewayProxyResponse, error) {
 	taskIDStr := request.PathParameters["task_id"]
 	if taskIDStr == "" {
-		return errorResponse(http.StatusBadRequest, "タスクIDが指定されていません"), nil
+		return createErrorResponse(http.StatusBadRequest, "MISSING_TASK_ID", "タスクIDが指定されていません"), nil
 	}
 
 	taskID, err := uuid.Parse(taskIDStr)
 	if err != nil {
-		return errorResponse(http.StatusBadRequest, "無効なタスクID"), nil
+		return createErrorResponse(http.StatusBadRequest, "INVALID_TASK_ID", "無効なタスクID"), nil
 	}
 
 	if strings.Contains(request.Path, "/toggle") {
@@ -131,16 +131,16 @@ func (h *TaskHandler) handleUpdateOrToggleTask(ctx context.Context, request even
 			h.logger.Errorf("タスク完了状態切り替えエラー: %v", err)
 			return h.handleError(err), nil
 		}
-		return successResponse(http.StatusOK, taskResponse), nil
+		return createSuccessResponse(http.StatusOK, taskResponse), nil
 	} else {
 		// タスク更新
 		var req model.UpdateTaskRequest
 		if err := json.Unmarshal([]byte(request.Body), &req); err != nil {
-			return errorResponse(http.StatusBadRequest, "無効なリクエスト形式"), nil
+			return createErrorResponse(http.StatusBadRequest, "INVALID_REQUEST_FORMAT", "無効なリクエスト形式"), nil
 		}
 
 		if err := h.validator.Struct(req); err != nil {
-			return errorResponse(http.StatusBadRequest, "タスク詳細は必須です"), nil
+			return createErrorResponse(http.StatusBadRequest, "VALIDATION_ERROR", "タスク詳細は必須です"), nil
 		}
 
 		taskResponse, err := h.useCases.Task.UpdateTask(ctx, taskID, userID, &req)
@@ -148,7 +148,7 @@ func (h *TaskHandler) handleUpdateOrToggleTask(ctx context.Context, request even
 			h.logger.Errorf("タスク更新エラー: %v", err)
 			return h.handleError(err), nil
 		}
-		return successResponse(http.StatusOK, taskResponse), nil
+		return createSuccessResponse(http.StatusOK, taskResponse), nil
 	}
 }
 
@@ -156,12 +156,12 @@ func (h *TaskHandler) handleUpdateOrToggleTask(ctx context.Context, request even
 func (h *TaskHandler) handleDeleteTask(ctx context.Context, request events.APIGatewayProxyRequest, userID uuid.UUID) (events.APIGatewayProxyResponse, error) {
 	taskIDStr := request.PathParameters["task_id"]
 	if taskIDStr == "" {
-		return errorResponse(http.StatusBadRequest, "タスクIDが指定されていません"), nil
+		return createErrorResponse(http.StatusBadRequest, "MISSING_TASK_ID", "タスクIDが指定されていません"), nil
 	}
 
 	taskID, err := uuid.Parse(taskIDStr)
 	if err != nil {
-		return errorResponse(http.StatusBadRequest, "無効なタスクID"), nil
+		return createErrorResponse(http.StatusBadRequest, "INVALID_TASK_ID", "無効なタスクID"), nil
 	}
 
 	err = h.useCases.Task.DeleteTask(ctx, taskID, userID)
@@ -169,45 +169,60 @@ func (h *TaskHandler) handleDeleteTask(ctx context.Context, request events.APIGa
 		h.logger.Errorf("タスク削除エラー: %v", err)
 		return h.handleError(err), nil
 	}
-	return successResponse(http.StatusOK, map[string]string{"message": "タスクが削除されました"}), nil
+	return createSuccessResponse(http.StatusOK, map[string]string{"message": "タスクが削除されました"}), nil
 }
 
-// handleError はドメインエラーを統一処理
+// handleError はエラーを統一処理（error_mapper.go使用版）
 func (h *TaskHandler) handleError(err error) events.APIGatewayProxyResponse {
-	if appErr, ok := err.(*domainErrors.AppError); ok {
-		return errorResponse(appErr.Status, appErr.Error())
+	// error_mapper.goを使用してHTTPエラーにマッピング
+	httpErr := httpError.MapErrorToHTTP(err)
+
+	// ログ出力（サーバーエラーのみ詳細ログ）
+	if httpError.IsServerError(err) {
+		h.logger.Errorf("サーバーエラー: %v", err)
+	} else if httpError.IsClientError(err) {
+		h.logger.Warnf("クライアントエラー: %s - %s", httpErr.Code, httpErr.Message)
 	}
 
-	h.logger.Errorf("予期しないエラータイプ: %T, %v", err, err)
-	return errorResponse(http.StatusInternalServerError, "内部エラーが発生しました")
+	// 統一されたエラーレスポンス作成
+	return createErrorResponse(httpErr.StatusCode, httpErr.Code, httpErr.Message)
 }
 
-// Response helper functions (変更なし)
-func successResponse(statusCode int, data interface{}) events.APIGatewayProxyResponse {
+// createSuccessResponse は成功レスポンスを作成
+func createSuccessResponse(statusCode int, data interface{}) events.APIGatewayProxyResponse {
 	body, _ := json.Marshal(data)
 	return events.APIGatewayProxyResponse{
 		StatusCode: statusCode,
-		Headers: map[string]string{
-			"Content-Type":                 "application/json",
-			"Access-Control-Allow-Origin":  "*",
-			"Access-Control-Allow-Headers": "Content-Type,Authorization",
-			"Access-Control-Allow-Methods": "GET,POST,PATCH,DELETE,OPTIONS",
-		},
-		Body: string(body),
+		Headers:    getCORSHeaders(),
+		Body:       string(body),
 	}
 }
 
-func errorResponse(statusCode int, message string) events.APIGatewayProxyResponse {
-	body, _ := json.Marshal(map[string]string{"error": message})
+// createErrorResponse はエラーレスポンスを作成（統一フォーマット）
+func createErrorResponse(statusCode int, code, message string) events.APIGatewayProxyResponse {
+	// エラーレスポンスの統一フォーマット
+	errorBody := map[string]interface{}{
+		"error": map[string]string{
+			"code":    code,
+			"message": message,
+		},
+	}
+
+	body, _ := json.Marshal(errorBody)
 	return events.APIGatewayProxyResponse{
 		StatusCode: statusCode,
-		Headers: map[string]string{
-			"Content-Type":                 "application/json",
-			"Access-Control-Allow-Origin":  "*",
-			"Access-Control-Allow-Headers": "Content-Type,Authorization",
-			"Access-Control-Allow-Methods": "GET,POST,PATCH,DELETE,OPTIONS",
-		},
-		Body: string(body),
+		Headers:    getCORSHeaders(),
+		Body:       string(body),
+	}
+}
+
+// getCORSHeaders はCORSヘッダーを取得
+func getCORSHeaders() map[string]string {
+	return map[string]string{
+		"Content-Type":                 "application/json",
+		"Access-Control-Allow-Origin":  "*",
+		"Access-Control-Allow-Headers": "Content-Type,Authorization",
+		"Access-Control-Allow-Methods": "GET,POST,PATCH,DELETE,OPTIONS",
 	}
 }
 
