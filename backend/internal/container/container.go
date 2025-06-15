@@ -33,6 +33,9 @@ type LambdaContainer struct {
 	logger   logger.Logger
 	config   *config.Config
 
+	// Infrastructure Services
+	infraServices *InfrastructureServices
+
 	// State management
 	initialized bool
 	mu          sync.RWMutex
@@ -71,6 +74,7 @@ func (c *LambdaContainer) Initialize(ctx context.Context) error {
 	if err != nil {
 		return fmt.Errorf("インフラサービス初期化エラー: %w", err)
 	}
+	c.infraServices = infraServices // 保存
 
 	// 4. UseCases初期化
 	c.useCases = usecase.NewUseCases(
@@ -159,14 +163,44 @@ func (c *LambdaContainer) Cleanup() error {
 		return nil
 	}
 
-	// リソースクリーンアップ処理
-	// PostgreSQL、DynamoDB、SQS等の接続クローズ
+	var errors []error
+
+	// PostgreSQLクローズ
+	if c.infraServices != nil && c.infraServices.PostgresDB != nil {
+		if err := c.infraServices.PostgresDB.Close(); err != nil {
+			errors = append(errors, fmt.Errorf("PostgreSQL close error: %w", err))
+		}
+	}
+
+	// DynamoDBクローズ（必要に応じて）
+	if c.infraServices != nil && c.infraServices.DynamoDB != nil {
+		if err := c.infraServices.DynamoDB.Close(); err != nil {
+			errors = append(errors, fmt.Errorf("DynamoDB close error: %w", err))
+		}
+	}
+
+	// SQSクローズ
+	if c.infraServices != nil && c.infraServices.SQSClient != nil {
+		if err := c.infraServices.SQSClient.Close(); err != nil {
+			errors = append(errors, fmt.Errorf("SQS close error: %w", err))
+		}
+	}
+
+	if len(errors) > 0 {
+		c.logger.Errorf("クリーンアップエラー: %v", errors)
+		return errors[0] // 最初のエラーを返す
+	}
+
 	c.logger.Info("リソースクリーンアップ完了")
+	c.initialized = false
 	return nil
 }
 
 // HealthCheck は全サービスの接続確認
 func (c *LambdaContainer) HealthCheck(ctx context.Context) error {
+	c.mu.RLock()
+	defer c.mu.RUnlock()
+
 	if !c.initialized {
 		return fmt.Errorf("コンテナが初期化されていません")
 	}
@@ -174,6 +208,13 @@ func (c *LambdaContainer) HealthCheck(ctx context.Context) error {
 	// 各サービスのヘルスチェック
 	if err := c.useCases.Auth.CheckAuthHealth(ctx); err != nil {
 		return fmt.Errorf("認証サービス接続確認失敗: %w", err)
+	}
+
+	// SQSのヘルスチェック
+	if c.infraServices.SQSClient != nil {
+		if err := c.infraServices.SQSClient.HealthCheck(ctx); err != nil {
+			return fmt.Errorf("SQS接続確認失敗: %w", err)
+		}
 	}
 
 	c.logger.Info("全サービス接続確認成功")
