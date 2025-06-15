@@ -9,9 +9,8 @@ import (
 
 // 最適化関連定数
 const (
-	MinOptimizationScore = 0 // 最適化メッセージ送信の最小集中度スコア
-	MaxFocusScore        = 100
-	MinFocusScore        = 0
+	MaxFocusScore = 100
+	MinFocusScore = 0
 )
 
 // Round はポモドーロラウンドを表す構造体（強化版）
@@ -145,7 +144,7 @@ func (r *Round) Abort() error {
 func (r *Round) ShouldSendOptimizationMessage() bool {
 	return r.IsCompleted() &&
 		r.HasFocusScore() &&
-		*r.FocusScore >= MinOptimizationScore
+		*r.FocusScore >= MinFocusScore
 }
 
 // GetOptimizationMessageData は最適化メッセージ用のデータを返す
