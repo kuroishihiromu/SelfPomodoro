@@ -1,6 +1,7 @@
 package model
 
 import (
+	"encoding/json"
 	"fmt"
 	"time"
 
@@ -46,9 +47,14 @@ func (msg *SessionOptimizationMessage) IsValid() bool {
 
 // GetMessageSize はメッセージのおおよそのサイズを返す（バイト）
 func (msg *SessionOptimizationMessage) GetMessageSize() int {
-	// JSON形式での概算サイズ（avg_focus_score, total_work_time追加）
-	return len(msg.MessageID) + len(msg.MessageType) + len(msg.Version) +
-		len(msg.UserID) + len(msg.SessionID) + 80 // 固定部分とtimestamp + 数値フィールド
+	// 実際のJSONマーシャルしてサイズを計算
+	jsonData, err := json.Marshal(msg)
+	if err != nil {
+		// エラー時は概算値を返す
+		return len(msg.MessageID) + len(msg.MessageType) + len(msg.Version) +
+			len(msg.UserID) + len(msg.SessionID) + 80
+	}
+	return len(jsonData)
 }
 
 // ToLogString はログ出力用の文字列を返す

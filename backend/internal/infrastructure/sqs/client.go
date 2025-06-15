@@ -83,15 +83,18 @@ func (s *SQSClient) SendRoundOptimizationMessage(ctx context.Context, message *m
 		return appErrors.NewSQSError("validate", appErrors.ErrSQSMessageInvalid)
 	}
 
-	// JSON形式にシリアライズ
+	// ドメインオブジェクトにサイズを聞く
+	messageSize := message.GetMessageSize()
+
+	s.logger.Infof("ラウンド最適化メッセージ送信開始: %s (サイズ: %d bytes)",
+		message.ToLogString(), messageSize)
+
+	// JSON形式にシリアライズ（実際の送信用）
 	messageBody, err := json.Marshal(message)
 	if err != nil {
 		s.logger.Errorf("メッセージシリアライズエラー: %v", err)
 		return appErrors.NewSQSError("serialize", err)
 	}
-
-	s.logger.Infof("ラウンド最適化メッセージ送信開始: %s (サイズ: %d bytes)",
-		message.ToLogString(), message.GetMessageSize())
 
 	// リトライ付きでメッセージ送信
 	err = s.sendMessageWithRetry(ctx, s.roundOptimizationURL, string(messageBody), message.MessageID, "round_optimization")
@@ -113,15 +116,18 @@ func (s *SQSClient) SendSessionOptimizationMessage(ctx context.Context, message 
 		return appErrors.NewSQSError("validate", appErrors.ErrSQSMessageInvalid)
 	}
 
-	// JSON形式にシリアライズ
+	// ドメインオブジェクトにサイズを聞く
+	messageSize := message.GetMessageSize()
+
+	s.logger.Infof("セッション最適化メッセージ送信開始: %s (サイズ: %d bytes)",
+		message.ToLogString(), messageSize)
+
+	// JSON形式にシリアライズ(実際の送信用)
 	messageBody, err := json.Marshal(message)
 	if err != nil {
 		s.logger.Errorf("メッセージシリアライズエラー: %v", err)
 		return appErrors.NewSQSError("serialize", err)
 	}
-
-	s.logger.Infof("セッション最適化メッセージ送信開始: %s (サイズ: %d bytes)",
-		message.ToLogString(), message.GetMessageSize())
 
 	// リトライ付きでメッセージ送信
 	err = s.sendMessageWithRetry(ctx, s.sessionOptimizationURL, string(messageBody), message.MessageID, "session_optimization")

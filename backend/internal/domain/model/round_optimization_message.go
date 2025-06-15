@@ -1,6 +1,7 @@
 package model
 
 import (
+	"encoding/json"
 	"fmt"
 	"time"
 
@@ -41,11 +42,15 @@ func (msg *RoundOptimizationMessage) IsValid() bool {
 		msg.FocusScore >= 0 && msg.FocusScore <= 100
 }
 
-// GetMessageSize はメッセージのおおよそのサイズを返す（バイト）
+// GetMessageSize はメッセージの正確なサイズを返す（バイト）
 func (msg *RoundOptimizationMessage) GetMessageSize() int {
-	// JSON形式での概算サイズ
-	return len(msg.MessageID) + len(msg.MessageType) + len(msg.Version) +
-		len(msg.UserID) + len(msg.RoundID) + 50 // 固定部分とtimestamp
+	jsonData, err := json.Marshal(msg)
+	if err != nil {
+		// エラー時は概算値を返す
+		return len(msg.MessageID) + len(msg.MessageType) + len(msg.Version) +
+			len(msg.UserID) + len(msg.RoundID) + 100
+	}
+	return len(jsonData)
 }
 
 // ToLogString はログ出力用の文字列を返す
