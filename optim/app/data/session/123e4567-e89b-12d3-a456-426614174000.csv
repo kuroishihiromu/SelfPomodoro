@@ -1,4 +1,4 @@
-total_work_time,session_break_time,number_of_round,average_focus_score
+total_work_time,break_time,round_count,avg_focus_score
 125.0,15.0,3.0,33.6
 123.0,41.198463880597984,1.0,99.0
 104.01584918606748,31.359949579022047,6.0,100.0
