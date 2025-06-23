@@ -114,14 +114,14 @@ def dynamo_round_optimizer(user_id: uuid.UUID, focus_score: float):
     else:
         latest_time = datetime.now().isoformat()
     
-        # 最新のデータに集中度スコアを追加して更新
-        dynamodb_handler.put_round_data(
-            user_id=str(user_id),
-            time=latest_time,
-            work_time=latest_data.get('work_time'),
-            break_time=latest_data.get('break_time'),
-            focus_score=focus_score
-        )
+    # 最新のデータに集中度スコアを追加して更新
+    dynamodb_handler.put_round_data(
+        user_id=str(user_id),
+        time=latest_time,
+        work_time=latest_data.get('work_time'),
+        break_time=latest_data.get('break_time'),
+        focus_score=focus_score
+    )
 
     
     # ラウンド最適化の説明変数と目的変数を取得
