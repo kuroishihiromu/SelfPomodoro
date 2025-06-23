@@ -107,19 +107,25 @@ def dynamo_round_optimizer(user_id: uuid.UUID, focus_score: float):
     
     # 最新の作業時間・休憩時間のデータを取得
     latest_data = dynamodb_handler.get_round_data(user_id=str(user_id))
-    if latest_data:
+    latest_time = datetime.now().isoformat()
+    
+    if latest_data and isinstance(latest_data, list) and len(latest_data) > 0:
         # 最新のデータを取得
-        latest_data = dynamodb_handler._convert_dynamodb_items_to_list(latest_data)[-1]
-        latest_time = latest_data['time']
+        converted_data = dynamodb_handler._convert_dynamodb_items_to_list(latest_data)
+        latest_item = converted_data[-1]
+        latest_time = latest_item['time']
+        work_time = latest_item.get('work_time')
+        break_time = latest_item.get('break_time')
     else:
-        latest_time = datetime.now().isoformat()
+        work_time = None
+        break_time = None
     
     # 最新のデータに集中度スコアを追加して更新
     dynamodb_handler.put_round_data(
         user_id=str(user_id),
         time=latest_time,
-        work_time=latest_data.get('work_time'),
-        break_time=latest_data.get('break_time'),
+        work_time=work_time,
+        break_time=break_time,
         focus_score=focus_score
     )
 
@@ -163,20 +169,28 @@ def dynamo_session_optimizer(user_id: uuid.UUID, avg_focus_score: float):
     
     # 最新のセッションデータを取得
     latest_data = dynamodb_handler.get_session_data(user_id=str(user_id))
-    if latest_data:
+    latest_time = datetime.now().isoformat()
+    
+    if latest_data and isinstance(latest_data, list) and len(latest_data) > 0:
         # 最新のデータを取得
-        latest_data = dynamodb_handler._convert_dynamodb_items_to_list(latest_data)[-1]
-        latest_time = latest_data['time']
+        converted_data = dynamodb_handler._convert_dynamodb_items_to_list(latest_data)
+        latest_item = converted_data[-1]
+        latest_time = latest_item['time']
+        total_work_time = latest_item.get('total_work_time')
+        break_time = latest_item.get('break_time')
+        round_count = latest_item.get('round_count')
     else:
-        latest_time = datetime.now().isoformat()
+        total_work_time = None
+        break_time = None
+        round_count = None
     
     # 最新のデータに集中度スコアを追加して更新
     dynamodb_handler.put_session_data(
         user_id=str(user_id),
         time=latest_time,
-        total_work_time=latest_data.get('total_work_time') if latest_data else None,
-        break_time=latest_data.get('break_time') if latest_data else None,
-        round_count=latest_data.get('round_count') if latest_data else None,
+        total_work_time=total_work_time,
+        break_time=break_time,
+        round_count=round_count,
         avg_focus_score=avg_focus_score
     )
     
