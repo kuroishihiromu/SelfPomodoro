@@ -21,9 +21,9 @@ def test_bayesian_optimizer():
         print("セッション最適化")
         # セッション最適化
         opt = BayesianOptimizer("session")
-        total_work_time, session_break_time, number_of_round = opt.optimize_session(session_explanatory_variable, session_objective_variable)
-        print("提案されたセッション間休憩時間: ", session_break_time)
-        print("提案されたラウンド繰り返し回数: ", number_of_round)
+        total_work_time, break_time, round_count = opt.optimize_session(session_explanatory_variable, session_objective_variable)
+        print("提案されたセッション間休憩時間: ", break_time)
+        print("提案されたラウンド繰り返し回数: ", round_count)
         print()
         print()
 

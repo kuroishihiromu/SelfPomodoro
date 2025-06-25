@@ -13,7 +13,7 @@ class DynamoDBHandler:
         self.client = boto3.client('dynamodb', region_name=region_name)
         self.table_name = table_name
 
-    def put_round_data(self, user_id: str, time: str, work_time: Optional[int] = None, break_time: Optional[int] = None, focus_score: Optional[int] = None, timestamp: Optional[str] = None) -> dict:
+    def put_round_data(self, user_id: str, time: str, work_time: Optional[float] = None, break_time: Optional[float] = None, focus_score: Optional[float] = None, timestamp: Optional[str] = None) -> dict:
         """ラウンドデータをDynamoDBに追加"""
         try:
             # 必須フィールド
@@ -71,7 +71,7 @@ class DynamoDBHandler:
             raise Exception(f"ラウンドデータの取得に失敗しました: {e}")
 
 
-    def put_session_data(self, user_id: str, time: str, round_count: Optional[int] = None, break_time: Optional[int] = None, avg_focus_score: Optional[float] = None, total_work_time: Optional[int] = None, timestamp: Optional[str] = None) -> dict:
+    def put_session_data(self, user_id: str, time: str, round_count: Optional[int] = None, break_time: Optional[float] = None, avg_focus_score: Optional[float] = None, total_work_time: Optional[float] = None, timestamp: Optional[str] = None) -> dict:
         """セッションデータをDynamoDBに追加"""
         try:
             # 必須フィールド
