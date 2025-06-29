@@ -80,7 +80,7 @@ extension TaskAPIClient {
                 path: "/api/v1/tasks/\(id.uuidString)",
                 headers: [
                     "Content-Type": "application/json"
-                ],
+                ]
             )
 
             _ = try await Amplify.API.delete(request: request)
