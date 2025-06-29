@@ -125,10 +125,12 @@ struct ChartView: View {
             .gesture(
                 DragGesture()
                     .onEnded { value in
-                        if value.translation.width > 50 {
-                            currentWeekStart = previousWeek(from: currentWeekStart)
-                        } else if value.translation.width < -50 {
-                            currentWeekStart = nextWeek(from: currentWeekStart)
+                        withAnimation(.easeInOut) {
+                            if value.translation.width > 50 {
+                                currentWeekStart = previousWeek(from: currentWeekStart)
+                            } else if value.translation.width < -50 {
+                                currentWeekStart = nextWeek(from: currentWeekStart)
+                            }
                         }
                     }
             )
