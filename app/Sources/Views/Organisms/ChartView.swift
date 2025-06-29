@@ -30,6 +30,16 @@ struct ChartView: View {
         }
     }
 
+    // 表示期間のフォーマット
+    private var weekRangeText: String {
+        let formatter = DateFormatter()
+        formatter.dateFormat = "MM/dd"
+
+        let endDate = Calendar.current.date(byAdding: .day, value: 6, to: currentWeekStart)!
+
+        return "\(formatter.string(from: currentWeekStart))〜\(formatter.string(from: endDate))"
+    }
+
     // 標準偏差帯
     var stdDevArea: [some ChartContent] {
         currentWeekData
@@ -94,6 +104,37 @@ struct ChartView: View {
             Text("Concentration Score Trend")
                 .font(.headline)
                 .padding(.horizontal)
+
+            HStack {
+                Button {
+                    withAnimation {
+                        currentWeekStart = previousWeek(from: currentWeekStart)
+                    }
+                } label: {
+                    Image(systemName: "chevron.left")
+                    Text("Prev")
+                }
+                .foregroundColor(ColorTheme.black)
+
+                Spacer()
+
+                Text(weekRangeText)
+                    .font(.subheadline)
+                    .foregroundColor(ColorTheme.black)
+
+                Spacer()
+
+                Button {
+                    withAnimation {
+                        currentWeekStart = nextWeek(from: currentWeekStart)
+                    }
+                } label: {
+                    Text("Next")
+                    Image(systemName: "chevron.right")
+                }
+                .foregroundColor(ColorTheme.black)
+            }
+            .padding(.horizontal)
 
             Chart {
                 // 透明のラインを描画しておくことで、ChartのX軸にweekDates全体を認識させる
