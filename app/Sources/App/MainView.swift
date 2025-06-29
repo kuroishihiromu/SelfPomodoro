@@ -9,7 +9,17 @@ import ComposableArchitecture
 import SwiftUI
 
 struct MainView: View {
-    let store: StoreOf<TabButtonFeature>
+    var token: AuthTokens
+    
+    let store: StoreOf<TabButtonFeature> = Store(initialState: TabButtonFeature.State()) {
+        TabButtonFeature()
+    }
+    
+    init(token: AuthTokens) {
+        self.token = token
+        print("token: \(self.token)")
+    }
+    
     let timerStore = Store(
         initialState: TimerScreenFeature.State(
             timer: TimerFeature.State(
@@ -26,6 +36,7 @@ struct MainView: View {
     let toDoStore = Store(initialState: ToDoListFeature.State()) {
         ToDoListFeature()
     }
+    
     
     var body: some View {
         WithViewStore(store, observe: \.selectedTabIndex) { viewStore in
@@ -52,11 +63,4 @@ struct MainView: View {
             }
         }
     }
-}
-#Preview {
-    MainView(
-        store: Store(initialState: TabButtonFeature.State()) {
-            TabButtonFeature()
-        }
-    )
 }
