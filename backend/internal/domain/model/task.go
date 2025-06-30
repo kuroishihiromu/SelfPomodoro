@@ -8,12 +8,12 @@ import (
 
 // Task　はユーザのタスクを表すドメインモデル
 type Task struct {
-	ID          uuid.UUID `db:"id" json:"id"`
-	UserID      uuid.UUID `db:"user_id" json:"user_id"`
-	Detail      string    `db:"detail" json:"detail"`
-	IsCompleted bool      `db:"is_completed" json:"is_completed"`
-	CreatedAt   time.Time `db:"created_at" json:"created_at"`
-	UpdatedAt   time.Time `db:"updated_at" json:"updated_at"`
+	ID          uuid.UUID `json:"id"`
+	UserID      uuid.UUID `json:"user_id"`
+	Detail      string    `json:"detail"`
+	IsCompleted bool      `json:"is_completed"`
+	CreatedAt   time.Time `json:"created_at"`
+	UpdatedAt   time.Time `json:"updated_at"`
 }
 
 // NewTask は新しいタスクを作成する
@@ -27,6 +27,18 @@ func NewTask(userID uuid.UUID, detail string) *Task {
 		CreatedAt:   now,
 		UpdatedAt:   now,
 	}
+}
+
+// ToggleCompletion はタスクの完了状態を切り替える
+func (t *Task) ToggleCompletion() {
+	t.IsCompleted = !t.IsCompleted
+	t.UpdatedAt = time.Now()
+}
+
+// UpdateDetail はタスクの詳細を更新する
+func (t *Task) UpdateDetail(detail string) {
+	t.Detail = detail
+	t.UpdatedAt = time.Now()
 }
 
 // CreateTaskRequest はタスク作成リクエストを表す

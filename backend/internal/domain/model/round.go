@@ -15,17 +15,17 @@ const (
 
 // Round はポモドーロラウンドを表す構造体（強化版）
 type Round struct {
-	ID         uuid.UUID  `db:"id" json:"id"`
-	SessionID  uuid.UUID  `db:"session_id" json:"session_id"`
-	RoundOrder int        `db:"round_order" json:"round_order"`
-	StartTime  time.Time  `db:"start_time" json:"start_time"`
-	EndTime    *time.Time `db:"end_time" json:"end_time,omitempty"`
-	WorkTime   *int       `db:"work_time" json:"work_time,omitempty"`
-	BreakTime  *int       `db:"break_time" json:"break_time,omitempty"`
-	FocusScore *int       `db:"focus_score" json:"focus_score,omitempty"`
-	IsAborted  bool       `db:"is_aborted" json:"is_aborted"`
-	CreatedAt  time.Time  `db:"created_at" json:"created_at"`
-	UpdatedAt  time.Time  `db:"updated_at" json:"updated_at"`
+	ID         uuid.UUID  `json:"id"`
+	SessionID  uuid.UUID  `json:"session_id"`
+	RoundOrder int        `json:"round_order"`
+	StartTime  time.Time  `json:"start_time"`
+	EndTime    *time.Time `json:"end_time,omitempty"`
+	WorkTime   *int       `json:"work_time,omitempty"`
+	BreakTime  *int       `json:"break_time,omitempty"`
+	FocusScore *int       `json:"focus_score,omitempty"`
+	IsAborted  bool       `json:"is_aborted"`
+	CreatedAt  time.Time  `json:"created_at"`
+	UpdatedAt  time.Time  `json:"updated_at"`
 }
 
 // NewRound は新しいラウンドを作成する（ファクトリーメソッド）
