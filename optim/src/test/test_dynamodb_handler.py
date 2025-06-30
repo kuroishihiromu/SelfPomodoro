@@ -1,11 +1,25 @@
 import boto3
+import os
 from moto import mock_aws
 from handler.dynamodb.dynamodb_handler import DynamoDBHandler
+
+def set_env():
+    """公式推奨のenv設定
+    万が一にも本番環境へ変更が当たらないようにする
+    """
+    os.environ['AWS_ACCESS_KEY_ID'] = 'test'
+    os.environ['AWS_SECRET_ACCESS_KEY'] = 'test'
+    os.environ['AWS_DEFAULT_REGION'] = 'ap-northeast-1'
+    os.environ['AWS_SECURITY_TOKEN'] = 'test'
+    os.environ['AWS_SESSION_TOKEN'] = 'test'
 
 @mock_aws
 def test_dynamodb_handler():
     """DynamoDBHandlerのテスト"""
-    # モックの設定 - boto3.clientをモック化
+    # --- 環境変数を設定 ---
+    set_env()
+    
+    # --- モックの設定 ---
     with mock_aws():
         dynamodb = boto3.client('dynamodb')
         dynamodb.create_table(
