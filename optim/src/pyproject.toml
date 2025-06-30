@@ -8,9 +8,17 @@ dependencies = [
     "boto3>=1.38.46",
     "fastapi>=0.115.14",
     "pandas>=2.3.0",
+    "pytest>=8.4.1",
     "ruff>=0.12.1",
     "scikit-learn>=1.7.0",
     "scikit-optimize>=0.10.2",
     "ty>=0.0.1a12",
     "uvicorn>=0.35.0",
+]
+
+[tool.pytest.ini_options]
+pythonpath = ["."]
+testpaths = ["test"]
+filterwarnings = [
+  "ignore::DeprecationWarning:botocore"
 ]

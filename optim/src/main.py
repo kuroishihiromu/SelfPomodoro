@@ -11,11 +11,14 @@ app = FastAPI()
 
 @app.get("/")
 def hello():
-    return "PomodoroOptimizationServer: ポモドーロ最適化サーバー"
+    return {"message": "PomodoroOptimizationServer: ポモドーロ最適化サーバー"}
 
 
 @app.get("/csv_round_optimizer/{user_id}")
-def csv_round_optimizer(user_id: uuid.UUID, focus_score: float):
+def csv_round_optimizer(
+    user_id: uuid.UUID,
+    focus_score: float
+):
     """ラウンド最適化API
 
     Parameters:
@@ -36,8 +39,8 @@ def csv_round_optimizer(user_id: uuid.UUID, focus_score: float):
     # --- 説明変数と目的変数を取得 ---
     explanatory_variable = csv_handler.make_chosen_data_list(columns=["work_time", "break_time"])
     objective_variable = csv_handler.make_chosen_data_list(columns=["focus_score"])
-    print("説明変数リスト", explanatory_variable)
-    print("目的変数リスト", objective_variable)
+    print("説明変数リスト: ", explanatory_variable)
+    print("目的変数リスト: ", objective_variable)
 
     # --- ラウンド最適化 ---
     opt = BayesianOptimizer("round")
@@ -57,7 +60,10 @@ def csv_round_optimizer(user_id: uuid.UUID, focus_score: float):
 
 
 @app.get("/csv_session_optimizer/{user_id}")
-def csv_session_optimizer(user_id: uuid.UUID, avg_focus_score: float):
+def csv_session_optimizer(
+    user_id: uuid.UUID,
+    avg_focus_score: float
+):
     """セッション最適化API
 
     Parameters:
@@ -145,8 +151,8 @@ def dynamo_round_optimizer(
     # --- 説明変数と目的変数を取得 ---
     explanatory_variable = dynamodb_handler.get_round_data_list(user_id=str(user_id), columns=["work_time", "break_time"])
     objective_variable = dynamodb_handler.get_round_data_list(user_id=str(user_id), columns=["focus_score"])
-    print("説明変数リスト", explanatory_variable)
-    print("目的変数リスト", objective_variable)
+    print("説明変数リスト: ", explanatory_variable)
+    print("目的変数リスト: ", objective_variable)
     
     # --- ラウンド最適化 ---
     opt = BayesianOptimizer("round")
@@ -212,8 +218,8 @@ def dynamo_session_optimizer(
     # --- 説明変数と目的変数を取得 ---
     explanatory_variable = dynamodb_handler.get_session_data_list(user_id=str(user_id), columns=["total_work_time", "break_time", "round_count"])
     objective_variable = dynamodb_handler.get_session_data_list(user_id=str(user_id), columns=["avg_focus_score"])
-    print("説明変数リスト", explanatory_variable)
-    print("目的変数リスト", objective_variable)
+    print("説明変数リスト: ", explanatory_variable)
+    print("目的変数リスト: ", objective_variable)
     
     # --- セッション最適化 ---
     opt = BayesianOptimizer("session")
