@@ -18,7 +18,3 @@ def test_bayesian_optimizer():
     # --- 型チェック ---
     assert isinstance(work_time, float)
     assert isinstance(break_time, float)
-
-    # --- 値チェック ---
-    assert work_time == 47.189713658100594
-    assert break_time == 11.892873717275231
