@@ -24,3 +24,9 @@ def test_csv_handler():
     # --- 値チェック ---
     assert explanatory_variable[-1] == [20, 10]
     assert objective_variable[-2] == 90
+
+    # --- テストで追加したデータを削除 ---
+    csv_handler.df = csv_handler.df.iloc[:-1]
+    csv_handler.df.iloc[-1, csv_handler.df.columns.get_loc('focus_score')] = None
+    csv_handler.df.to_csv(csv_handler.file_path, index=False)
+    

@@ -50,6 +50,11 @@ class CSVHandler:
                 columns = [columns]
                 new_data = [new_data]
             
+            # --- 行内すべての要素がNoneの場合は更新をスキップ ---
+            if all(val is None for val in new_data):
+                print(f"すべての要素がNoneのため、データの更新をスキップします: {new_data}")
+                return
+            
             # --- データの追加 ---
             last_row = self.df.iloc[-1]
             has_empty_columns = last_row.isna().any()
