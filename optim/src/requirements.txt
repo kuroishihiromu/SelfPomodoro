@@ -1,5 +1,6 @@
 boto3
 fastapi
+moto
 pandas
 scikit-learn
 scikit-optimize

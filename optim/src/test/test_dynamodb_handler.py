@@ -1,8 +1,28 @@
+import boto3
+from moto import mock_aws
 from handler.dynamodb.dynamodb_handler import DynamoDBHandler
 
-
+@mock_aws
 def test_dynamodb_handler():
     """DynamoDBHandlerのテスト"""
+    # モックの設定 - boto3.clientをモック化
+    with mock_aws():
+        dynamodb = boto3.client('dynamodb')
+        dynamodb.create_table(
+            TableName='round_optimization_logs',
+            KeySchema=[
+                {'AttributeName': 'user_id', 'KeyType': 'HASH'},
+                {'AttributeName': 'time', 'KeyType': 'RANGE'}
+            ],
+            AttributeDefinitions=[
+                {'AttributeName': 'user_id', 'AttributeType': 'S'},
+                {'AttributeName': 'time', 'AttributeType': 'S'}
+            ],
+            ProvisionedThroughput={
+                'ReadCapacityUnits': 1,
+                'WriteCapacityUnits': 1
+            }
+        )
 
     dynamodb_handler = DynamoDBHandler(table_name="round_optimization_logs", region_name="ap-northeast-1")
 
