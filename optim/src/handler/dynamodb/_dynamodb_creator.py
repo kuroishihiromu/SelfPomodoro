@@ -1,3 +1,5 @@
+#! /usr/bin/env python3
+
 import boto3
 
 
@@ -7,23 +9,28 @@ class DynamoDBCreator:
     Attributes:
         dynamodb_client (boto3.client): DynamoDBのクライアント
     
-    Methods:
-        create_table(): DynamoDBのテーブルを作成する
-    
     Tables:
         - round_optimization_logs: ラウンドデータを保存するテーブル
         - session_optimization_logs: セッションデータを保存するテーブル
         - user_configs: ユーザ関連の設定データを保存するテーブル
-    
     """
-    def __init__(self, region_name='ap-northeast-1'):
-        """DynamoDBの初期化"""
+    def __init__(
+        self,
+        region_name: str = 'ap-northeast-1'
+    ) -> None:
+        """DynamoDBクライアントを作成
+        
+        Parameters:
+            region_name (str): AWSリージョン
+        """
         self.dynamodb_client = boto3.client('dynamodb', region_name=region_name)
 
-    def _create_table(self):
+    def _create_table(
+        self
+    ) -> None:
         """DynamoDBのテーブルを作成"""
+        # --- ラウンドデータ ---
         try:
-            """ラウンドデータ"""
             self.dynamodb_client.create_table(
                 TableName='round_optimization_logs',
                 KeySchema=[
@@ -44,9 +51,8 @@ class DynamoDBCreator:
             print(f"ラウンドデータのDynamoDBテーブル作成に失敗しました->\n {e}")
             raise Exception(f"ラウンドデータのDynamoDBテーブル作成に失敗しました->\n {e}")
         
-
+        # --- セッションデータ ---
         try:
-            """セッションデータ"""
             self.dynamodb_client.create_table(
                 TableName = "session_optimization_logs",
                 KeySchema=[
@@ -67,9 +73,8 @@ class DynamoDBCreator:
             print(f"セッションデータのDynamoDBテーブル作成に失敗しました->\n {e}")
             raise Exception(f"セッションデータのDynamoDBテーブル作成に失敗しました->\n {e}")
         
-
+        # --- ユーザ関連データ ---
         try:
-            """ユーザ関連データ"""
             self.dynamodb_client.create_table(
                 TableName='user_configs',
                 KeySchema=[

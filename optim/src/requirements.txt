@@ -1,12 +1,10 @@
+boto3
+fastapi
+moto
 pandas
 scikit-learn
 scikit-optimize
-fastapi
 uvicorn
-httpx
-boto3
-typing
-typing-extensions
+pytest
 ruff
 ty
-pytest

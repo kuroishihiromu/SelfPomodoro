@@ -1,13 +1,21 @@
-from skopt.space import Integer
+#! /usr/bin/env python3
+
+from typing import List, Union
+from skopt import Optimizer
 from skopt.learning import GaussianProcessRegressor
 from skopt.learning.gaussian_process.kernels import Matern
-from skopt import Optimizer
+from skopt.space import Integer
 
 class BayesianOptimizer:
-    def __init__(self, target: str):
-        """最適化の初期化
+    """ベイズ最適化クラス"""
+    
+    def __init__(
+        self,
+        target: str
+    ) -> None:
+        """skoptのインスタンスを作成
 
-        Args:
+        Parameters:
             target (str): 最適化タイプ
         """
         try:
@@ -27,15 +35,20 @@ class BayesianOptimizer:
                 )
             else:
                 raise ValueError(f"最適化タイプが不正です->\n '{target}'")
+            
         except Exception as e:
             print(f"最適化の初期化に失敗しました->\n {e}")
             raise Exception(f"最適化の初期化に失敗しました->\n {e}")
-    
-    
-    def optimize_round(self, explanatory_variable: list[float], objective_variable: list[float]):
+
+
+    def optimize_round(
+        self,
+        explanatory_variable: Union[List[Union[float, int]], List[List[Union[float, int]]]],
+        objective_variable: Union[List[Union[float, int]], List[List[Union[float, int]]]]
+    ) -> tuple[float, float]:
         """ラウンド最適化
 
-        Args:
+        Parameters:
             explanatory_variable (list[float]): 説明変数
             objective_variable (list[float]): 目的変数
         
@@ -55,11 +68,16 @@ class BayesianOptimizer:
         except Exception as e:
             print(f"ラウンド最適化に失敗しました->\n {e}")
             raise Exception(f"ラウンド最適化に失敗しました->\n {e}")
-    
-    def optimize_session(self, explanatory_variable: list[float], objective_variable: list[float]):
+
+
+    def optimize_session(
+        self,
+        explanatory_variable: Union[List[Union[float, int]], List[List[Union[float, int]]]],
+        objective_variable: Union[List[Union[float, int]], List[List[Union[float, int]]]]
+    ) -> tuple[float, float, int]:
         """セッション最適化
 
-        Args:
+        Parameters:
             explanatory_variable (list[float]): 説明変数
             objective_variable (list[float]): 目的変数
 

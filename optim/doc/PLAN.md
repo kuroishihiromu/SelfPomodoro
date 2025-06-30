@@ -146,12 +146,6 @@ $x^3$以上・・・データ量が多い場合のみ検討
 
 ## 参考
 
-### ２大案の比較
-
-![alt text](./image/PLAN/conditionBO.png)
-![alt text](./image/PLAN/detailBO.png)
-![alt text](./image/PLAN/sceneBO.png)
-
 ### その他の手法
 
 - **線形回帰による数式の最適化**  

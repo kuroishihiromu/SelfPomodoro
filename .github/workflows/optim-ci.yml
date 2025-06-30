@@ -1,13 +1,20 @@
 name: Optim CI
 
 on:
-  ## main, develop, optimブランチへのプッシュをトリガーにする
   push:
-    branches: [main, develop, optim]
+    paths:
+      - "**"
+    branches:
+      - main
+      - develop
+      - "optim-feature/**"
 
-  ## main, develop, optimブランチへのプルリクをトリガーにする
   pull_request:
-    branches: [main, develop, optim]
+    paths:
+      - "**"
+    branches:
+      - main
+      - develop
 
 jobs:
   test:
@@ -26,27 +33,30 @@ jobs:
           curl -LsSf https://astral.sh/uv/install.sh | sh
           echo "$HOME/.cargo/bin" >> $GITHUB_PATH
       - name: Create virtual environment with uv
-        working-directory: ./optim
+        working-directory: ./optim/src
         run: |
           uv venv .venv
 
       - name: Install dependencies
-        working-directory: ./optim
+        working-directory: ./optim/src
         run: |
           uv add -r requirements.txt
           uv pip list
-          uv pip install .
 
       ## Lintチェック
       - name: Lint check with ruff
-        working-directory: ./optim
+        working-directory: ./optim/src
         run: |
-          uv run ruff check app/*
+          uv run ruff check
 
       ## 型チェック
       - name: Type check with ty
-        working-directory: ./optim
+        working-directory: ./optim/src
         run: |
-          uv run ty check app/*
+          uv run ty check
 
-      ## フォーマットチェック
+      ## テスト
+      - name: Test with pytest
+        working-directory: ./optim/src
+        run: |
+          uv run pytest test/
