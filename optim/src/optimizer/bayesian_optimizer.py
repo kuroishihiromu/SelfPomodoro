@@ -1,9 +1,10 @@
 #! /usr/bin/env python3
 
-from skopt.space import Integer
+from typing import List, Union
+from skopt import Optimizer
 from skopt.learning import GaussianProcessRegressor
 from skopt.learning.gaussian_process.kernels import Matern
-from skopt import Optimizer
+from skopt.space import Integer
 
 class BayesianOptimizer:
     """ベイズ最適化クラス"""
@@ -42,8 +43,8 @@ class BayesianOptimizer:
 
     def optimize_round(
         self,
-        explanatory_variable: list[float],
-        objective_variable: list[float]
+        explanatory_variable: Union[List[Union[float, int]], List[List[Union[float, int]]]],
+        objective_variable: Union[List[Union[float, int]], List[List[Union[float, int]]]]
     ) -> tuple[float, float]:
         """ラウンド最適化
 
@@ -71,8 +72,8 @@ class BayesianOptimizer:
 
     def optimize_session(
         self,
-        explanatory_variable: list[float],
-        objective_variable: list[float]
+        explanatory_variable: Union[List[Union[float, int]], List[List[Union[float, int]]]],
+        objective_variable: Union[List[Union[float, int]], List[List[Union[float, int]]]]
     ) -> tuple[float, float, int]:
         """セッション最適化
 

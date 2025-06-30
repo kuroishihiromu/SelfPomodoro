@@ -102,7 +102,10 @@ def csv_session_optimizer(user_id: uuid.UUID, avg_focus_score: float):
 
 
 @app.get("/dynamo_round_optimizer/{user_id}")
-def dynamo_round_optimizer(user_id: uuid.UUID, focus_score: float):
+def dynamo_round_optimizer(
+    user_id: uuid.UUID,
+    focus_score: float
+):
     """DynamoDBのラウンド最適化API
 
     Parameters:
@@ -121,7 +124,7 @@ def dynamo_round_optimizer(user_id: uuid.UUID, focus_score: float):
     
     if latest_data and isinstance(latest_data, list) and len(latest_data) > 0:
         # --- 最新のデータを取得 ---
-        converted_data = dynamodb_handler._convert_dynamodb_items_to_list(latest_data)
+        converted_data = dynamodb_handler._convert_to_list(latest_data)
         latest_item = converted_data[-1]
         latest_time = latest_item['time']
         work_time = latest_item.get('work_time')
@@ -140,8 +143,8 @@ def dynamo_round_optimizer(user_id: uuid.UUID, focus_score: float):
     )
 
     # --- 説明変数と目的変数を取得 ---
-    explanatory_variable = dynamodb_handler.make_chosen_data_list(user_id=str(user_id), columns=["work_time", "break_time"])
-    objective_variable = dynamodb_handler.make_chosen_data_list(user_id=str(user_id), columns=["focus_score"])
+    explanatory_variable = dynamodb_handler.get_round_data_list(user_id=str(user_id), columns=["work_time", "break_time"])
+    objective_variable = dynamodb_handler.get_round_data_list(user_id=str(user_id), columns=["focus_score"])
     print("説明変数リスト", explanatory_variable)
     print("目的変数リスト", objective_variable)
     
@@ -162,7 +165,10 @@ def dynamo_round_optimizer(user_id: uuid.UUID, focus_score: float):
 
 
 @app.get("/dynamo_session_optimizer/{user_id}")
-def dynamo_session_optimizer(user_id: uuid.UUID, avg_focus_score: float):
+def dynamo_session_optimizer(
+    user_id: uuid.UUID,
+    avg_focus_score: float
+):
     """DynamoDBのセッション最適化API
 
     Parameters:
@@ -182,7 +188,7 @@ def dynamo_session_optimizer(user_id: uuid.UUID, avg_focus_score: float):
     
     if latest_data and isinstance(latest_data, list) and len(latest_data) > 0:
         # --- 最新のデータを取得 ---
-        converted_data = dynamodb_handler._convert_dynamodb_items_to_list(latest_data)
+        converted_data = dynamodb_handler._convert_to_list(latest_data)
         latest_item = converted_data[-1]
         latest_time = latest_item['time']
         total_work_time = latest_item.get('total_work_time')
@@ -204,8 +210,8 @@ def dynamo_session_optimizer(user_id: uuid.UUID, avg_focus_score: float):
     )
     
     # --- 説明変数と目的変数を取得 ---
-    explanatory_variable = dynamodb_handler.make_chosen_session_data_list(user_id=str(user_id), columns=["total_work_time", "break_time", "round_count"])
-    objective_variable = dynamodb_handler.make_chosen_session_data_list(user_id=str(user_id), columns=["avg_focus_score"])
+    explanatory_variable = dynamodb_handler.get_session_data_list(user_id=str(user_id), columns=["total_work_time", "break_time", "round_count"])
+    objective_variable = dynamodb_handler.get_session_data_list(user_id=str(user_id), columns=["avg_focus_score"])
     print("説明変数リスト", explanatory_variable)
     print("目的変数リスト", objective_variable)
     
