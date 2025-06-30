@@ -1,0 +1,8 @@
+boto3
+fastapi
+pandas
+scikit-learn
+scikit-optimize
+uvicorn
+ruff
+ty
