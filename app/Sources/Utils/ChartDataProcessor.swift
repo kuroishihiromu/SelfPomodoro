@@ -16,7 +16,7 @@ enum ChartDataProcessor {
         }
     }
 
-    static func calculateMovingAverage(from results: [FocusTrendResult], windowSize: Int = 7) -> [ChartFeature.ConcentrationData] {
+    static func calculateMovingAverage(from results: [FocusTrendResult], windowSize: Int = 7) -> [ConcentrationData] {
         let sorted = results.sorted { $0.date < $1.date }
         let scores = sorted.map { Double($0.focusScore) }
 
@@ -27,7 +27,7 @@ enum ChartDataProcessor {
             let variance = window.map { pow($0 - average, 2) }.reduce(0, +) / Double(window.count)
             let stdDev = sqrt(variance)
 
-            return ChartFeature.ConcentrationData(
+            return ConcentrationData(
                 date: result.date,
                 score: scores[index],
                 movingAverage: average,

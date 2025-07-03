@@ -14,7 +14,7 @@ struct ChartFeature {
 
     struct State: Equatable {
         var data: [ConcentrationData] = []
-        var currentWeekStart: Date = Self.startOfCurrentWeek()
+        var currentWeekStart: Date = .startOfCurrentWeek()
 
         var weekDates: [Date] {
             (0..<8).compactMap { offset in
@@ -28,18 +28,10 @@ struct ChartFeature {
                 dict[date] ?? ConcentrationData(date: date, score: 0, movingAverage: 0, stdDev: 0)
             }
         }
-
-        static func startOfCurrentWeek() -> Date {
-            let calendar = Calendar.current
-            let today = calendar.startOfDay(for: Date())
-            let weekday = calendar.component(.weekday, from: today)
-            let diff = (weekday + 5) % 7
-            return calendar.date(byAdding: .day, value: -diff, to: today)!
-        }
     }
 
     enum Action: Equatable {
-        case fetchData
+        case fetchFocusTrend
         case dataLoaded([ConcentrationData])
         case previousWeek
         case nextWeek
@@ -49,13 +41,13 @@ struct ChartFeature {
         Reduce { state, action in
             switch action {
 
-            case .fetchData:
+            case .fetchFocusTrend:
                 return .run { send in
                     do {
-                        let raw = try await apiClient.fetchFocusTrend()
-                        let normalized = ChartDataProcessor.normalizeDates(raw)
-                        let processed = ChartDataProcessor.calculateMovingAverage(from: normalized)
-                        await send(.dataLoaded(processed))
+                        let focusTrendResults = try await apiClient.fetchFocusTrend()
+                        let normalizeToDayStart = ChartDataProcessor.normalizeDates(focusTrendResults)
+                        let scoredConcentrationData = ChartDataProcessor.calculateMovingAverage(from: normalizeToDayStart)
+                        await send(.dataLoaded(scoredConcentrationData))
                     } catch {
                         print("データ読み込み失敗: \(error)")
                     }
@@ -74,13 +66,5 @@ struct ChartFeature {
                 return .none
             }
         }
-    }
-
-    struct ConcentrationData: Identifiable, Equatable {
-        var id: Date { date }
-        let date: Date
-        let score: Double
-        let movingAverage: Double
-        let stdDev: Double
     }
 }
