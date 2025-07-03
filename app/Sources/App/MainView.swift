@@ -23,9 +23,9 @@ struct MainView: View {
     let timerStore = Store(
         initialState: TimerScreenFeature.State(
             timer: TimerFeature.State(
-                totalSeconds: 10,
+                totalSeconds: 23*62,
                 taskDuration: 30,
-                shortBreakDuration: 10,
+                shortBreakDuration: 5*60,
                 longBreakDuration: 20,
                 roundsPerSession: 3
             ),

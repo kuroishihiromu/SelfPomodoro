@@ -44,7 +44,7 @@ extension TaskAPIClient {
         fetchTasks: {
             let request = RESTRequest(
                 apiName: "selfpomodoro",
-                path: "/api/v1/tasks",
+                path: "/dev/api/v1/tasks",
                 headers: [
                     "Content-Type": "application/json"
                 ]
@@ -63,7 +63,7 @@ extension TaskAPIClient {
         addTask: { detail in
             let body = try JSONEncoder().encode(["detail": detail])
             let request = RESTRequest(
-                path: "/api/v1/tasks",
+                path: "/dev/api/v1/tasks",
                 headers: [
                     "Content-Type": "application/json"
                 ],
@@ -77,7 +77,7 @@ extension TaskAPIClient {
 
         deleteTask: { id in
             let request = RESTRequest(
-                path: "/api/v1/tasks/\(id.uuidString)",
+                path: "/dev/api/v1/tasks/\(id.uuidString)",
                 headers: [
                     "Content-Type": "application/json"
                 ]
@@ -89,7 +89,7 @@ extension TaskAPIClient {
         toggleCompletion: { id in
             let request = RESTRequest(
                 apiName: "selfpomodoro",
-                path: "/api/v1/tasks/\(id)/toggle",
+                path: "/dev/api/v1/tasks/\(id)/toggle",
                 headers: ["Content-Type": "application/json"],
                 body: nil
             )

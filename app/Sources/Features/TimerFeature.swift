@@ -63,6 +63,7 @@ struct TimerFeature {
         switch action {
 
         case .start:
+            print(print("Timer: .start--------------"))
             state.isRunning = true
             state.totalSeconds = state.currentPhaseDuration
             let correctedStart = ContinuousClock().now.advanced(by: .seconds(-state.currentSeconds))
@@ -71,17 +72,21 @@ struct TimerFeature {
                 var lastElapsed = -1
                 while !Task.isCancelled {
                     let now = ContinuousClock().now
-                    let elapsed = Int(start.duration(to: now).components.seconds)
-                    if elapsed != lastElapsed {
-                        await send(.tick(elapsed))
-                        lastElapsed = elapsed
+                    let realElapsed = start.duration(to: now).components.seconds
+                    let acceleratedElapsed = Int(Double(realElapsed) * 100)  // 10倍速！
+
+                    if acceleratedElapsed != lastElapsed {
+                        await send(.tick(acceleratedElapsed))
+                        lastElapsed = acceleratedElapsed
                     }
-                    try? await Task.sleep(nanoseconds: 100_000_000)
+
+                    try? await Task.sleep(nanoseconds: 100_000_000) // 0.1秒ごとにチェック（=リアルタイム）
                 }
             }
             .cancellable(id: CancelID.timer)
 
         case .stop:
+            print("Timer: .stop--------------")
             state.isRunning = false
             return .cancel(id: CancelID.timer)
 
@@ -96,26 +101,36 @@ struct TimerFeature {
             return .none
 
         case .phaseCompleted:
+            print("Timer: .phaseCompleted--------------")
             state.isRunning = false
             state.currentSeconds = 0
-
+            print( "タイマーが検知したラウンド\(state.round)")
+            print("タイマーが検知したセッション全体のラウンド\(state.roundsPerSession)")
             switch state.phase {
             case .task:
                 // セッションの最後のタスクだった場合は longBreak
-                if state.round % state.roundsPerSession == 0 {
+                if state.round > state.roundsPerSession {
+                    print("long break")
                     state.phase = .longBreak
                 } else {
                     state.phase = .shortBreak
                 }
-            case .shortBreak, .longBreak:
+            case .shortBreak:
                 state.phase = .task
                 state.round += 1
+                
+            case .longBreak:
+                print("long break")
+                state.phase = .task
+                state.round = 1
+                
             }
 
             state.totalSeconds = state.currentPhaseDuration
             return .send(.stop)
 
         case let .updateSettings(task, short, long, rps):
+            print("Timer: .updateSettings--------------")
             state.taskDuration = task
             state.shortBreakDuration = short
             state.longBreakDuration = long

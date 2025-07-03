@@ -20,6 +20,17 @@ enum APIFormatters {
         return formatter
     }()
 
+    static let iso8601Flexible: ISO8601DateFormatter = {
+        let formatter = ISO8601DateFormatter()
+        formatter.formatOptions = [
+            .withInternetDateTime, // "yyyy-MM-dd'T'HH:mm:ssZ" → これで `"2025-07-03T04:38:19Z"` に対応
+            .withFractionalSeconds // fractionalSeconds がついててもOK（あれば処理される）
+        ]
+        return formatter
+    }()
+    
+    
+
     /// JSONDecoder with custom ISO8601 handling
     static let jsonDecoder: JSONDecoder = {
         let decoder = JSONDecoder()
@@ -29,7 +40,7 @@ enum APIFormatters {
             let container = try decoder.singleValueContainer()
             let dateStr = try container.decode(String.self)
 
-            guard let date = iso8601WithFractionalSecondsAndTZ.date(from: dateStr) else {
+            guard let date = iso8601Flexible.date(from: dateStr) else {
                 throw DecodingError.dataCorruptedError(
                     in: container,
                     debugDescription: "Invalid ISO8601 date format: \(dateStr)"
@@ -39,6 +50,13 @@ enum APIFormatters {
             return date
         }
 
+        return decoder
+    }()
+    
+    static let jsonDecoderWithISOEasyVersion: JSONDecoder = {
+        let decoder = JSONDecoder()
+        decoder.keyDecodingStrategy = .useDefaultKeys
+        decoder.dateDecodingStrategy = .iso8601
         return decoder
     }()
 }

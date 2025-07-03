@@ -15,8 +15,6 @@ struct RoundResult: Codable, Identifiable, Equatable {
     var workTime: Int?
     var breakTime: Int?
     var focusScore: Int?
-    var isAborted: Bool
-
     enum CodingKeys: String, CodingKey {
         case id
         case sessionId = "session_id"
@@ -26,6 +24,5 @@ struct RoundResult: Codable, Identifiable, Equatable {
         case workTime = "work_time"
         case breakTime = "break_time"
         case focusScore = "focus_score"
-        case isAborted = "is_aborted"
     }
 }

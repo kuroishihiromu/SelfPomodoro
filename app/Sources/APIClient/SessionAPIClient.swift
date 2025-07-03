@@ -21,8 +21,8 @@ extension SessionAPIClient {
     static let live = SessionAPIClient(
         startSession: {
             let request = RESTRequest(
-                apiName: "selfpomodoro", // amplifyconfiguration.json に記載されている name
-                path: "/api/v1/sessions",
+                apiName: "selfpomodoro",
+                path: "/dev/api/v1/sessions",
                 headers: [
                     "Content-Type": "application/json"
                 ]
@@ -36,7 +36,7 @@ extension SessionAPIClient {
         completeSession: { sessionId in
             let request = RESTRequest(
                 apiName: "selfpomodoro",
-                path: "/api/v1/sessions/\(sessionId)/complete",
+                path: "/dev/api/v1/sessions/\(sessionId)/complete",
                 headers: [
                     "Content-Type": "application/json"
                 ]
@@ -47,9 +47,11 @@ extension SessionAPIClient {
         },
         
         startRound: { sessionId in
+            let sessionIdLower = sessionId.uuidString.lowercased()
+            print("sessionIdLower: \(sessionIdLower)")
             let request = RESTRequest(
                 apiName: "selfpomodoro",
-                path: "/api/v1/sessions/\(sessionId)/rounds",
+                path: "/dev/api/v1/sessions/\(sessionIdLower)/rounds",
                 headers: [
                     "Content-Type": "application/json"
                 ]
@@ -63,7 +65,7 @@ extension SessionAPIClient {
             let body = try JSONEncoder().encode(["focus_score": focusScore])
             let request = RESTRequest(
                 apiName: "selfpomodoro",
-                path: "/api/v1/rounds/\(roundId)/complete",
+                path: "/dev/api/v1/rounds/\(roundId)/complete",
                 headers: [
                     "Content-Type": "application/json"
                 ],
@@ -71,13 +73,13 @@ extension SessionAPIClient {
             )
 
             let data = try await Amplify.API.patch(request: request)
-            return try APIFormatters.jsonDecoder.decode(RoundResult.self, from: data)
+            return try APIFormatters.jsonDecoderWithISOEasyVersion.decode(RoundResult.self, from: data)
         },
 
         getSession: { sessionId in
             let request = RESTRequest(
                 apiName: "selfpomodoro",
-                path: "/api/v1/sessions/\(sessionId)",
+                path: "/dev/api/v1/sessions/\(sessionId)",
                 headers: [
                     "Content-Type": "application/json"
                 ]
