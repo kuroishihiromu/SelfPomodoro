@@ -85,6 +85,7 @@ func (c *LambdaContainer) Initialize(ctx context.Context) error {
 		infraServices.Repositories.Statistics,
 		infraServices.Repositories.UserConfig,
 		infraServices.Repositories.SampleOptimizationData,
+		infraServices.Repositories.Optimization,
 		infraServices.Repositories.Auth,
 		infraServices.SQSClient,
 		cfg,
@@ -96,25 +97,15 @@ func (c *LambdaContainer) Initialize(ctx context.Context) error {
 	return nil
 }
 
-// initializeInfrastructure はインフラストラクチャサービスを初期化
+// initializeInfrastructure はインフラストラクチャサービスを初期化（DynamoDB完全移行版）
 func (c *LambdaContainer) initializeInfrastructure(cfg *config.Config, logger logger.Logger) (*InfrastructureServices, error) {
-	// 1. PostgreSQL接続
-	postgresDB, err := database.NewPostgresDB(cfg, logger)
+	// 1. DynamoDB接続（必須）
+	dynamoDB, err := database.NewDynamoDB(cfg, logger)
 	if err != nil {
-		return nil, fmt.Errorf("PostgreSQL接続エラー: %w", err)
+		return nil, fmt.Errorf("DynamoDB接続エラー: %w", err)
 	}
 
-	// 2. DynamoDB接続（オプショナル）
-	var dynamoDB *database.DynamoDB
-	if cfg.DynamoUserConfigTable != "" {
-		dynamoDB, err = database.NewDynamoDB(cfg, logger)
-		if err != nil {
-			logger.Warnf("DynamoDB接続失敗、続行します: %v", err)
-			dynamoDB = nil
-		}
-	}
-
-	// 3. SQS接続（オプショナル）
+	// 2. SQS接続（オプショナル）
 	var sqsClient *sqs.SQSClient
 	if cfg.SQSRoundOptimizationURL != "" {
 		sqsClient, err = sqs.NewSQSClient(cfg, logger)
@@ -124,13 +115,12 @@ func (c *LambdaContainer) initializeInfrastructure(cfg *config.Config, logger lo
 		}
 	}
 
-	// 4. Repository Factory初期化
-	repositoryFactory := repository.NewRepositoryFactory(postgresDB, dynamoDB, cfg, logger)
+	// 3. Repository Factory初期化（DynamoDBのみ）
+	repositoryFactory := repository.NewRepositoryFactory(dynamoDB, cfg, logger)
 
 	return &InfrastructureServices{
 		Repositories: repositoryFactory,
 		SQSClient:    sqsClient,
-		PostgresDB:   postgresDB,
 		DynamoDB:     dynamoDB,
 	}, nil
 }
@@ -165,14 +155,7 @@ func (c *LambdaContainer) Cleanup() error {
 
 	var errors []error
 
-	// PostgreSQLクローズ
-	if c.infraServices != nil && c.infraServices.PostgresDB != nil {
-		if err := c.infraServices.PostgresDB.Close(); err != nil {
-			errors = append(errors, fmt.Errorf("PostgreSQL close error: %w", err))
-		}
-	}
-
-	// DynamoDBクローズ（必要に応じて）
+	// DynamoDBクローズ
 	if c.infraServices != nil && c.infraServices.DynamoDB != nil {
 		if err := c.infraServices.DynamoDB.Close(); err != nil {
 			errors = append(errors, fmt.Errorf("DynamoDB close error: %w", err))
@@ -221,10 +204,9 @@ func (c *LambdaContainer) HealthCheck(ctx context.Context) error {
 	return nil
 }
 
-// InfrastructureServices はインフラ層のサービス群
+// InfrastructureServices はインフラ層のサービス群（DynamoDB完全移行版）
 type InfrastructureServices struct {
 	Repositories *repository.RepositoryFactory
 	SQSClient    *sqs.SQSClient
-	PostgresDB   *database.PostgresDB
 	DynamoDB     *database.DynamoDB
 }
