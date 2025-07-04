@@ -4,6 +4,7 @@ moto
 pandas
 scikit-learn
 scikit-optimize
+tensorflow
 uvicorn
 pytest
 ruff

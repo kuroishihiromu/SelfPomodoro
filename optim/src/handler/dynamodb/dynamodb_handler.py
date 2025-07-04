@@ -1,3 +1,4 @@
+from datetime import datetime
 from typing import Union, List, Optional
 import boto3
 
@@ -342,3 +343,42 @@ class DynamoDBHandler:
         except Exception as e:
             print(f"セッションデータのリスト化に失敗しました: {e}")
             raise Exception(f"セッションデータのリスト化に失敗しました: {e}") 
+
+
+    def get_today_data(
+        self,
+        user_id: str,
+    ) -> List[dict]:
+        """今日のデータを取得
+        
+        Parameters:
+            user_id (str): ユーザーID
+        
+        Returns:
+            List[dict]: 今日のデータ
+        """
+        try:
+            # 今日の日付のタイムスタンプ範囲を取得
+            # today_date = datetime.now().strftime('%Y-%m-%d')
+            today_date = "2025-06-30"
+            today_start_time = f"{today_date}T00:00:00"
+            today_end_time = f"{today_date}T23:59:59"
+            # 今日のデータを取得
+            response = self.client.query(
+                TableName=self.table_name,
+                KeyConditionExpression='user_id = :user_id AND #timestamp BETWEEN :start_time AND :end_time',
+                ExpressionAttributeNames={
+                    '#timestamp': 'time'
+                },
+                ExpressionAttributeValues={
+                    ':user_id': {'S': user_id},
+                    ':start_time': {'S': today_start_time},
+                    ':end_time': {'S': today_end_time}
+                }
+            )
+            
+            return response.get('Items', [])
+        
+        except Exception as e:
+            print(f"今日のデータの取得に失敗しました: {e}")
+            raise Exception(f"今日のデータの取得に失敗しました: {e}")
