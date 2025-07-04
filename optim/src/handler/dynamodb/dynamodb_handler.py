@@ -345,40 +345,115 @@ class DynamoDBHandler:
             raise Exception(f"セッションデータのリスト化に失敗しました: {e}") 
 
 
-    def get_today_data(
+    def get_all_timestamps(
         self,
-        user_id: str,
-    ) -> List[dict]:
-        """今日のデータを取得
+        user_id: str
+    ) -> List[str]:
+        """指定されたユーザーのすべてのタイムスタンプを取得
         
         Parameters:
             user_id (str): ユーザーID
         
         Returns:
-            List[dict]: 今日のデータ
+            List[str]: タイムスタンプのリスト
         """
         try:
-            # 今日の日付のタイムスタンプ範囲を取得
-            # today_date = datetime.now().strftime('%Y-%m-%d')
-            today_date = "2025-06-30"
-            today_start_time = f"{today_date}T00:00:00"
-            today_end_time = f"{today_date}T23:59:59"
-            # 今日のデータを取得
+            # 全データを取得
             response = self.client.query(
                 TableName=self.table_name,
-                KeyConditionExpression='user_id = :user_id AND #timestamp BETWEEN :start_time AND :end_time',
-                ExpressionAttributeNames={
-                    '#timestamp': 'time'
-                },
+                KeyConditionExpression='user_id = :user_id',
                 ExpressionAttributeValues={
-                    ':user_id': {'S': user_id},
-                    ':start_time': {'S': today_start_time},
-                    ':end_time': {'S': today_end_time}
+                    ':user_id': {'S': user_id}
                 }
             )
             
-            return response.get('Items', [])
-        
+            items = response.get('Items', [])
+            
+            # タイムスタンプのみを抽出
+            timestamps = []
+            for item in items:
+                if 'time' in item and 'S' in item['time']:
+                    timestamps.append(item['time']['S'])
+            
+            return timestamps
+            
         except Exception as e:
-            print(f"今日のデータの取得に失敗しました: {e}")
-            raise Exception(f"今日のデータの取得に失敗しました: {e}")
+            print(f"タイムスタンプの取得に失敗しました: {e}")
+            raise Exception(f"タイムスタンプの取得に失敗しました: {e}")
+
+
+    def get_four_past_days_data(
+        self,
+        user_id: str
+    ) -> tuple[List[dict], List[dict], List[dict], List[dict]]:
+        """過去4日間のデータを取得
+        
+        Parameters:
+            user_id (str): ユーザーID
+        
+        Returns:
+            tuple[List[dict], List[dict], List[dict]]: (最新のデータ, 最新から１つ古いデータ, 最新から２つ古いデータ, 最新から３つ古いデータ)
+        """
+        try:
+            # 全タイムスタンプを取得
+            all_timestamps = self.get_all_timestamps(user_id)
+            
+            if not all_timestamps:
+                return [], [], [], []
+            
+            # タイムスタンプを日付でグループ化
+            date_groups = {}
+            for timestamp in all_timestamps:
+                # タイムスタンプから日付部分を抽出
+                try:
+                    # ISO形式のタイムスタンプをパース
+                    if '+' in timestamp:
+                        # UTCオフセット付きの場合
+                        dt = datetime.fromisoformat(timestamp.replace('+00:00', '+00:00'))
+                    else:
+                        # オフセットなしの場合
+                        dt = datetime.fromisoformat(timestamp)
+                    
+                    date_key = dt.strftime('%Y-%m-%d')
+                    
+                    if date_key not in date_groups:
+                        date_groups[date_key] = []
+                    date_groups[date_key].append(timestamp)
+                    
+                except ValueError as e:
+                    print(f"タイムスタンプのパースに失敗しました: {timestamp}, エラー: {e}")
+                    continue
+            
+            # 過去4日間を取得
+            sorted_dates = sorted(date_groups.keys(), reverse=True)
+            latest_four_dates = sorted_dates[:4]
+            
+            # 日付ごとにデータを取得
+            latest_data = []
+            second_latest_data = []
+            third_latest_data = []
+            fourth_latest_data = [] 
+            
+            for i, date in enumerate(latest_four_dates):
+                date_data = []
+                for timestamp in date_groups[date]:
+                    # 各タイムスタンプのデータを取得
+                    data = self.get_round_data(user_id, timestamp)
+                    if data:
+                        date_data.append(data)
+                
+                if i == 0:
+                    latest_data = date_data        # 最新の日付のデータ
+                    # ↑ focus_scoreがない最新データ一件（予測用）も含まれる
+                elif i == 1:
+                    second_latest_data = date_data # 最新から１つ古い日付のデータ
+                elif i == 2:
+                    third_latest_data = date_data  # 最新から２つ古い日付のデータ
+                elif i == 3:
+                    fourth_latest_data = date_data # 最新から３つ古い日付のデータ
+            
+            return latest_data, second_latest_data, third_latest_data, fourth_latest_data
+            
+        except Exception as e:
+            print(f"過去4日間のデータの取得に失敗しました: {e}")
+            raise Exception(f"過去4日間のデータの取得に失敗しました: {e}")
