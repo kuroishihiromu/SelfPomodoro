@@ -2,28 +2,17 @@ package config
 
 import (
 	"os"
-	"strconv"
 )
 
-// Config はLambda環境での設定を保持する構造体
+// Config はLambda環境での設定を保持する構造体（DynamoDB完全移行版）
 type Config struct {
-	// データベース設定
-	DBHost     string `mapstructure:"DB_HOST"`
-	DBPort     int    `mapstructure:"DB_PORT"`
-	DBUser     string `mapstructure:"DB_USER"`
-	DBPassword string `mapstructure:"DB_PASSWORD"`
-	DBName     string `mapstructure:"DB_NAME"`
-	DBSSLMode  string `mapstructure:"DB_SSL_MODE"`
-
 	// Cognito設定
 	CognitoUserPoolID string `mapstructure:"COGNITO_USER_POOL_ID"`
 	CognitoClientID   string `mapstructure:"COGNITO_CLIENT_ID"`
 
 	// DynamoDB設定
-	DynamoRegion                   string `mapstructure:"DYNAMO_REGION"`
-	DynamoUserConfigTable          string `mapstructure:"DYNAMO_USER_CONFIG_TABLE"`
-	DynamoRoundOptimizationTable   string `mapstructure:"DYNAMO_ROUND_OPTIMIZATION_TABLE"`
-	DynamoSessionOptimizationTable string `mapstructure:"DYNAMO_SESSION_OPTIMIZATION_TABLE"`
+	DynamoRegion      string `mapstructure:"DYNAMO_REGION"`
+	DynamoUnifiedTable string `mapstructure:"DYNAMO_UNIFIED_TABLE"`
 
 	// SQS設定
 	SQSRoundOptimizationURL   string `mapstructure:"SQS_ROUND_OPTIMIZATION_URL"`
@@ -39,27 +28,15 @@ type Config struct {
 	Environment string `mapstructure:"ENVIRONMENT"`
 }
 
-// Load はLambda環境変数から設定を読み込む
+// Load はLambda環境変数から設定を読み込む（DynamoDB完全移行版）
 func Load() (*Config, error) {
-	port, _ := strconv.Atoi(getEnv("DB_PORT", "5432"))
-
 	return &Config{
-		// データベース設定
-		DBHost:     getEnv("DB_HOST", "localhost"),
-		DBPort:     port,
-		DBUser:     getEnv("DB_USER", "postgres"),
-		DBPassword: getEnv("DB_PASSWORD", "postgres"),
-		DBName:     getEnv("DB_NAME", "pomodoro"),
-		DBSSLMode:  getEnv("DB_SSL_MODE", "require"),
-
 		// Cognito設定
 		CognitoUserPoolID: getEnv("COGNITO_USER_POOL_ID", ""),
 		CognitoClientID:   getEnv("COGNITO_CLIENT_ID", ""),
 
 		// DynamoDB設定
-		DynamoUserConfigTable:          getEnv("DYNAMO_USER_CONFIG_TABLE", "selfpomodoro_user_configs_dev"),
-		DynamoRoundOptimizationTable:   getEnv("DYNAMO_ROUND_OPTIMIZATION_TABLE", "selfpomodoro_round_optimization_logs_dev"),
-		DynamoSessionOptimizationTable: getEnv("DYNAMO_SESSION_OPTIMIZATION_TABLE", "selfpomodoro_session_optimization_logs_dev"),
+		DynamoUnifiedTable: getEnv("DYNAMO_UNIFIED_TABLE", "selfpomodoro_unified_table_dev"),
 
 		// SQS設定
 		SQSRoundOptimizationURL:   getEnv("SQS_ROUND_OPTIMIZATION_URL", ""),
@@ -83,3 +60,4 @@ func getEnv(key, defaultValue string) string {
 	}
 	return defaultValue
 }
+
