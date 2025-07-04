@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	"net/http"
 	"strings"
 
@@ -82,8 +83,6 @@ func (h *RoundHandler) routeOperation(ctx context.Context, request events.APIGat
 		}
 
 		switch request.HTTPMethod {
-		case "GET":
-			return h.handleGetRoundsBySession(ctx, sessionID)
 		case "POST":
 			return h.handleStartRound(ctx, sessionID, userID)
 		default:
@@ -99,18 +98,11 @@ func (h *RoundHandler) routeOperation(ctx context.Context, request events.APIGat
 		}
 
 		switch request.HTTPMethod {
-		case "GET":
-			return h.handleGetRound(ctx, roundID)
 		case "PATCH":
 			if !strings.Contains(request.Path, "/complete") {
 				return createErrorResponse(http.StatusNotFound, "NOT_FOUND", "無効なパス"), nil
 			}
 			return h.handleCompleteRound(ctx, request, roundID, userID)
-		case "POST":
-			if !strings.Contains(request.Path, "/abort") {
-				return createErrorResponse(http.StatusNotFound, "NOT_FOUND", "無効なパス"), nil
-			}
-			return h.handleAbortRound(ctx, roundID, userID)
 		default:
 			return createErrorResponse(http.StatusMethodNotAllowed, "METHOD_NOT_ALLOWED", "メソッドが許可されていません"), nil
 		}
@@ -119,15 +111,6 @@ func (h *RoundHandler) routeOperation(ctx context.Context, request events.APIGat
 	return createErrorResponse(http.StatusNotFound, "NOT_FOUND", "無効なパス"), nil
 }
 
-// handleGetRoundsBySession はセッションのラウンド一覧取得を処理
-func (h *RoundHandler) handleGetRoundsBySession(ctx context.Context, sessionID uuid.UUID) (events.APIGatewayProxyResponse, error) {
-	roundsResponse, err := h.useCases.Round.GetAllRoundsBySessionID(ctx, sessionID)
-	if err != nil {
-		h.logger.Errorf("ラウンド一覧取得エラー: %v", err)
-		return h.handleError(err), nil
-	}
-	return createSuccessResponse(http.StatusOK, roundsResponse), nil
-}
 
 // handleStartRound はラウンド開始を処理
 func (h *RoundHandler) handleStartRound(ctx context.Context, sessionID uuid.UUID, userID uuid.UUID) (events.APIGatewayProxyResponse, error) {
@@ -144,15 +127,6 @@ func (h *RoundHandler) handleStartRound(ctx context.Context, sessionID uuid.UUID
 	return createSuccessResponse(http.StatusCreated, roundResponse), nil
 }
 
-// handleGetRound はラウンド取得を処理
-func (h *RoundHandler) handleGetRound(ctx context.Context, roundID uuid.UUID) (events.APIGatewayProxyResponse, error) {
-	roundResponse, err := h.useCases.Round.GetRound(ctx, roundID)
-	if err != nil {
-		h.logger.Errorf("ラウンド取得エラー: %v", err)
-		return h.handleError(err), nil
-	}
-	return createSuccessResponse(http.StatusOK, roundResponse), nil
-}
 
 // handleCompleteRound はラウンド完了を処理
 func (h *RoundHandler) handleCompleteRound(ctx context.Context, request events.APIGatewayProxyRequest, roundID uuid.UUID, userID uuid.UUID) (events.APIGatewayProxyResponse, error) {
@@ -173,31 +147,27 @@ func (h *RoundHandler) handleCompleteRound(ctx context.Context, request events.A
 		return h.handleError(err), nil
 	}
 
-	// SQS送信ログ出力
+	// SQS送信ログ出力（nil pointer安全対応）
+	workTimeStr := "不明"
+	breakTimeStr := "不明"
+	if roundResponse.WorkTime != nil {
+		workTimeStr = fmt.Sprintf("%d分", *roundResponse.WorkTime)
+	}
+	if roundResponse.BreakTime != nil {
+		breakTimeStr = fmt.Sprintf("%d分", *roundResponse.BreakTime)
+	}
+
 	if req.FocusScore != nil {
-		h.logger.Infof("ラウンド完了成功: ラウンドID=%s, 作業時間=%d分, 休憩時間=%d分 (SQS送信済み)",
-			roundID.String(), *roundResponse.WorkTime, *roundResponse.BreakTime)
+		h.logger.Infof("ラウンド完了成功: ラウンドID=%s, 作業時間=%s, 休憩時間=%s (SQS送信済み)",
+			roundID.String(), workTimeStr, breakTimeStr)
 	} else {
-		h.logger.Infof("ラウンド完了成功: ラウンドID=%s, 作業時間=%d分, 休憩時間=%d分 (SQS送信なし)",
-			roundID.String(), *roundResponse.WorkTime, *roundResponse.BreakTime)
+		h.logger.Infof("ラウンド完了成功: ラウンドID=%s, 作業時間=%s, 休憩時間=%s (SQS送信なし)",
+			roundID.String(), workTimeStr, breakTimeStr)
 	}
 
 	return createSuccessResponse(http.StatusOK, roundResponse), nil
 }
 
-// handleAbortRound はラウンド中止を処理
-func (h *RoundHandler) handleAbortRound(ctx context.Context, roundID uuid.UUID, userID uuid.UUID) (events.APIGatewayProxyResponse, error) {
-	h.logger.Infof("ラウンド中止要求: ラウンドID=%s", roundID.String())
-
-	roundResponse, err := h.useCases.Round.AbortRound(ctx, roundID, userID)
-	if err != nil {
-		h.logger.Errorf("ラウンド中止エラー: %v", err)
-		return h.handleError(err), nil
-	}
-
-	h.logger.Infof("ラウンド中止成功: ラウンドID=%s (SQS送信なし)", roundID.String())
-	return createSuccessResponse(http.StatusOK, roundResponse), nil
-}
 
 // handleError はエラーを統一処理（error_mapper.go使用版）
 func (h *RoundHandler) handleError(err error) events.APIGatewayProxyResponse {
