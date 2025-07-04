@@ -10,19 +10,17 @@ import (
 // =================================
 
 var (
-	// Database関連（PostgreSQL）
-	ErrDatabaseConnection = errors.New("database connection failed")
-	ErrDatabaseQuery      = errors.New("database query failed")
-	ErrRecordNotFound     = errors.New("record not found")
-	ErrUniqueConstraint   = errors.New("unique constraint violation")
-	ErrTransactionFailed  = errors.New("transaction failed")
-	ErrSQLExecution       = errors.New("SQL execution failed")
+	// 共通レコード関連（DynamoDB移行後）
+	ErrRecordNotFound = errors.New("record not found")
 
 	// DynamoDB関連
 	ErrDynamoDBConnection   = errors.New("DynamoDB connection failed")
 	ErrDynamoDBOperation    = errors.New("DynamoDB operation failed")
 	ErrDynamoDBItemNotFound = errors.New("DynamoDB item not found")
 	ErrDynamoDBCondition    = errors.New("DynamoDB condition failed")
+	
+	// Legacy compatibility - DynamoDB conditional check failures are equivalent to unique constraints
+	ErrUniqueConstraint = ErrDynamoDBCondition
 
 	// HTTP関連
 	ErrHTTPRequest         = errors.New("HTTP request failed")
@@ -110,31 +108,6 @@ func NewInfrastructureError(component, operation, message string, cause error) *
 		Message:   message,
 		Cause:     cause,
 	}
-}
-
-// Database関連
-func NewDatabaseError(operation string, cause error) error {
-	return NewInfrastructureError("database", operation, "データベースエラー", cause)
-}
-
-func NewDatabaseConnectionError(cause error) error {
-	return NewInfrastructureError("database", "connect", "データベース接続エラー", cause)
-}
-
-func NewDatabaseQueryError(cause error) error {
-	return NewInfrastructureError("database", "query", "データベースクエリエラー", cause)
-}
-
-func NewTransactionError(cause error) error {
-	return NewInfrastructureError("database", "transaction", "トランザクションエラー", cause)
-}
-
-func NewSQLExecutionError(cause error) error {
-	return NewInfrastructureError("database", "execute", "SQL実行エラー", cause)
-}
-
-func NewUniqueConstraintError(cause error) error {
-	return NewInfrastructureError("database", "constraint", "一意制約違反", cause)
 }
 
 // DynamoDB関連
@@ -279,7 +252,6 @@ func NewExternalServiceTimeoutError(service string) error {
 func IsInfrastructureError(err error) bool {
 	var infraErr *InfrastructureError
 	return errors.As(err, &infraErr) ||
-		errors.Is(err, ErrDatabaseConnection) ||
 		errors.Is(err, ErrHTTPRequest) ||
 		errors.Is(err, ErrSQSSendFailed) ||
 		errors.Is(err, ErrDynamoDBOperation) ||
@@ -287,20 +259,16 @@ func IsInfrastructureError(err error) bool {
 		errors.Is(err, ErrJWKSFetchFailed)
 }
 
-func IsDatabaseError(err error) bool {
-	return errors.Is(err, ErrDatabaseConnection) ||
-		errors.Is(err, ErrDatabaseQuery) ||
-		errors.Is(err, ErrRecordNotFound) ||
-		errors.Is(err, ErrTransactionFailed) ||
-		errors.Is(err, ErrSQLExecution) ||
-		errors.Is(err, ErrUniqueConstraint)
-}
-
 func IsDynamoDBError(err error) bool {
 	return errors.Is(err, ErrDynamoDBConnection) ||
 		errors.Is(err, ErrDynamoDBOperation) ||
 		errors.Is(err, ErrDynamoDBItemNotFound) ||
 		errors.Is(err, ErrDynamoDBCondition)
+}
+
+// Legacy compatibility - IsDatabaseError is now an alias to IsDynamoDBError
+func IsDatabaseError(err error) bool {
+	return IsDynamoDBError(err)
 }
 
 func IsHTTPError(err error) bool {
@@ -375,8 +343,7 @@ func IsRecordNotFoundError(err error) bool {
 }
 
 func IsConnectionError(err error) bool {
-	return errors.Is(err, ErrDatabaseConnection) ||
-		errors.Is(err, ErrDynamoDBConnection) ||
+	return errors.Is(err, ErrDynamoDBConnection) ||
 		errors.Is(err, ErrSQSConnectionFailed) ||
 		errors.Is(err, ErrNetworkConnection)
 }

@@ -7,7 +7,6 @@ import (
 	"github.com/tsunakit99/selfpomodoro/internal/infrastructure/logger"
 	"github.com/tsunakit99/selfpomodoro/internal/infrastructure/repository/auth"
 	"github.com/tsunakit99/selfpomodoro/internal/infrastructure/repository/dynamodb"
-	"github.com/tsunakit99/selfpomodoro/internal/infrastructure/repository/postgres"
 )
 
 // RepositoryFactory はすべてのリポジトリを管理するファクトリ
@@ -20,33 +19,32 @@ type RepositoryFactory struct {
 	Statistics             repository.StatisticsRepository
 	UserConfig             repository.UserConfigRepository
 	SampleOptimizationData repository.SampleOptimizationDataRepository
+	Optimization           repository.OptimizationRepository
 	// TODO: 他のリポジトリを追加する場合はここにフィールドを追加
 }
 
-// NewRepositoryFactory はすべてのリポジトリを初期化する
-func NewRepositoryFactory(postgresDB *database.PostgresDB, dynamoDB *database.DynamoDB, cfg *config.Config, logger logger.Logger) *RepositoryFactory {
-	// PostgresDBを使用してリポジトリを初期化
-	authRepo := auth.NewCognitoAuthRepository(cfg, logger)
-	userRepo := postgres.NewUserRepository(postgresDB, logger)
-	taskRepo := postgres.NewTaskRepository(postgresDB, logger)
-	sessionRepo := postgres.NewSessionRepository(postgresDB, logger)
-	roundRepo := postgres.NewRoundRepository(postgresDB, logger)
-	statisticsRepo := postgres.NewStatisticsRepository(postgresDB, logger)
-
-	// DynamoDBを使用してリポジトリを初期化
-	var userConfigRepo repository.UserConfigRepository
-	var sampleOptimizationDataRepo repository.SampleOptimizationDataRepository
-	if dynamoDB != nil {
-		userConfigRepo = dynamodb.NewUserConfigRepository(dynamoDB.Client, dynamoDB.Config, logger)
-		sampleOptimizationDataRepo = dynamodb.NewSampleOptimizationDataRepository(dynamoDB.Client, dynamoDB.Config, logger)
-	} else {
-		// DynamoDBが利用できない場合はnilを設定(エラーハンドリングは各usecaseで行う)
-		logger.Warn("DynamoDBが利用できないため、UserConfigRepositoryはnilになります")
-		userConfigRepo = nil
-		sampleOptimizationDataRepo = nil
+// NewRepositoryFactory はすべてのリポジトリを初期化する（DynamoDB完全移行版）
+func NewRepositoryFactory(dynamoDB *database.DynamoDB, cfg *config.Config, logger logger.Logger) *RepositoryFactory {
+	if dynamoDB == nil {
+		logger.Fatal("DynamoDBが必須ですが初期化されていません")
+		return nil
 	}
 
-	// TODO: DynamoDBを使用してリポジトリを初期化する場合はここに追加
+	// 認証リポジトリ（Cognito使用）
+	authRepo := auth.NewCognitoAuthRepository(cfg, logger)
+	
+	// DynamoDBを使用してすべてのリポジトリを初期化
+	userRepo := dynamodb.NewUserRepository(dynamoDB.Client, cfg, logger)
+	taskRepo := dynamodb.NewTaskRepository(dynamoDB.Client, cfg, logger)
+	sessionRepo := dynamodb.NewSessionRepository(dynamoDB.Client, cfg, logger)
+	// RoundRepository（依存関係削除済み）
+	roundRepo := dynamodb.NewRoundRepository(dynamoDB.Client, cfg, logger)
+	statisticsRepo := dynamodb.NewStatisticsRepository(dynamoDB.Client, cfg, logger)
+	userConfigRepo := dynamodb.NewUserConfigRepository(dynamoDB.Client, cfg, logger)
+	sampleOptimizationDataRepo := dynamodb.NewSampleOptimizationDataRepository(dynamoDB.Client, cfg, logger)
+	optimizationRepo := dynamodb.NewOptimizationRepository(dynamoDB.Client, cfg.DynamoUnifiedTable, logger)
+
+	logger.Info("全リポジトリがDynamoDBで初期化されました")
 
 	return &RepositoryFactory{
 		Auth:                   authRepo,
@@ -57,5 +55,6 @@ func NewRepositoryFactory(postgresDB *database.PostgresDB, dynamoDB *database.Dy
 		Statistics:             statisticsRepo,
 		UserConfig:             userConfigRepo,
 		SampleOptimizationData: sampleOptimizationDataRepo,
+		Optimization:           optimizationRepo,
 	}
 }

@@ -29,17 +29,21 @@ type UserConfigRepositoryImpl struct {
 func NewUserConfigRepository(client *dynamodb.Client, cfg *config.Config, logger logger.Logger) repository.UserConfigRepository {
 	return &UserConfigRepositoryImpl{
 		client:    client,
-		tableName: cfg.DynamoUserConfigTable,
+		tableName: cfg.DynamoUnifiedTable,
 		logger:    logger,
 	}
 }
 
-// GetUserConfig はユーザーIDからユーザー設定を取得する（新エラーハンドリング対応版）
+// GetUserConfig はユーザーIDからユーザー設定を取得する（統合テーブル対応版）
 func (r *UserConfigRepositoryImpl) GetUserConfig(ctx context.Context, userID uuid.UUID) (*model.UserConfig, error) {
+	pk := UserPartitionKey(userID.String())
+	sk := UserConfigSortKey()
+	
 	input := &dynamodb.GetItemInput{
 		TableName: aws.String(r.tableName),
 		Key: map[string]types.AttributeValue{
-			"user_id": &types.AttributeValueMemberS{Value: userID.String()},
+			"PK": &types.AttributeValueMemberS{Value: pk},
+			"SK": &types.AttributeValueMemberS{Value: sk},
 		},
 	}
 
@@ -124,13 +128,18 @@ func (r *UserConfigRepositoryImpl) GetUserConfig(ctx context.Context, userID uui
 	return config, nil
 }
 
-// CreateUserConfig は新しいユーザー設定を作成する（新エラーハンドリング対応版）
+// CreateUserConfig は新しいユーザー設定を作成する（統合テーブル対応版）
 func (r *UserConfigRepositoryImpl) CreateUserConfig(ctx context.Context, config *model.UserConfig) error {
+	pk := UserPartitionKey(config.UserID)
+	sk := UserConfigSortKey()
+	
 	r.logger.Infof("CreateUserConfig 入力データ: UserID=%s, WorkTime=%d, BreakTime=%d",
 		config.UserID, config.RoundWorkTime, config.RoundBreakTime)
 
-	// 手動でDynamoDBアイテムを作成
+	// 統合テーブル用のDynamoDBアイテムを作成
 	item := map[string]types.AttributeValue{
+		"PK":                 &types.AttributeValueMemberS{Value: pk},
+		"SK":                 &types.AttributeValueMemberS{Value: sk},
 		"user_id":            &types.AttributeValueMemberS{Value: config.UserID},
 		"round_work_time":    &types.AttributeValueMemberN{Value: fmt.Sprintf("%d", config.RoundWorkTime)},
 		"round_break_time":   &types.AttributeValueMemberN{Value: fmt.Sprintf("%d", config.RoundBreakTime)},
@@ -138,14 +147,13 @@ func (r *UserConfigRepositoryImpl) CreateUserConfig(ctx context.Context, config 
 		"session_break_time": &types.AttributeValueMemberN{Value: fmt.Sprintf("%d", config.SessionBreakTime)},
 		"created_at":         &types.AttributeValueMemberS{Value: config.CreatedAt.Format(time.RFC3339)},
 		"updated_at":         &types.AttributeValueMemberS{Value: config.UpdatedAt.Format(time.RFC3339)},
+		"entity_type":        &types.AttributeValueMemberS{Value: "USER_CONFIG"},
 	}
-
-	r.logger.Infof("手動マップ結果 user_id: %s", config.UserID)
 
 	input := &dynamodb.PutItemInput{
 		TableName:           aws.String(r.tableName),
 		Item:                item,
-		ConditionExpression: aws.String("attribute_not_exists(user_id)"),
+		ConditionExpression: aws.String("attribute_not_exists(PK)"),
 	}
 
 	_, err := r.client.PutItem(ctx, input)
@@ -166,13 +174,18 @@ func (r *UserConfigRepositoryImpl) CreateUserConfig(ctx context.Context, config 
 	return nil
 }
 
-// UpdateUserConfig はユーザー設定を更新する（新エラーハンドリング対応版）
+// UpdateUserConfig はユーザー設定を更新する（統合テーブル対応版）
 func (r *UserConfigRepositoryImpl) UpdateUserConfig(ctx context.Context, config *model.UserConfig) error {
 	// 更新時刻を設定
 	config.UpdatedAt = time.Now()
+	
+	pk := UserPartitionKey(config.UserID)
+	sk := UserConfigSortKey()
 
-	// 手動でDynamoDBアイテムを作成
+	// 統合テーブル用のDynamoDBアイテムを作成
 	item := map[string]types.AttributeValue{
+		"PK":                 &types.AttributeValueMemberS{Value: pk},
+		"SK":                 &types.AttributeValueMemberS{Value: sk},
 		"user_id":            &types.AttributeValueMemberS{Value: config.UserID},
 		"round_work_time":    &types.AttributeValueMemberN{Value: fmt.Sprintf("%d", config.RoundWorkTime)},
 		"round_break_time":   &types.AttributeValueMemberN{Value: fmt.Sprintf("%d", config.RoundBreakTime)},
@@ -180,13 +193,14 @@ func (r *UserConfigRepositoryImpl) UpdateUserConfig(ctx context.Context, config 
 		"session_break_time": &types.AttributeValueMemberN{Value: fmt.Sprintf("%d", config.SessionBreakTime)},
 		"created_at":         &types.AttributeValueMemberS{Value: config.CreatedAt.Format(time.RFC3339)},
 		"updated_at":         &types.AttributeValueMemberS{Value: config.UpdatedAt.Format(time.RFC3339)},
+		"entity_type":        &types.AttributeValueMemberS{Value: "USER_CONFIG"},
 	}
 
 	input := &dynamodb.PutItemInput{
 		TableName: aws.String(r.tableName),
 		Item:      item,
-		// アイテムが存在する場合のみ更新を許可
-		ConditionExpression: aws.String("attribute_exists(user_id)"),
+		// PK/SKが存在する場合のみ更新を許可
+		ConditionExpression: aws.String("attribute_exists(PK) AND attribute_exists(SK)"),
 	}
 
 	_, err := r.client.PutItem(ctx, input)
@@ -207,15 +221,19 @@ func (r *UserConfigRepositoryImpl) UpdateUserConfig(ctx context.Context, config 
 	return nil
 }
 
-// DeleteUserConfig はユーザー設定を削除する（新エラーハンドリング対応版）
+// DeleteUserConfig はユーザー設定を削除する（統合テーブル対応版）
 func (r *UserConfigRepositoryImpl) DeleteUserConfig(ctx context.Context, userID uuid.UUID) error {
+	pk := UserPartitionKey(userID.String())
+	sk := UserConfigSortKey()
+	
 	input := &dynamodb.DeleteItemInput{
 		TableName: aws.String(r.tableName),
 		Key: map[string]types.AttributeValue{
-			"user_id": &types.AttributeValueMemberS{Value: userID.String()},
+			"PK": &types.AttributeValueMemberS{Value: pk},
+			"SK": &types.AttributeValueMemberS{Value: sk},
 		},
-		// アイテムが存在する場合のみ削除を許可
-		ConditionExpression: aws.String("attribute_exists(user_id)"),
+		// PK/SKが存在する場合のみ削除を許可
+		ConditionExpression: aws.String("attribute_exists(PK) AND attribute_exists(SK)"),
 	}
 
 	_, err := r.client.DeleteItem(ctx, input)
