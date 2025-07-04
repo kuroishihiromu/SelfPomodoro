@@ -6,7 +6,7 @@ GOARCH := amd64
 CGO_ENABLED := 0
 
 # Lambda関数一覧
-FUNCTIONS := api-tasks api-sessions api-rounds api-statistics post-confirmation
+FUNCTIONS := api-tasks api-sessions api-rounds api-statistics api-userconfig post-confirmation optimization-round optimization-session
 
 # デフォルトのターゲット
 .PHONY: help
@@ -24,6 +24,11 @@ help:
 	@echo "Cognito Trigger:"
 	@echo "  make build-post-confirmation  - PostConfirmation関数をビルド"
 	@echo "  make deploy-post-confirmation - PostConfirmation関数をデプロイ"
+	@echo ""
+	@echo "🎯 最適化システム監視:"
+	@echo "  make check-optimization    - 最適化システム動作確認"
+	@echo "  make optimization-logs     - 最適化Lambda関数ログ表示"
+	@echo "  make optimization-status   - 最適化システム総合ステータス"
 	@echo ""
 	@echo "その他:"
 	@echo "  make migrate-up     - マイグレーションを適用"
@@ -75,6 +80,16 @@ build-api-statistics:
 	zip bootstrap.zip bootstrap && \
 	rm bootstrap
 	@echo "✅ api-statistics ビルド完了"
+
+.PHONY: build-api-userconfig
+build-api-userconfig:
+	@echo "🔨 api-userconfig をビルド中..."
+	@cd functions/api-userconfig && \
+	GOOS=$(GOOS) GOARCH=$(GOARCH) CGO_ENABLED=$(CGO_ENABLED) \
+	go build -ldflags="-s -w" -o bootstrap main.go && \
+	zip bootstrap.zip bootstrap && \
+	rm bootstrap
+	@echo "✅ api-userconfig ビルド完了"
 
 # PostConfirmation Lambda関数ビルド
 .PHONY: build-post-confirmation
@@ -180,34 +195,6 @@ logs-post-confirmation:
 	@echo "📝 post-confirmation のログを表示..."
 	aws logs tail /aws/lambda/selfpomodoro-serverless-dev-post-confirmation --follow --profile selfpomodoro-dev
 
-# マイグレーション（既存機能維持）
-.PHONY: migrate-up
-migrate-up:
-	@echo "マイグレーションを実行: ./migrations/sql"
-	@if [ -f .env ]; then \
-		export $$(grep -v '^#' .env | xargs); \
-		migrate -path ./migrations/sql -database "postgres://$$DB_USER:$$DB_PASSWORD@$$DB_HOST:$$DB_PORT/$$DB_NAME?sslmode=$$DB_SSL_MODE" up; \
-	else \
-		echo "❌ .env ファイルが見つかりません"; \
-		exit 1; \
-	fi
-
-.PHONY: migrate-down
-migrate-down:
-	@echo "マイグレーションをロールバック: ./migrations/sql"
-	@if [ -f .env ]; then \
-		export $$(grep -v '^#' .env | xargs); \
-		migrate -path ./migrations/sql -database "postgres://$$DB_USER:$$DB_PASSWORD@$$DB_HOST:$$DB_PORT/$$DB_NAME?sslmode=$$DB_SSL_MODE" down 1; \
-	else \
-		echo "❌ .env ファイルが見つかりません"; \
-		exit 1; \
-	fi
-
-# 新しいマイグレーションファイルを作成
-.PHONY: migrate-create
-migrate-create:
-	@read -p "マイグレーション名を入力してください: " name; \
-	./scripts/migrate.sh create $$name
 
 # クリーンアップ
 .PHONY: clean
@@ -275,8 +262,173 @@ error-help:
 	@echo "3. テストエラー:"
 	@echo "   - .env ファイルの設定を確認"
 	@echo "   - API Gateway のエンドポイントURLを確認"
+
+# 🎯 最適化Lambda関数（Python）
+.PHONY: build-optimization-round
+build-optimization-round:
+	@echo "🔨 optimization-round をビルド中..."
+	@cd functions/optimization-round && \
+	pip install -r requirements.txt -t . --no-deps && \
+	zip -r optimization-round.zip . -x "*.pyc" "__pycache__/*" "*.git*" && \
+	echo "✅ optimization-round ビルド完了"
+
+.PHONY: build-optimization-session
+build-optimization-session:
+	@echo "🔨 optimization-session をビルド中..."
+	@cd functions/optimization-session && \
+	pip install -r requirements.txt -t . --no-deps && \
+	zip -r optimization-session.zip . -x "*.pyc" "__pycache__/*" "*.git*" && \
+	echo "✅ optimization-session ビルド完了"
+
+.PHONY: deploy-optimization-round
+deploy-optimization-round:
+	@echo "🚀 optimization-round をデプロイ中..."
+	@npx serverless deploy function --function optimization-round --stage dev
+	@echo "✅ optimization-round デプロイ完了"
+
+.PHONY: deploy-optimization-session
+deploy-optimization-session:
+	@echo "🚀 optimization-session をデプロイ中..."
+	@npx serverless deploy function --function optimization-session --stage dev
+	@echo "✅ optimization-session デプロイ完了"
+
+# 最適化関数統合操作
+.PHONY: build-optimization-all
+build-optimization-all: build-optimization-round build-optimization-session
+	@echo "✅ 全最適化Lambda関数のビルドが完了しました"
+
+.PHONY: deploy-optimization-all
+deploy-optimization-all: deploy-optimization-round deploy-optimization-session
+	@echo "✅ 全最適化Lambda関数のデプロイが完了しました"
+
+.PHONY: logs-optimization-round
+logs-optimization-round:
+	@echo "📋 optimization-round のログを表示中..."
+	@npx serverless logs --function optimization-round --stage dev --tail
+
+.PHONY: logs-optimization-session
+logs-optimization-session:
+	@echo "📋 optimization-session のログを表示中..."
+	@npx serverless logs --function optimization-session --stage dev --tail
+
+# 🎯 最適化動作確認コマンド
+.PHONY: check-optimization
+check-optimization:
+	@echo "📊 最適化システム動作確認を開始..."
 	@echo ""
-	@echo "4. PostConfirmation Triggerエラー:"
-	@echo "   - Cognito User Pool設定を確認"
-	@echo "   - Lambda関数の権限を確認"
-	@echo "   - CloudWatch Logsでエラー詳細を確認"
+	@echo "🔄 1. SQSキュー状況確認:"
+	@aws sqs get-queue-attributes \
+		--queue-url https://sqs.ap-northeast-1.amazonaws.com/545009834501/selfpomodoro-round-optimization-dev \
+		--attribute-names ApproximateNumberOfMessages \
+		--profile selfpomodoro-dev \
+		--query 'Attributes.ApproximateNumberOfMessages' \
+		--output text | \
+		awk '{print "   Round最適化キュー: " $$1 " メッセージ待機中"}'
+	@aws sqs get-queue-attributes \
+		--queue-url https://sqs.ap-northeast-1.amazonaws.com/545009834501/selfpomodoro-session-optimization-dev \
+		--attribute-names ApproximateNumberOfMessages \
+		--profile selfpomodoro-dev \
+		--query 'Attributes.ApproximateNumberOfMessages' \
+		--output text | \
+		awk '{print "   Session最適化キュー: " $$1 " メッセージ待機中"}'
+	@echo ""
+	@echo "📈 2. 最適化ログ確認（直近5件）:"
+	@aws dynamodb scan \
+		--table-name selfpomodoro_unified_table_dev \
+		--filter-expression "begins_with(SK, :sk_prefix)" \
+		--expression-attribute-values '{":sk_prefix": {"S": "OPTIMIZATION_LOG#"}}' \
+		--projection-expression "SK, work_time, break_time, focus_score, updated_at" \
+		--max-items 5 \
+		--profile selfpomodoro-dev \
+		--output table
+	@echo ""
+	@echo "⚙️  3. UserConfig最新状況:"
+	@aws dynamodb get-item \
+		--table-name selfpomodoro_unified_table_dev \
+		--key '{"PK": {"S": "USER#67448aa8-0061-7040-0113-b1d35fcf76f6"}, "SK": {"S": "CONFIG"}}' \
+		--projection-expression "round_work_time, round_break_time, session_break_time, session_rounds, updated_at" \
+		--profile selfpomodoro-dev \
+		--output table
+	@echo ""
+	@echo "✅ 最適化システム動作確認完了"
+
+.PHONY: optimization-logs
+optimization-logs:
+	@echo "📋 最適化Lambda関数の最新ログを確認..."
+	@echo ""
+	@echo "🔄 Round最適化ログ（直近10件）:"
+	@aws logs describe-log-streams \
+		--log-group-name "/aws/lambda/selfpomodoro-serverless-dev-optimization-round-v2" \
+		--order-by LastEventTime \
+		--descending \
+		--max-items 1 \
+		--profile selfpomodoro-dev \
+		--query 'logStreams[0].logStreamName' \
+		--output text | \
+		xargs -I {} aws logs get-log-events \
+		--log-group-name "/aws/lambda/selfpomodoro-serverless-dev-optimization-round-v2" \
+		--log-stream-name {} \
+		--profile selfpomodoro-dev \
+		--query 'events[-10:].message' \
+		--output text
+	@echo ""
+	@echo "🔄 Session最適化ログ（直近10件）:"
+	@aws logs describe-log-streams \
+		--log-group-name "/aws/lambda/selfpomodoro-serverless-dev-optimization-session-v2" \
+		--order-by LastEventTime \
+		--descending \
+		--max-items 1 \
+		--profile selfpomodoro-dev \
+		--query 'logStreams[0].logStreamName' \
+		--output text | \
+		xargs -I {} aws logs get-log-events \
+		--log-group-name "/aws/lambda/selfpomodoro-serverless-dev-optimization-session-v2" \
+		--log-stream-name {} \
+		--profile selfpomodoro-dev \
+		--query 'events[-10:].message' \
+		--output text || echo "   Session最適化ログは未実行です"
+
+.PHONY: optimization-status
+optimization-status:
+	@echo "🎯 最適化システム総合ステータス"
+	@echo "=================================="
+	@echo ""
+	@echo "📊 最適化実行回数:"
+	@aws dynamodb scan \
+		--table-name selfpomodoro_unified_table_dev \
+		--filter-expression "begins_with(SK, :sk_prefix)" \
+		--expression-attribute-values '{":sk_prefix": {"S": "OPTIMIZATION_LOG#ROUND#"}}' \
+		--select COUNT \
+		--profile selfpomodoro-dev \
+		--query 'Count' \
+		--output text | \
+		awk '{print "   Round最適化: " $$1 " 回実行"}'
+	@aws dynamodb scan \
+		--table-name selfpomodoro_unified_table_dev \
+		--filter-expression "begins_with(SK, :sk_prefix)" \
+		--expression-attribute-values '{":sk_prefix": {"S": "OPTIMIZATION_LOG#SESSION#"}}' \
+		--select COUNT \
+		--profile selfpomodoro-dev \
+		--query 'Count' \
+		--output text | \
+		awk '{print "   Session最適化: " $$1 " 回実行"}'
+	@echo ""
+	@echo "📈 最新の最適化結果:"
+	@aws dynamodb scan \
+		--table-name selfpomodoro_unified_table_dev \
+		--filter-expression "begins_with(SK, :sk_prefix)" \
+		--expression-attribute-values '{":sk_prefix": {"S": "OPTIMIZATION_LOG#"}}' \
+		--projection-expression "SK, work_time, break_time, focus_score" \
+		--max-items 1 \
+		--profile selfpomodoro-dev \
+		--query 'Items[0]' \
+		--output table
+	@echo ""
+	@echo "⚙️  現在のUserConfig:"
+	@aws dynamodb get-item \
+		--table-name selfpomodoro_unified_table_dev \
+		--key '{"PK": {"S": "USER#67448aa8-0061-7040-0113-b1d35fcf76f6"}, "SK": {"S": "CONFIG"}}' \
+		--projection-expression "round_work_time, round_break_time, session_break_time, session_rounds" \
+		--profile selfpomodoro-dev \
+		--query 'Item' \
+		--output table
