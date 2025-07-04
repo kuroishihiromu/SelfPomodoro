@@ -1,0 +1,62 @@
+name: Optim CI
+
+on:
+  push:
+    paths:
+      - "**"
+    branches:
+      - main
+      - develop
+      - "optim-feature/**"
+
+  pull_request:
+    paths:
+      - "**"
+    branches:
+      - main
+      - develop
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: "3.12"
+
+      ## 依存関係のチェック
+      - name: Install uv
+        run: |
+          curl -LsSf https://astral.sh/uv/install.sh | sh
+          echo "$HOME/.cargo/bin" >> $GITHUB_PATH
+      - name: Create virtual environment with uv
+        working-directory: ./optim/src
+        run: |
+          uv venv .venv
+
+      - name: Install dependencies
+        working-directory: ./optim/src
+        run: |
+          uv add -r requirements.txt
+          uv pip list
+
+      ## Lintチェック
+      - name: Lint check with ruff
+        working-directory: ./optim/src
+        run: |
+          uv run ruff check
+
+      ## 型チェック
+      - name: Type check with ty
+        working-directory: ./optim/src
+        run: |
+          uv run ty check
+
+      ## テスト
+      - name: Test with pytest
+        working-directory: ./optim/src
+        run: |
+          uv run pytest test/
