@@ -8,22 +8,50 @@ provider:
   profile: selfpomodoro-dev
   versionFunctions: false
 
+
+  # 🎯 IAM権限設定（最適化Lambda用DynamoDB・SQSアクセス）
+  iam:
+    role:
+      statements:
+        - Effect: Allow
+          Action:
+            - dynamodb:Query
+            - dynamodb:PutItem
+            - dynamodb:GetItem
+            - dynamodb:UpdateItem
+            - dynamodb:DeleteItem
+            - dynamodb:BatchWriteItem
+            - dynamodb:BatchGetItem
+            - dynamodb:Scan
+            - dynamodb:DescribeTable
+          Resource:
+            - arn:aws:dynamodb:${self:provider.region}:545009834501:table/selfpomodoro_unified_table_dev
+            - arn:aws:dynamodb:${self:provider.region}:545009834501:table/selfpomodoro_unified_table_dev/index/*
+        - Effect: Allow
+          Action:
+            - sqs:ReceiveMessage
+            - sqs:DeleteMessage
+            - sqs:GetQueueAttributes
+            - sqs:SendMessage
+          Resource:
+            - arn:aws:sqs:${self:provider.region}:545009834501:selfpomodoro-round-optimization-${self:provider.stage}
+            - arn:aws:sqs:${self:provider.region}:545009834501:selfpomodoro-session-optimization-${self:provider.stage}
+        - Effect: Allow
+          Action:
+            - logs:CreateLogGroup
+            - logs:CreateLogStream
+            - logs:PutLogEvents
+          Resource: arn:aws:logs:${self:provider.region}:545009834501:*
+
   environment:
-    DB_HOST: ${env:DB_HOST}
-    DB_PORT: ${env:DB_PORT}
-    DB_USER: ${env:DB_USER}
-    DB_PASSWORD: ${env:DB_PASSWORD}
-    DB_NAME: ${env:DB_NAME}
-    DB_SSL_MODE: ${env:DB_SSL_MODE}
-    COGNITO_USER_POOL_ID: ${env:COGNITO_USER_POOL_ID}
-    COGNITO_CLIENT_ID: ${env:COGNITO_CLIENT_ID}
-    DYNAMO_USER_CONFIG_TABLE: ${env:DYNAMO_USER_CONFIG_TABLE}
-    DYNAMO_ROUND_OPTIMIZATION_TABLE: ${env:DYNAMO_ROUND_OPTIMIZATION_TABLE}
-    DYNAMO_SESSION_OPTIMIZATION_TABLE: ${env:DYNAMO_SESSION_OPTIMIZATION_TABLE}
-    SQS_ROUND_OPTIMIZATION_URL: ${env:SQS_ROUND_OPTIMIZATION_URL}
-    SQS_SESSION_OPTIMIZATION_URL: ${env:SQS_SESSION_OPTIMIZATION_URL}
-    LOG_LEVEL: ${env:LOG_LEVEL}
-    ENVIRONMENT: ${env:ENVIRONMENT}
+    COGNITO_USER_POOL_ID: ap-northeast-1_UltsO4poH
+    COGNITO_CLIENT_ID: 2dbjjcvvon3trtt5imonmpnq9g
+    DYNAMO_UNIFIED_TABLE: selfpomodoro_unified_table_dev
+    SQS_ROUND_OPTIMIZATION_URL: https://sqs.ap-northeast-1.amazonaws.com/545009834501/selfpomodoro-round-optimization-dev
+    SQS_SESSION_OPTIMIZATION_URL: https://sqs.ap-northeast-1.amazonaws.com/545009834501/selfpomodoro-session-optimization-dev
+    OPTIMIZATION_SERVER_URL: http://localhost:8000
+    LOG_LEVEL: info
+    ENVIRONMENT: development
 
 functions:
   api-tasks:
@@ -62,30 +90,15 @@ functions:
     package:
       artifact: functions/api-sessions/bootstrap.zip
     events:
-      # セッション一覧取得
-      - http:
-          path: /api/v1/sessions
-          method: get
-          cors: true
       # セッション開始
       - http:
           path: /api/v1/sessions
           method: post
           cors: true
-      # セッション取得
-      - http:
-          path: /api/v1/sessions/{session_id}
-          method: get
-          cors: true
       # セッション完了
       - http:
           path: /api/v1/sessions/{session_id}/complete
           method: patch
-          cors: true
-      # セッション削除
-      - http:
-          path: /api/v1/sessions/{session_id}
-          method: delete
           cors: true
 
   api-rounds:
@@ -93,30 +106,15 @@ functions:
     package:
       artifact: functions/api-rounds/bootstrap.zip
     events:
-      # セッションのラウンド一覧取得
-      - http:
-          path: /api/v1/sessions/{session_id}/rounds
-          method: get
-          cors: true
       # ラウンド開始
       - http:
           path: /api/v1/sessions/{session_id}/rounds
           method: post
           cors: true
-      # ラウンド取得
-      - http:
-          path: /api/v1/rounds/{round_id}
-          method: get
-          cors: true
       # ラウンド完了
       - http:
           path: /api/v1/rounds/{round_id}/complete
           method: patch
-          cors: true
-      # ラウンド中止
-      - http:
-          path: /api/v1/rounds/{round_id}/abort
-          method: post
           cors: true
 
   api-statistics:
@@ -135,6 +133,22 @@ functions:
           method: get
           cors: true
 
+  api-userconfig:
+    handler: bootstrap
+    package:
+      artifact: functions/api-userconfig/bootstrap.zip
+    events:
+      # UserConfig取得
+      - http:
+          path: /api/v1/user-config
+          method: get
+          cors: true
+      # UserConfig更新
+      - http:
+          path: /api/v1/user-config
+          method: put
+          cors: true
+
   # 🎯 PostConfirmation Trigger Lambda関数（新規追加）
   post-confirmation:
     handler: bootstrap
@@ -144,12 +158,89 @@ functions:
     memorySize: 256
     # Cognito Triggerの場合、eventsセクションは不要（resourcesで設定）
 
+# 🎯 最適化Lambda関数（Container Image with Bayesian Optimization）
+  optimization-round-v2:
+    image: 545009834501.dkr.ecr.ap-northeast-1.amazonaws.com/selfpomodoro-optimization-round:v5
+    timeout: 30
+    memorySize: 1024
+    events:
+      - sqs:
+          arn: arn:aws:sqs:${self:provider.region}:545009834501:selfpomodoro-round-optimization-${self:provider.stage}
+          batchSize: 1
+    environment:
+      DYNAMODB_TABLE_NAME: selfpomodoro_unified_table_dev
+
+  optimization-session-v2:
+    image: 545009834501.dkr.ecr.ap-northeast-1.amazonaws.com/selfpomodoro-optimization-session:v5
+    timeout: 30
+    memorySize: 1024
+    events:
+      - sqs:
+          arn: arn:aws:sqs:${self:provider.region}:545009834501:selfpomodoro-session-optimization-${self:provider.stage}
+          batchSize: 1
+    environment:
+      DYNAMODB_TABLE_NAME: selfpomodoro_unified_table_dev
+
 package:
   individually: true
 
-# 🎯 AWS Resources定義（Cognito + PostConfirmation統合）
+# 🎯 AWS Resources定義（DynamoDB + Cognito + PostConfirmation統合）
 resources:
   Resources:
+    # 🎯 DynamoDB統合テーブル（GSI付き）
+    SelfPomodoroUnifiedTable:
+      Type: AWS::DynamoDB::Table
+      Properties:
+        TableName: selfpomodoro_unified_table_dev
+        BillingMode: PAY_PER_REQUEST  # オンデマンドでコスト最適化
+        
+        # プライマリキー定義
+        AttributeDefinitions:
+          - AttributeName: PK
+            AttributeType: S
+          - AttributeName: SK
+            AttributeType: S
+          - AttributeName: session_id
+            AttributeType: S
+          - AttributeName: round_id
+            AttributeType: S
+        
+        KeySchema:
+          - AttributeName: PK
+            KeyType: HASH
+          - AttributeName: SK
+            KeyType: RANGE
+        
+        # 🎯 GSI: session_idで効率的検索
+        GlobalSecondaryIndexes:
+          - IndexName: SessionIdIndex
+            KeySchema:
+              - AttributeName: session_id
+                KeyType: HASH
+            Projection:
+              ProjectionType: ALL  # 全属性を投影（user_id取得のため）
+          
+          # 🎯 GSI: round_idで効率的検索  
+          - IndexName: RoundIdIndex
+            KeySchema:
+              - AttributeName: round_id
+                KeyType: HASH
+            Projection:
+              ProjectionType: ALL  # 全属性を投影
+        
+        # Point-in-time Recovery（本番環境推奨）
+        PointInTimeRecoverySpecification:
+          PointInTimeRecoveryEnabled: false  # dev環境ではコスト削減
+        
+        # SSE暗号化（セキュリティ強化）
+        SSESpecification:
+          SSEEnabled: true
+        
+        # TTL設定（一時的なROUND#/SESSION#レコードの自動削除）
+        TimeToLiveSpecification:
+          AttributeName: ttl
+          Enabled: true
+          
     # Cognito User Pool（既存のものを参照・更新）
     CognitoUserPool:
       Type: AWS::Cognito::UserPool
@@ -214,6 +305,7 @@ resources:
         FunctionName: !GetAtt PostDashconfirmationLambdaFunction.Arn
         Principal: cognito-idp.amazonaws.com
         SourceArn: !GetAtt CognitoUserPool.Arn
+
 
   # CloudFormation Outputs（環境変数やAPI確認用）
   Outputs:
