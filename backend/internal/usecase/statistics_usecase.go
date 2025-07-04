@@ -42,23 +42,30 @@ func (uc *statisticsUsecase) GetFocusTrend(ctx context.Context, userID uuid.UUID
 
 	switch period {
 	case "week":
-		statsPeriod = model.NewLastWeekPeriod()
+		// 週間は月曜基準の日別データを使用（7日間表示）
+		statsPeriod = model.NewCurrentWeekPeriod()
 	case "month":
 		statsPeriod = model.NewLastMonthPeriod()
 	case "custom":
 		if startDate == nil || endDate == nil {
 			// カスタム期間が指定されているが日付が指定されていない場合は1週間に設定
-			statsPeriod = model.NewLastWeekPeriod()
+			statsPeriod = model.NewCurrentWeekPeriod()
 		} else {
 			statsPeriod = model.NewCustomPeriod(*startDate, *endDate)
 		}
 	default:
-		// デフォルトは1週間
-		statsPeriod = model.NewLastWeekPeriod()
+		// デフォルトは1週間（日別統計使用）
+		statsPeriod = model.NewCurrentWeekPeriod()
 	}
 
-	// リポジトリから集中度推移を取得
-	trendItems, err := uc.statsRepo.GetFocusTrend(ctx, userID, statsPeriod)
+	// リポジトリから集中度推移を取得（現在は全て日別統計を使用）
+	var trendItems []*model.FocusTrendItem
+	var err error
+
+	// 日別統計データを使用
+	trendItems, err = uc.statsRepo.GetFocusTrend(ctx, userID, statsPeriod)
+	uc.logger.Infof("日別統計使用: period=%s", period)
+
 	if err != nil {
 		uc.logger.Errorf("集中度推移取得エラー: %v", err)
 
