@@ -1,17 +1,18 @@
 {
-  "name": "backend",
+  "name": "selfpomodoro-backend",
   "version": "1.0.0",
-  "description": "このディレクトリは、ポモドーロ最適化アプリ用のバックエンドAPIサーバーやAWSリソースとのコネクションを構築する。",
-  "main": "index.js",
-  "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+  "description": "SelfPomodoro Backend - Go + Python Serverless",
+  "private": true,
+  "engines": {
+    "node": ">=18.0.0"
   },
-  "keywords": [],
-  "author": "",
-  "license": "ISC",
-  "devDependencies": {
-    "serverless": "^4.15.1",
-    "serverless-go-plugin": "^2.4.1",
-    "serverless-offline": "^14.4.0"
-  }
+  "scripts": {
+    "deploy": "serverless deploy",
+    "deploy:dev": "serverless deploy --stage dev",
+    "deploy:prod": "serverless deploy --stage prod",
+    "remove": "serverless remove",
+    "info": "serverless info"
+  },
+  "devDependencies": {},
+  "dependencies": {}
 }

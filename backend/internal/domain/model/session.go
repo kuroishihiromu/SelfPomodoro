@@ -8,16 +8,16 @@ import (
 
 // Session はユーザのセッションを表すドメインモデル（強化版）
 type Session struct {
-	ID           uuid.UUID  `db:"id" json:"id"`
-	UserID       uuid.UUID  `db:"user_id" json:"user_id"`
-	StartTime    time.Time  `db:"start_time" json:"start_time"`
-	EndTime      *time.Time `db:"end_time" json:"end_time"`
-	AverageFocus *float64   `db:"average_focus" json:"average_focus"`
-	TotalWorkMin *int       `db:"total_work_min" json:"total_work_min"`
-	RoundCount   *int       `db:"round_count" json:"round_count"`
-	BreakTime    *int       `db:"break_time" json:"break_time"`
-	CreatedAt    time.Time  `db:"created_at" json:"created_at"`
-	UpdatedAt    time.Time  `db:"updated_at" json:"updated_at"`
+	ID           uuid.UUID  `json:"id"`
+	UserID       uuid.UUID  `json:"user_id"`
+	StartTime    time.Time  `json:"start_time"`
+	EndTime      *time.Time `json:"end_time"`
+	AverageFocus *float64   `json:"average_focus"`
+	TotalWorkMin *int       `json:"total_work_min"`
+	RoundCount   *int       `json:"round_count"`
+	BreakTime    *int       `json:"break_time"`
+	CreatedAt    time.Time  `json:"created_at"`
+	UpdatedAt    time.Time  `json:"updated_at"`
 }
 
 // SessionStatistics はセッション統計情報を表す
@@ -40,6 +40,7 @@ func NewSession(userID uuid.UUID) *Session {
 	}
 }
 
+
 // ドメインルール：状態管理メソッド群
 
 // IsCompleted はセッションが完了しているかを判定する
@@ -51,6 +52,7 @@ func (s *Session) IsCompleted() bool {
 func (s *Session) IsInProgress() bool {
 	return s.EndTime == nil
 }
+
 
 // HasRounds はセッションにラウンドが存在するかを判定する
 func (s *Session) HasRounds() bool {

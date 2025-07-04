@@ -17,17 +17,8 @@ type SessionUseCase interface {
 	// StartSession は新しいセッションを開始する
 	StartSession(ctx context.Context, userID uuid.UUID) (*model.SessionResponse, error)
 
-	// GetSession はセッションを取得する
-	GetSession(ctx context.Context, id, userID uuid.UUID) (*model.SessionResponse, error)
-
-	// GetAllSessions はユーザの全セッションを取得する
-	GetAllSessions(ctx context.Context, userID uuid.UUID) (*model.SessionsResponse, error)
-
 	// CompleteSession はセッションを完了する（SQSメッセージ送信付き）
 	CompleteSession(ctx context.Context, id, userID uuid.UUID) (*model.SessionResponse, error)
-
-	// DeleteSession はセッションを削除する
-	DeleteSession(ctx context.Context, id, userID uuid.UUID) error
 }
 
 // sessionUseCase はSessionUseCaseインターフェースの実装（新エラーハンドリング対応版）
@@ -61,11 +52,11 @@ func (uc *sessionUseCase) StartSession(ctx context.Context, userID uuid.UUID) (*
 	// ✅ ドメインロジック活用：UserConfig安全取得（デフォルト値フォールバック）
 	userConfig := uc.getUserConfigWithFallback(ctx, userID)
 
-	// ユーザー設定確認ログ
+	// ユーザー設定確認ログ（MaxRoundsはRoundUseCase側で使用）
 	uc.logger.Infof("セッション開始 - ユーザー設定確認完了: work=%d分, break=%d分, rounds=%d",
 		userConfig.GetWorkTimeOrDefault(), userConfig.GetBreakTimeOrDefault(), userConfig.GetSessionRoundsOrDefault())
 
-	// ✅ ドメインファクトリー使用
+	// ✅ ドメインファクトリー使用（シンプルなセッション作成）
 	session := model.NewSession(userID)
 
 	// DBにセッションを保存
@@ -87,48 +78,6 @@ func (uc *sessionUseCase) StartSession(ctx context.Context, userID uuid.UUID) (*
 	return session.ToResponse(), nil
 }
 
-// GetSession はセッションを取得する（新エラーハンドリング対応版）
-func (uc *sessionUseCase) GetSession(ctx context.Context, id, userID uuid.UUID) (*model.SessionResponse, error) {
-	session, err := uc.sessionRepo.GetByID(ctx, id, userID)
-	if err != nil {
-		uc.logger.Errorf("セッション取得エラー: %v", err)
-
-		// Infrastructure Error → Domain Error 変換
-		if errors.Is(err, appErrors.ErrRecordNotFound) {
-			return nil, appErrors.NewSessionNotFoundError()
-		}
-		if appErrors.IsDatabaseError(err) {
-			return nil, appErrors.NewInternalError(err)
-		}
-
-		return nil, appErrors.NewInternalError(err)
-	}
-
-	return session.ToResponse(), nil
-}
-
-// GetAllSessions はユーザの全セッションを取得する（新エラーハンドリング対応版）
-func (uc *sessionUseCase) GetAllSessions(ctx context.Context, userID uuid.UUID) (*model.SessionsResponse, error) {
-	sessions, err := uc.sessionRepo.GetAllByUserID(ctx, userID)
-	if err != nil {
-		uc.logger.Errorf("セッション一覧取得エラー: %v", err)
-
-		// Infrastructure Error → Domain Error 変換
-		if appErrors.IsDatabaseError(err) {
-			return nil, appErrors.NewInternalError(err)
-		}
-
-		return nil, appErrors.NewInternalError(err)
-	}
-
-	// セッションをレスポンス用に変換
-	sessionResponses := make([]*model.SessionResponse, len(sessions))
-	for i, session := range sessions {
-		sessionResponses[i] = session.ToResponse()
-	}
-
-	return &model.SessionsResponse{Sessions: sessionResponses}, nil
-}
 
 // CompleteSession はセッションを完了する（新エラーハンドリング対応版）
 func (uc *sessionUseCase) CompleteSession(ctx context.Context, id, userID uuid.UUID) (*model.SessionResponse, error) {
@@ -155,7 +104,7 @@ func (uc *sessionUseCase) CompleteSession(ctx context.Context, id, userID uuid.U
 	}
 
 	// ✅ ドメインロジック活用：ラウンド取得と統計計算
-	rounds, err := uc.roundRepo.GetAllBySessionID(ctx, id)
+	rounds, err := uc.roundRepo.GetBySessionIDWithUserID(ctx, id, userID)
 	if err != nil {
 		uc.logger.Errorf("セッションラウンド取得エラー: %v", err)
 
@@ -227,24 +176,6 @@ func (uc *sessionUseCase) CompleteSession(ctx context.Context, id, userID uuid.U
 	return updatedSession.ToResponse(), nil
 }
 
-// DeleteSession はセッションを削除する（新エラーハンドリング対応版）
-func (uc *sessionUseCase) DeleteSession(ctx context.Context, id, userID uuid.UUID) error {
-	if err := uc.sessionRepo.Delete(ctx, id, userID); err != nil {
-		uc.logger.Errorf("セッション削除エラー: %v", err)
-
-		// Infrastructure Error → Domain Error 変換
-		if errors.Is(err, appErrors.ErrRecordNotFound) {
-			return appErrors.NewSessionNotFoundError()
-		}
-		if appErrors.IsDatabaseError(err) {
-			return appErrors.NewInternalError(err)
-		}
-
-		return appErrors.NewInternalError(err)
-	}
-	uc.logger.Infof("セッション削除成功: %s", id.String())
-	return nil
-}
 
 // ✅ ドメインロジック活用：UserConfig安全取得（フォールバック）
 func (uc *sessionUseCase) getUserConfigWithFallback(ctx context.Context, userID uuid.UUID) *model.UserConfig {

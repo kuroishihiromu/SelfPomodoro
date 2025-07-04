@@ -33,22 +33,14 @@ func NewDynamoDB(cfg *config.Config, logger logger.Logger) (*DynamoDB, error) {
 	// DynamoDBクライアントの作成
 	client := dynamodb.NewFromConfig(awsCfg)
 
-	// Lambda環境での最適化: テーブル存在確認は軽量化
+	// Lambda環境での最適化: 統合テーブル存在確認
 	if cfg.Environment != "production" {
-		// 開発環境でのみテーブル存在確認を実行
-		tables := []string{
-			cfg.DynamoUserConfigTable,
-			cfg.DynamoRoundOptimizationTable,
-			cfg.DynamoSessionOptimizationTable,
-		}
-
-		for _, table := range tables {
-			err := checkTableExists(client, table)
-			if err != nil {
-				logger.Warnf("DynamoDBテーブル %s が存在しないか、アクセスできません: %v", table, err)
-			} else {
-				logger.Infof("DynamoDBテーブル %s が利用可能", table)
-			}
+		// 開発環境でのみ統合テーブル存在確認を実行
+		err := checkTableExists(client, cfg.DynamoUnifiedTable)
+		if err != nil {
+			logger.Warnf("DynamoDB統合テーブル %s が存在しないか、アクセスできません: %v", cfg.DynamoUnifiedTable, err)
+		} else {
+			logger.Infof("DynamoDB統合テーブル %s が利用可能", cfg.DynamoUnifiedTable)
 		}
 	}
 
@@ -69,19 +61,9 @@ func checkTableExists(client *dynamodb.Client, tableName string) error {
 	return err
 }
 
-// GetTableName はテーブル名を取得する
-func (d *DynamoDB) GetTableName(tableType string) string {
-	switch tableType {
-	case "user_config":
-		return d.Config.DynamoUserConfigTable
-	case "round_optimization":
-		return d.Config.DynamoRoundOptimizationTable
-	case "session_optimization":
-		return d.Config.DynamoSessionOptimizationTable
-	default:
-		d.logger.Warnf("未知のテーブルタイプ: %s", tableType)
-		return ""
-	}
+// GetTableName は統合テーブル名を取得する
+func (d *DynamoDB) GetTableName() string {
+	return d.Config.DynamoUnifiedTable
 }
 
 // Close はリソースをクリーンアップする（Lambda用）

@@ -9,13 +9,13 @@ import (
 
 // User はユーザーを表すドメインモデル（強化版）
 type User struct {
-	ID         uuid.UUID `db:"id" json:"id"`                   // Cognito sub
-	Name       string    `db:"name" json:"name"`               // 表示名
-	Email      string    `db:"email" json:"email"`             // メールアドレス
-	Provider   string    `db:"provider" json:"provider"`       // "Cognito_UserPool", "Google"
-	ProviderID *string   `db:"provider_id" json:"provider_id"` // Google sub等
-	CreatedAt  time.Time `db:"created_at" json:"created_at"`
-	UpdatedAt  time.Time `db:"updated_at" json:"updated_at"`
+	ID         uuid.UUID `json:"id"`         // Cognito sub
+	Name       string    `json:"name"`       // 表示名
+	Email      string    `json:"email"`      // メールアドレス
+	Provider   string    `json:"provider"`   // "Cognito_UserPool", "Google"
+	ProviderID *string   `json:"provider_id"` // Google sub等
+	CreatedAt  time.Time `json:"created_at"`
+	UpdatedAt  time.Time `json:"updated_at"`
 }
 
 // CognitoUserParams はCognito PostConfirmation時のユーザー作成パラメータ

@@ -16,26 +16,35 @@ import (
 	"github.com/tsunakit99/selfpomodoro/internal/infrastructure/logger"
 )
 
-// SampleOptimizationDataRepositoryImpl はDynamoDBを使用したSampleOptimizationDataRepositoryの実装（新エラーハンドリング対応版）
+// SampleOptimizationDataRepositoryImpl はDynamoDBを使用したSampleOptimizationDataRepositoryの実装（統合テーブル対応版）
 type SampleOptimizationDataRepositoryImpl struct {
-	client                   *dynamodb.Client
-	roundOptimizationTable   string
-	sessionOptimizationTable string
-	logger                   logger.Logger
+	client    *dynamodb.Client
+	tableName string
+	logger    logger.Logger
 }
 
 // 固定サンプルデータ定義（変更なし）
 var (
-	// 3日間のサンプルパターン（日数, セッション数, 基準集中度）
+	// 13日間のサンプルパターン（日数, セッション数, 基準集中度）
 	sampleDayPatterns = []struct {
 		day              int
 		sessions         int
 		baseFocus        float64
 		roundsPerSession int
 	}{
-		{0, 1, 65.0, 2}, // 1日目: 1セッション, 集中度65, 2ラウンド
-		{1, 1, 62.0, 2}, // 2日目: 調子悪い日, 1セッション, 2ラウンド
-		{2, 1, 72.0, 1}, // 3日目: 改善, 1セッション, 1ラウンド
+		{0, 1, 65.0, 2},  // 1日目: 1セッション, 集中度65, 2ラウンド
+		{1, 1, 62.0, 2},  // 2日目: 調子悪い日, 1セッション, 2ラウンド
+		{2, 1, 72.0, 1},  // 3日目: 改善, 1セッション, 1ラウンド
+		{3, 2, 68.0, 2},  // 4日目: 2セッション, 集中度68, 2ラウンド
+		{4, 1, 58.0, 3},  // 5日目: 低集中度だが長時間, 3ラウンド
+		{5, 1, 75.0, 2},  // 6日目: 高集中度, 2ラウンド
+		{6, 0, 0.0, 0},   // 7日目: 休み
+		{7, 2, 70.0, 2},  // 8日目: 2セッション, 集中度70, 2ラウンド
+		{8, 1, 64.0, 3},  // 9日目: 1セッション, 集中度64, 3ラウンド
+		{9, 1, 78.0, 1},  // 10日目: 高集中度短時間, 1ラウンド
+		{10, 2, 66.0, 2}, // 11日目: 2セッション, 集中度66, 2ラウンド
+		{11, 1, 60.0, 4}, // 12日目: 低集中度長時間, 4ラウンド
+		{12, 1, 74.0, 2}, // 13日目: 高集中度, 2ラウンド
 	}
 
 	// ラウンドパターン（ラウンド順, 作業時間, 休憩時間, 集中度修正値）
@@ -45,20 +54,21 @@ var (
 		breakTime   int
 		focusAdjust int
 	}{
-		{0, 25, 5, +5},  // 1ラウンド目: 集中しやすい
-		{1, 25, 5, 0},   // 2ラウンド目: 標準
-		{2, 25, 10, -3}, // 3ラウンド目: 少し疲れ
-		{3, 20, 15, -5}, // 4ラウンド目: 短めで調整
+		{0, 25, 5, +5},   // 1ラウンド目: 集中しやすい
+		{1, 25, 5, 0},    // 2ラウンド目: 標準
+		{2, 25, 10, -3},  // 3ラウンド目: 少し疲れ
+		{3, 20, 15, -5},  // 4ラウンド目: 短めで調整
+		{4, 15, 20, -8},  // 5ラウンド目: さらに短めで大幅休憩
+		{5, 15, 25, -10}, // 6ラウンド目: 最短で長休憩
 	}
 )
 
 // NewSampleOptimizationDataRepository は新しいSampleOptimizationDataRepositoryImplを作成する
 func NewSampleOptimizationDataRepository(client *dynamodb.Client, cfg *config.Config, logger logger.Logger) repository.SampleOptimizationDataRepository {
 	return &SampleOptimizationDataRepositoryImpl{
-		client:                   client,
-		roundOptimizationTable:   cfg.DynamoRoundOptimizationTable,
-		sessionOptimizationTable: cfg.DynamoSessionOptimizationTable,
-		logger:                   logger,
+		client:    client,
+		tableName: cfg.DynamoUnifiedTable,
+		logger:    logger,
 	}
 }
 
@@ -96,6 +106,11 @@ func (r *SampleOptimizationDataRepositoryImpl) generateSampleData(userID uuid.UU
 	// 各日のパターンを処理
 	for _, dayPattern := range sampleDayPatterns {
 		currentDate := baseTime.AddDate(0, 0, dayPattern.day)
+
+		// 休日（セッション数0）はスキップ
+		if dayPattern.sessions == 0 {
+			continue
+		}
 
 		// 1日のセッション数分ループ
 		for sessionNum := 0; sessionNum < dayPattern.sessions; sessionNum++ {
@@ -250,18 +265,22 @@ func (r *SampleOptimizationDataRepositoryImpl) CreateSessionOptimizationLogs(ctx
 	return nil
 }
 
-// batchWriteRoundLogs はラウンドログをバッチ書き込みする（新エラーハンドリング対応版）
+// batchWriteRoundLogs はラウンドログをバッチ書き込みする（統合テーブル対応版）
 func (r *SampleOptimizationDataRepositoryImpl) batchWriteRoundLogs(ctx context.Context, logs []*model.RoundOptimizationLog) error {
 	var writeRequests []types.WriteRequest
 
 	for _, log := range logs {
+		// 統合テーブル用のPK/SK構造
 		item := map[string]types.AttributeValue{
-			"user_id":     &types.AttributeValueMemberS{Value: log.UserID},
-			"timestamp":   &types.AttributeValueMemberS{Value: log.Timestamp},
-			"work_time":   &types.AttributeValueMemberN{Value: fmt.Sprintf("%d", log.WorkTime)},
-			"break_time":  &types.AttributeValueMemberN{Value: fmt.Sprintf("%d", log.BreakTime)},
-			"focus_score": &types.AttributeValueMemberN{Value: fmt.Sprintf("%d", log.FocusScore)},
-			"created_at":  &types.AttributeValueMemberS{Value: log.CreatedAt},
+			"PK":           &types.AttributeValueMemberS{Value: UserPartitionKey(log.UserID)},
+			"SK":           &types.AttributeValueMemberS{Value: OptimizationRoundSortKey(log.Timestamp)},
+			"work_time":    &types.AttributeValueMemberN{Value: fmt.Sprintf("%d", log.WorkTime)},
+			"break_time":   &types.AttributeValueMemberN{Value: fmt.Sprintf("%d", log.BreakTime)},
+			"focus_score":  &types.AttributeValueMemberN{Value: fmt.Sprintf("%d", log.FocusScore)},
+			"created_at":   &types.AttributeValueMemberS{Value: log.CreatedAt},
+			"entity_type":  &types.AttributeValueMemberS{Value: "optimization_log"},
+			"optimization_type": &types.AttributeValueMemberS{Value: "round"},
+			"updated_at":   &types.AttributeValueMemberS{Value: log.CreatedAt},
 		}
 
 		writeRequests = append(writeRequests, types.WriteRequest{
@@ -271,7 +290,7 @@ func (r *SampleOptimizationDataRepositoryImpl) batchWriteRoundLogs(ctx context.C
 
 	input := &dynamodb.BatchWriteItemInput{
 		RequestItems: map[string][]types.WriteRequest{
-			r.roundOptimizationTable: writeRequests,
+			r.tableName: writeRequests,
 		},
 	}
 
@@ -279,7 +298,7 @@ func (r *SampleOptimizationDataRepositoryImpl) batchWriteRoundLogs(ctx context.C
 	if err != nil {
 		// DynamoDB固有のエラー分類
 		r.logger.Errorf("DynamoDB BatchWriteItem失敗（ラウンドログ）: テーブル=%s, 件数=%d, エラー=%v",
-			r.roundOptimizationTable, len(logs), err)
+			r.tableName, len(logs), err)
 
 		// AWS SDK v2 エラーの詳細分類
 		if r.isDynamoDBThrottlingError(err) {
@@ -299,19 +318,23 @@ func (r *SampleOptimizationDataRepositoryImpl) batchWriteRoundLogs(ctx context.C
 	return nil
 }
 
-// batchWriteSessionLogs はセッションログをバッチ書き込みする（新エラーハンドリング対応版）
+// batchWriteSessionLogs はセッションログをバッチ書き込みする（統合テーブル対応版）
 func (r *SampleOptimizationDataRepositoryImpl) batchWriteSessionLogs(ctx context.Context, logs []*model.SessionOptimizationLog) error {
 	var writeRequests []types.WriteRequest
 
 	for _, log := range logs {
+		// 統合テーブル用のPK/SK構造
 		item := map[string]types.AttributeValue{
-			"user_id":         &types.AttributeValueMemberS{Value: log.UserID},
-			"timestamp":       &types.AttributeValueMemberS{Value: log.Timestamp},
+			"PK":              &types.AttributeValueMemberS{Value: UserPartitionKey(log.UserID)},
+			"SK":              &types.AttributeValueMemberS{Value: OptimizationSessionSortKey(log.Timestamp)},
 			"round_count":     &types.AttributeValueMemberN{Value: fmt.Sprintf("%d", log.RoundCount)},
 			"break_time":      &types.AttributeValueMemberN{Value: fmt.Sprintf("%d", log.BreakTime)},
 			"avg_focus_score": &types.AttributeValueMemberN{Value: fmt.Sprintf("%.2f", log.AvgFocusScore)},
 			"total_work_time": &types.AttributeValueMemberN{Value: fmt.Sprintf("%d", log.TotalWorkTime)},
 			"created_at":      &types.AttributeValueMemberS{Value: log.CreatedAt},
+			"entity_type":     &types.AttributeValueMemberS{Value: "optimization_log"},
+			"optimization_type": &types.AttributeValueMemberS{Value: "session"},
+			"updated_at":      &types.AttributeValueMemberS{Value: log.CreatedAt},
 		}
 
 		writeRequests = append(writeRequests, types.WriteRequest{
@@ -321,7 +344,7 @@ func (r *SampleOptimizationDataRepositoryImpl) batchWriteSessionLogs(ctx context
 
 	input := &dynamodb.BatchWriteItemInput{
 		RequestItems: map[string][]types.WriteRequest{
-			r.sessionOptimizationTable: writeRequests,
+			r.tableName: writeRequests,
 		},
 	}
 
@@ -329,7 +352,7 @@ func (r *SampleOptimizationDataRepositoryImpl) batchWriteSessionLogs(ctx context
 	if err != nil {
 		// DynamoDB固有のエラー分類
 		r.logger.Errorf("DynamoDB BatchWriteItem失敗（セッションログ）: テーブル=%s, 件数=%d, エラー=%v",
-			r.sessionOptimizationTable, len(logs), err)
+			r.tableName, len(logs), err)
 
 		// AWS SDK v2 エラーの詳細分類
 		if r.isDynamoDBThrottlingError(err) {

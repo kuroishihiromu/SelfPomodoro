@@ -67,16 +67,6 @@ func (h *SessionHandler) routeOperation(ctx context.Context, request events.APIG
 	sessionIDStr := request.PathParameters["session_id"]
 
 	switch request.HTTPMethod {
-	case "GET":
-		if sessionIDStr == "" {
-			return h.handleGetSessions(ctx, userID)
-		}
-		sessionID, err := uuid.Parse(sessionIDStr)
-		if err != nil {
-			return createErrorResponse(http.StatusBadRequest, "INVALID_SESSION_ID", "無効なセッションID"), nil
-		}
-		return h.handleGetSession(ctx, sessionID, userID)
-
 	case "POST":
 		return h.handleStartSession(ctx, userID)
 
@@ -93,40 +83,11 @@ func (h *SessionHandler) routeOperation(ctx context.Context, request events.APIG
 		}
 		return h.handleCompleteSession(ctx, sessionID, userID)
 
-	case "DELETE":
-		if sessionIDStr == "" {
-			return createErrorResponse(http.StatusBadRequest, "MISSING_SESSION_ID", "セッションIDが指定されていません"), nil
-		}
-		sessionID, err := uuid.Parse(sessionIDStr)
-		if err != nil {
-			return createErrorResponse(http.StatusBadRequest, "INVALID_SESSION_ID", "無効なセッションID"), nil
-		}
-		return h.handleDeleteSession(ctx, sessionID, userID)
-
 	default:
 		return createErrorResponse(http.StatusMethodNotAllowed, "METHOD_NOT_ALLOWED", "メソッドが許可されていません"), nil
 	}
 }
 
-// handleGetSessions はセッション一覧取得を処理
-func (h *SessionHandler) handleGetSessions(ctx context.Context, userID uuid.UUID) (events.APIGatewayProxyResponse, error) {
-	sessionsResponse, err := h.useCases.Session.GetAllSessions(ctx, userID)
-	if err != nil {
-		h.logger.Errorf("セッション一覧取得エラー: %v", err)
-		return h.handleError(err), nil
-	}
-	return createSuccessResponse(http.StatusOK, sessionsResponse), nil
-}
-
-// handleGetSession は個別セッション取得を処理
-func (h *SessionHandler) handleGetSession(ctx context.Context, sessionID uuid.UUID, userID uuid.UUID) (events.APIGatewayProxyResponse, error) {
-	sessionResponse, err := h.useCases.Session.GetSession(ctx, sessionID, userID)
-	if err != nil {
-		h.logger.Errorf("セッション取得エラー: %v", err)
-		return h.handleError(err), nil
-	}
-	return createSuccessResponse(http.StatusOK, sessionResponse), nil
-}
 
 // handleStartSession はセッション開始を処理
 func (h *SessionHandler) handleStartSession(ctx context.Context, userID uuid.UUID) (events.APIGatewayProxyResponse, error) {
@@ -164,16 +125,6 @@ func (h *SessionHandler) handleCompleteSession(ctx context.Context, sessionID uu
 	return createSuccessResponse(http.StatusOK, sessionResponse), nil
 }
 
-// handleDeleteSession はセッション削除を処理
-func (h *SessionHandler) handleDeleteSession(ctx context.Context, sessionID uuid.UUID, userID uuid.UUID) (events.APIGatewayProxyResponse, error) {
-	err := h.useCases.Session.DeleteSession(ctx, sessionID, userID)
-	if err != nil {
-		h.logger.Errorf("セッション削除エラー: %v", err)
-		return h.handleError(err), nil
-	}
-
-	return createSuccessResponse(http.StatusOK, map[string]string{"message": "セッションが削除されました"}), nil
-}
 
 // handleError はエラーを統一処理（error_mapper.go使用版）
 func (h *SessionHandler) handleError(err error) events.APIGatewayProxyResponse {

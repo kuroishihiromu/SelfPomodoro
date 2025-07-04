@@ -32,4 +32,10 @@ type UserRepository interface {
 
 	// GetUsersByProvider はプロバイダー別にユーザーを取得する（管理用）
 	GetUsersByProvider(ctx context.Context, provider string, limit, offset int) ([]*model.User, error)
+
+	// DeleteAllUserData はユーザーに関連するすべてのデータを削除する（統合テーブル対応）
+	DeleteAllUserData(ctx context.Context, userID uuid.UUID) error
+
+	// CountUserItems はユーザーに関連するアイテム数を取得する（テスト用）
+	CountUserItems(ctx context.Context, userID uuid.UUID) (int, error)
 }
