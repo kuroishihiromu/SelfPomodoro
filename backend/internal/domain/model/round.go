@@ -13,7 +13,7 @@ const (
 	MinFocusScore = 0
 )
 
-// Round はポモドーロラウンドを表す構造体（強化版）
+// Round はポモドーロラウンドを表す構造体（完了時のみ作成版）
 type Round struct {
 	ID         uuid.UUID  `json:"id"`
 	SessionID  uuid.UUID  `json:"session_id"`
@@ -23,12 +23,11 @@ type Round struct {
 	WorkTime   *int       `json:"work_time,omitempty"`
 	BreakTime  *int       `json:"break_time,omitempty"`
 	FocusScore *int       `json:"focus_score,omitempty"`
-	IsAborted  bool       `json:"is_aborted"`
 	CreatedAt  time.Time  `json:"created_at"`
 	UpdatedAt  time.Time  `json:"updated_at"`
 }
 
-// NewRound は新しいラウンドを作成する（ファクトリーメソッド）
+// NewRound は新しいラウンドを作成する（完了時作成用ファクトリーメソッド）
 func NewRound(sessionID uuid.UUID, roundOrder int) *Round {
 	now := time.Now()
 	return &Round{
@@ -36,7 +35,6 @@ func NewRound(sessionID uuid.UUID, roundOrder int) *Round {
 		SessionID:  sessionID,
 		RoundOrder: roundOrder,
 		StartTime:  now,
-		IsAborted:  false,
 		CreatedAt:  now,
 		UpdatedAt:  now,
 	}
@@ -44,19 +42,9 @@ func NewRound(sessionID uuid.UUID, roundOrder int) *Round {
 
 // ドメインルール：状態管理メソッド群
 
-// IsCompleted はラウンドが完了しているかを判定する
+// IsCompleted はラウンドが完了しているかを判定する（完了時のみ作成されるため常にtrue）
 func (r *Round) IsCompleted() bool {
-	return r.EndTime != nil && !r.IsAborted
-}
-
-// IsInProgress はラウンドが進行中かを判定する
-func (r *Round) IsInProgress() bool {
-	return r.EndTime == nil && !r.IsAborted
-}
-
-// IsAbortedRound はラウンドが中止されているかを判定する
-func (r *Round) IsAbortedRound() bool {
-	return r.IsAborted
+	return r.EndTime != nil
 }
 
 // HasFocusScore は集中度スコアが設定されているかを判定する
@@ -72,26 +60,12 @@ func (r *Round) GetFocusScoreOrZero() int {
 	return *r.FocusScore
 }
 
-// ドメインルール：完了・中止処理
+// ドメインルール：完了処理
 
-// CanBeCompleted は完了可能かを判定する
+// CanBeCompleted は完了可能かを判定する（完了時のみ作成されるため基本的に不要だが安全性のため）
 func (r *Round) CanBeCompleted() error {
 	if r.IsCompleted() {
 		return errors.New("ラウンドは既に完了しています")
-	}
-	if r.IsAborted {
-		return errors.New("中止されたラウンドは完了できません")
-	}
-	return nil
-}
-
-// CanBeAborted は中止可能かを判定する
-func (r *Round) CanBeAborted() error {
-	if r.IsCompleted() {
-		return errors.New("完了したラウンドは中止できません")
-	}
-	if r.IsAborted {
-		return errors.New("ラウンドは既に中止されています")
 	}
 	return nil
 }
@@ -124,19 +98,6 @@ func (r *Round) CompleteWith(focusScore *int, workTime, breakTime int) error {
 	return nil
 }
 
-// Abort はラウンドを中止する（ドメインルール適用）
-func (r *Round) Abort() error {
-	if err := r.CanBeAborted(); err != nil {
-		return err
-	}
-
-	now := time.Now()
-	r.EndTime = &now
-	r.IsAborted = true
-	r.UpdatedAt = now
-
-	return nil
-}
 
 // ドメインルール：最適化メッセージ送信判定
 
@@ -219,7 +180,6 @@ type RoundResponse struct {
 	WorkTime   *int       `json:"work_time,omitempty"`
 	BreakTime  *int       `json:"break_time,omitempty"`
 	FocusScore *int       `json:"focus_score,omitempty"`
-	IsAborted  bool       `json:"is_aborted"`
 }
 
 // ToResponse はラウンドのドメインモデルをレスポンス形式に変換する
@@ -233,7 +193,6 @@ func (r *Round) ToResponse() *RoundResponse {
 		WorkTime:   r.WorkTime,
 		BreakTime:  r.BreakTime,
 		FocusScore: r.FocusScore,
-		IsAborted:  r.IsAborted,
 	}
 }
 

@@ -40,6 +40,7 @@ func NewSession(userID uuid.UUID) *Session {
 	}
 }
 
+
 // ドメインルール：状態管理メソッド群
 
 // IsCompleted はセッションが完了しているかを判定する
@@ -51,6 +52,7 @@ func (s *Session) IsCompleted() bool {
 func (s *Session) IsInProgress() bool {
 	return s.EndTime == nil
 }
+
 
 // HasRounds はセッションにラウンドが存在するかを判定する
 func (s *Session) HasRounds() bool {
