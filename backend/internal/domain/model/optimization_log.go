@@ -78,3 +78,66 @@ func NewSessionOptimizationLogWithTime(userID uuid.UUID, timestamp time.Time, ro
 		CreatedAt:     timestamp.Format(time.RFC3339),
 	}
 }
+
+// OptimizationEffectiveness は最適化の効果性を表すドメインモデル
+type OptimizationEffectiveness struct {
+	UserID                uuid.UUID `json:"user_id"`
+	PeriodStart          time.Time `json:"period_start"`
+	PeriodEnd            time.Time `json:"period_end"`
+	RoundOptimizations   int       `json:"round_optimizations"`
+	SessionOptimizations int       `json:"session_optimizations"`
+	AvgFocusImprovement  float64   `json:"avg_focus_improvement"`
+	OptimizationTrend    string    `json:"optimization_trend"` // "improving", "stable", "declining"
+	LastOptimizedAt      time.Time `json:"last_optimized_at"`
+}
+
+// NewOptimizationEffectiveness は新しい最適化効果性を作成する
+func NewOptimizationEffectiveness(userID uuid.UUID, periodStart, periodEnd time.Time) *OptimizationEffectiveness {
+	return &OptimizationEffectiveness{
+		UserID:      userID,
+		PeriodStart: periodStart,
+		PeriodEnd:   periodEnd,
+		OptimizationTrend: "stable",
+	}
+}
+
+// CalculateTrend は最適化トレンドを計算する
+func (oe *OptimizationEffectiveness) CalculateTrend(recentImprovement, historicalImprovement float64) {
+	diff := recentImprovement - historicalImprovement
+	if diff > 2.0 {
+		oe.OptimizationTrend = "improving"
+	} else if diff < -2.0 {
+		oe.OptimizationTrend = "declining"
+	} else {
+		oe.OptimizationTrend = "stable"
+	}
+}
+
+// OptimizationSummary は最適化サマリーを表すドメインモデル
+type OptimizationSummary struct {
+	UserID                      uuid.UUID                `json:"user_id"`
+	TotalRoundOptimizations     int                      `json:"total_round_optimizations"`
+	TotalSessionOptimizations   int                      `json:"total_session_optimizations"`
+	LatestRoundResult          *RoundOptimizationLog    `json:"latest_round_result,omitempty"`
+	LatestSessionResult        *SessionOptimizationLog  `json:"latest_session_result,omitempty"`
+	LastOptimizedAt            time.Time                `json:"last_optimized_at"`
+	IsOptimizationActive       bool                     `json:"is_optimization_active"`
+	CreatedAt                  time.Time                `json:"created_at"`
+}
+
+// NewOptimizationSummary は新しい最適化サマリーを作成する
+func NewOptimizationSummary(userID uuid.UUID) *OptimizationSummary {
+	return &OptimizationSummary{
+		UserID:               userID,
+		IsOptimizationActive: false,
+		CreatedAt:            time.Now(),
+	}
+}
+
+// HasRecentOptimization は最近の最適化があるかチェックする
+func (os *OptimizationSummary) HasRecentOptimization(within time.Duration) bool {
+	if os.LastOptimizedAt.IsZero() {
+		return false
+	}
+	return time.Since(os.LastOptimizedAt) <= within
+}
