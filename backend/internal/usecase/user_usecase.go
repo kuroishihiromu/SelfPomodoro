@@ -3,6 +3,7 @@ package usecase
 import (
 	"context"
 	"errors"
+	"slices"
 
 	"github.com/google/uuid"
 	"github.com/tsunakit99/selfpomodoro/internal/domain/model"
@@ -183,7 +184,7 @@ func (uc *userUseCase) CheckUserExists(ctx context.Context, userID uuid.UUID) (b
 	return exists, nil
 }
 
-// DeleteUser はユーザーを削除する（ドメイン強化版・GDPR対応）
+// DeleteUser はユーザーを削除する（包括的削除版・GDPR対応）
 func (uc *userUseCase) DeleteUser(ctx context.Context, userID uuid.UUID) error {
 	// 削除前にユーザー情報を取得（ログ出力用）
 	user, err := uc.userRepo.GetByID(ctx, userID)
@@ -197,20 +198,21 @@ func (uc *userUseCase) DeleteUser(ctx context.Context, userID uuid.UUID) error {
 
 	// ✅ ドメインロジック活用：削除前情報ログ
 	providerDisplay := user.GetProviderDisplayName()
-	uc.logger.Infof("ユーザー削除開始: %s (%s) - プロバイダー: %s",
+	uc.logger.Infof("ユーザー完全削除開始: %s (%s) - プロバイダー: %s",
 		user.Name, user.Email, providerDisplay)
 
-	// ユーザー削除実行
-	err = uc.userRepo.Delete(ctx, userID)
+	// 統合テーブルからユーザーのすべてのデータを削除
+	// PK = USER#{userID} のすべてのアイテム（UserConfig、統計、セッション、ラウンド、タスク、最適化ログなど）
+	err = uc.userRepo.DeleteAllUserData(ctx, userID)
 	if err != nil {
-		uc.logger.Errorf("ユーザー削除エラー: %v", err)
+		uc.logger.Errorf("ユーザーデータ包括削除エラー: %v", err)
 		if errors.Is(err, appErrors.ErrUserNotFound) {
 			return appErrors.NewUserNotFoundError()
 		}
 		return appErrors.NewInternalError(err)
 	}
 
-	uc.logger.Infof("ユーザー削除成功: UserID=%s (%s)",
+	uc.logger.Infof("ユーザー完全削除成功: UserID=%s (%s) - すべての関連データを削除",
 		userID.String()[:8]+"...", providerDisplay)
 
 	return nil
@@ -295,10 +297,6 @@ func (uc *userUseCase) isValidProviderName(provider string) bool {
 		"Google",
 	}
 
-	for _, validProvider := range validProviders {
-		if provider == validProvider {
-			return true
-		}
-	}
-	return false
+	return slices.Contains(validProviders, provider)
 }
+
