@@ -35,10 +35,28 @@ class FocusScoreModel:
   def create_dataset(self, dataset: np.ndarray, time_step: int) -> tuple[np.ndarray, np.ndarray]:
       """時系列データセットの作成"""
       X, Y = [], []
+      
+      # time_stepが0以下の場合は1に設定
+      if time_step <= 0:
+          time_step = 1
+          print("time_stepが0以下のため、1に設定しました")
+      
+      # データが少ない場合は、time_stepを調整
+      if len(dataset) <= time_step + 1:
+          time_step = max(1, len(dataset) - 2)
+          print(f"データが少ないため、time_stepを{time_step}に調整しました")
+      
+      # 最低1つのサンプルが作成されるように調整
+      if len(dataset) - time_step - 1 <= 0:
+          time_step = max(1, len(dataset) - 2)
+          print(f"サンプル作成のため、time_stepを{time_step}に再調整しました")
+
       for i in range(len(dataset)-time_step-1):
           a = dataset[i:(i+time_step), :]  # 全5次元のデータ
           X.append(a)
           Y.append(dataset[i + time_step, 2])  # focus_score
+      
+      print(f"データセット作成: データ長={len(dataset)}, time_step={time_step}, 作成されたサンプル数={len(X)}")
       return np.array(X), np.array(Y)
 
   def fit(
@@ -77,9 +95,16 @@ class FocusScoreModel:
       
       # スケーリング
       test_data_scaled = self.scaler.transform(test_data)
-
-      # 予測
-      X_test_pred = test_data_scaled.reshape(1, 1, 5)
+      
+      # 最後のtime_step分のデータを使用して予測
+      if len(test_data_scaled) >= self.time_step:
+          # 最後のtime_step分のデータを取得
+          X_test_pred = test_data_scaled[-self.time_step:].reshape(1, self.time_step, 5)
+      else:
+          # データが少ない場合は、パディングしてtime_step分にする
+          padding = np.zeros((self.time_step - len(test_data_scaled), 5))
+          X_test_pred = np.vstack([padding, test_data_scaled]).reshape(1, self.time_step, 5)
+      
       test_predict = self.model.predict(X_test_pred)
 
       # スケールを元に戻す
