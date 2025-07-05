@@ -2,7 +2,6 @@
 
 import uuid
 import numpy as np
-from concurrent.futures import ThreadPoolExecutor
 from datetime import datetime
 from handler.dynamodb.dynamodb_handler import DynamoDBHandler
 from helper.make_time_series_data import make_time_series_data
@@ -27,35 +26,39 @@ def optimize_round_with_focus_score_prediction(
         region_name="ap-northeast-1"
     )
 
-    # --- 過去4日間のデータを取得 ---
-    latest_data, second_latest_data, third_latest_data, fourth_latest_data = round_dynamodb_handler.get_four_past_days_data(user_id=str(user_id))
+    # --- 最新の日付と過去全てのデータを取得 ---
+    latest_data, all_past_data = round_dynamodb_handler.get_latest_day_and_all_past_days_data(user_id=str(user_id))
+
+    print(f"最新の日付のデータ: {latest_data}")
+    print(f"過去全てのデータ: {all_past_data}")
+    print(f"最新の日付のデータの長さ: {type(latest_data)}")
+    print(f"過去全てのデータの長さ: {type(all_past_data)}")
 
     # --- time_stepを取得 ---
-    time_step = min(len(latest_data), len(second_latest_data), len(third_latest_data), len(fourth_latest_data))
+    time_step = max(1, len(latest_data) - 1)
+    print(f"time_step: {time_step}")
+    print(f"latest_dataの長さ: {len(latest_data)}")
 
     # --- 時系列データの作成 ---
-    # 最新の日付の時系列データ + 集中度スコアのないデータ
-    latest_time_series_data, latest_no_focus_score_data = make_time_series_data(latest_data)
-    # 過去3日間の時系列データ
-    past_time_datas = [second_latest_data, third_latest_data, fourth_latest_data]
-    with ThreadPoolExecutor(max_workers=len(past_time_datas)) as executor:
-        futures = [executor.submit(make_time_series_data, data) for data in past_time_datas]
-        results = [future.result() for future in futures]
-    past_time_series_data_list = [result[0] for result in results]
-    # 時系列データの結合
-    past_time_series_data_list.append(latest_time_series_data)
+    # 最新の日付の時系列データ
+    latest_time_series_data = make_time_series_data(latest_data)
+    # 過去全てのデータの時系列データ
+    all_past_time_series_data = make_time_series_data(all_past_data)
+    
+    print(f"latest_time_series_dataの長さ: {len(latest_time_series_data)}")
+    print(f"all_past_time_series_dataの長さ: {len(all_past_time_series_data)}")
     
     # --- モデルの作成 ---
     model = FocusScoreModel(time_step=time_step)
     
     # --- モデルの訓練 ---
-    model.fit(train_data=np.concatenate(past_time_series_data_list, axis=0))
+    model.fit(train_data=np.array(all_past_time_series_data))
 
-    print(f"予測データ: {latest_no_focus_score_data}")
+    print(f"予測データ: {latest_time_series_data}")
     
     # --- 予測の実行 ---
     predicted_focus_score = model.predict(
-        test_data=np.array(latest_no_focus_score_data)
+        test_data=np.array(latest_time_series_data)
     )
     print("予測完了")
     print("予測されたfocus_score:", predicted_focus_score)
