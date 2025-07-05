@@ -382,26 +382,26 @@ class DynamoDBHandler:
             raise Exception(f"タイムスタンプの取得に失敗しました: {e}")
 
 
-    def get_four_past_days_data(
+    def get_latest_day_and_all_past_days_data(
         self,
         user_id: str
-    ) -> tuple[List[dict], List[dict], List[dict], List[dict]]:
-        """過去4日間のデータを取得
+    ) -> tuple[List[dict], List[List[dict]]]:
+        """最新の日付と過去全てのデータを取得
         
         Parameters:
             user_id (str): ユーザーID
         
         Returns:
-            tuple[List[dict], List[dict], List[dict]]: (最新のデータ, 最新から１つ古いデータ, 最新から２つ古いデータ, 最新から３つ古いデータ)
+            tuple[List[dict], List[List[dict]]]: (最新の日付のデータ, 過去全てのデータ)
         """
         try:
-            # 全タイムスタンプを取得
+            # --- 全タイムスタンプを取得 ---
             all_timestamps = self.get_all_timestamps(user_id)
             
             if not all_timestamps:
-                return [], [], [], []
+                return [], []
             
-            # タイムスタンプを日付でグループ化
+            # --- タイムスタンプを日付でグループ化 ---
             date_groups = {}
             for timestamp in all_timestamps:
                 # タイムスタンプから日付部分を抽出
@@ -424,17 +424,23 @@ class DynamoDBHandler:
                     print(f"タイムスタンプのパースに失敗しました: {timestamp}, エラー: {e}")
                     continue
             
-            # 過去4日間を取得
+            # --- 過去全てのデータを取得 ---
             sorted_dates = sorted(date_groups.keys(), reverse=True)
-            latest_four_dates = sorted_dates[:4]
+            latest_date = sorted_dates[0]
+            print(f"最新の日付のデータ: {latest_date}")
+            all_past_dates = sorted_dates[1:]
             
-            # 日付ごとにデータを取得
+            # 最新の日付のデータを取得
             latest_data = []
-            second_latest_data = []
-            third_latest_data = []
-            fourth_latest_data = [] 
+            for timestamp in date_groups[latest_date]:
+                # 各タイムスタンプのデータを取得
+                data = self.get_round_data(user_id, timestamp)
+                if data:
+                    latest_data.append(data)
             
-            for i, date in enumerate(latest_four_dates):
+            # 過去全てのデータを取得
+            all_past_datas = []
+            for date in all_past_dates:
                 date_data = []
                 for timestamp in date_groups[date]:
                     # 各タイムスタンプのデータを取得
@@ -442,18 +448,10 @@ class DynamoDBHandler:
                     if data:
                         date_data.append(data)
                 
-                if i == 0:
-                    latest_data = date_data        # 最新の日付のデータ
-                    # ↑ focus_scoreがない最新データ一件（予測用）も含まれる
-                elif i == 1:
-                    second_latest_data = date_data # 最新から１つ古い日付のデータ
-                elif i == 2:
-                    third_latest_data = date_data  # 最新から２つ古い日付のデータ
-                elif i == 3:
-                    fourth_latest_data = date_data # 最新から３つ古い日付のデータ
+                all_past_datas.append(date_data)
             
-            return latest_data, second_latest_data, third_latest_data, fourth_latest_data
+            return latest_data, all_past_datas
             
         except Exception as e:
-            print(f"過去4日間のデータの取得に失敗しました: {e}")
-            raise Exception(f"過去4日間のデータの取得に失敗しました: {e}")
+            print(f"最新の日付と過去全てのデータの取得に失敗しました: {e}")
+            raise Exception(f"最新の日付と過去全てのデータの取得に失敗しました: {e}")
