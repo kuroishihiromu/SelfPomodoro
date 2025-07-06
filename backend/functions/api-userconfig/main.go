@@ -10,7 +10,7 @@ import (
 	"github.com/go-playground/validator/v10"
 	"github.com/google/uuid"
 	"github.com/tsunakit99/selfpomodoro/internal/container"
-	"github.com/tsunakit99/selfpomodoro/internal/domain/model"
+	"github.com/tsunakit99/selfpomodoro/internal/domain/entity"
 	httpError "github.com/tsunakit99/selfpomodoro/internal/handler"
 	"github.com/tsunakit99/selfpomodoro/internal/infrastructure/logger"
 	"github.com/tsunakit99/selfpomodoro/internal/usecase"
@@ -91,7 +91,7 @@ func (h *UserConfigHandler) handleGetUserConfig(ctx context.Context, userID uuid
 // handleUpdateUserConfig はUserConfig更新を処理
 func (h *UserConfigHandler) handleUpdateUserConfig(ctx context.Context, request events.APIGatewayProxyRequest, userID uuid.UUID) (events.APIGatewayProxyResponse, error) {
 	// リクエストボディをパース
-	var updateRequest model.UpdateUserConfigRequest
+	var updateRequest entity.UpdateUserConfigRequest
 	if err := json.Unmarshal([]byte(request.Body), &updateRequest); err != nil {
 		h.logger.Warnf("UserConfig更新リクエストのパースエラー: %v", err)
 		return createErrorResponse(http.StatusBadRequest, "INVALID_REQUEST", "無効なリクエストボディ"), nil

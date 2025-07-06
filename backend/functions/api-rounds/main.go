@@ -12,7 +12,7 @@ import (
 	"github.com/go-playground/validator/v10"
 	"github.com/google/uuid"
 	"github.com/tsunakit99/selfpomodoro/internal/container"
-	"github.com/tsunakit99/selfpomodoro/internal/domain/model"
+	"github.com/tsunakit99/selfpomodoro/internal/domain/entity"
 	httpError "github.com/tsunakit99/selfpomodoro/internal/handler"
 	"github.com/tsunakit99/selfpomodoro/internal/infrastructure/logger"
 	"github.com/tsunakit99/selfpomodoro/internal/usecase"
@@ -111,12 +111,11 @@ func (h *RoundHandler) routeOperation(ctx context.Context, request events.APIGat
 	return createErrorResponse(http.StatusNotFound, "NOT_FOUND", "無効なパス"), nil
 }
 
-
 // handleStartRound はラウンド開始を処理
 func (h *RoundHandler) handleStartRound(ctx context.Context, sessionID uuid.UUID, userID uuid.UUID) (events.APIGatewayProxyResponse, error) {
 	h.logger.Infof("ラウンド開始要求: セッションID=%s, ユーザーID=%s", sessionID.String(), userID.String())
 
-	var req model.RoundCreateRequest
+	var req entity.RoundCreateRequest
 	roundResponse, err := h.useCases.Round.StartRound(ctx, sessionID, userID, &req)
 	if err != nil {
 		h.logger.Errorf("ラウンド開始エラー: %v", err)
@@ -127,10 +126,9 @@ func (h *RoundHandler) handleStartRound(ctx context.Context, sessionID uuid.UUID
 	return createSuccessResponse(http.StatusCreated, roundResponse), nil
 }
 
-
 // handleCompleteRound はラウンド完了を処理
 func (h *RoundHandler) handleCompleteRound(ctx context.Context, request events.APIGatewayProxyRequest, roundID uuid.UUID, userID uuid.UUID) (events.APIGatewayProxyResponse, error) {
-	var req model.RoundCompleteRequest
+	var req entity.RoundCompleteRequest
 	if err := json.Unmarshal([]byte(request.Body), &req); err != nil {
 		return createErrorResponse(http.StatusBadRequest, "INVALID_REQUEST_FORMAT", "無効なリクエスト形式"), nil
 	}
@@ -167,7 +165,6 @@ func (h *RoundHandler) handleCompleteRound(ctx context.Context, request events.A
 
 	return createSuccessResponse(http.StatusOK, roundResponse), nil
 }
-
 
 // handleError はエラーを統一処理（error_mapper.go使用版）
 func (h *RoundHandler) handleError(err error) events.APIGatewayProxyResponse {

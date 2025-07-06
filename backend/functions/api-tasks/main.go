@@ -11,7 +11,7 @@ import (
 	"github.com/go-playground/validator/v10"
 	"github.com/google/uuid"
 	"github.com/tsunakit99/selfpomodoro/internal/container"
-	"github.com/tsunakit99/selfpomodoro/internal/domain/model"
+	"github.com/tsunakit99/selfpomodoro/internal/domain/entity"
 	httpError "github.com/tsunakit99/selfpomodoro/internal/handler"
 	"github.com/tsunakit99/selfpomodoro/internal/infrastructure/logger"
 	"github.com/tsunakit99/selfpomodoro/internal/usecase"
@@ -95,7 +95,7 @@ func (h *TaskHandler) handleGetTasks(ctx context.Context, userID uuid.UUID) (eve
 
 // handleCreateTask はタスク作成（UseCaseに委譲）
 func (h *TaskHandler) handleCreateTask(ctx context.Context, request events.APIGatewayProxyRequest, userID uuid.UUID) (events.APIGatewayProxyResponse, error) {
-	var req model.CreateTaskRequest
+	var req entity.CreateTaskRequest
 	if err := json.Unmarshal([]byte(request.Body), &req); err != nil {
 		return createErrorResponse(http.StatusBadRequest, "INVALID_REQUEST_FORMAT", "無効なリクエスト形式"), nil
 	}
@@ -134,7 +134,7 @@ func (h *TaskHandler) handleUpdateOrToggleTask(ctx context.Context, request even
 		return createSuccessResponse(http.StatusOK, taskResponse), nil
 	} else {
 		// タスク更新
-		var req model.UpdateTaskRequest
+		var req entity.UpdateTaskRequest
 		if err := json.Unmarshal([]byte(request.Body), &req); err != nil {
 			return createErrorResponse(http.StatusBadRequest, "INVALID_REQUEST_FORMAT", "無効なリクエスト形式"), nil
 		}
