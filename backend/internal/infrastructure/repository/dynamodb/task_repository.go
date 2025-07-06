@@ -9,7 +9,7 @@ import (
 	"github.com/aws/aws-sdk-go-v2/service/dynamodb/types"
 	"github.com/google/uuid"
 	"github.com/tsunakit99/selfpomodoro/internal/config"
-	"github.com/tsunakit99/selfpomodoro/internal/domain/model"
+	"github.com/tsunakit99/selfpomodoro/internal/domain/entity"
 	"github.com/tsunakit99/selfpomodoro/internal/domain/repository"
 	appErrors "github.com/tsunakit99/selfpomodoro/internal/errors"
 	"github.com/tsunakit99/selfpomodoro/internal/infrastructure/logger"
@@ -32,7 +32,7 @@ func NewTaskRepository(client *dynamodb.Client, cfg *config.Config, logger logge
 }
 
 // Create はタスクを作成する
-func (r *TaskRepositoryImpl) Create(ctx context.Context, task *model.Task) error {
+func (r *TaskRepositoryImpl) Create(ctx context.Context, task *entity.Task) error {
 	pk := UserPartitionKey(task.UserID.String())
 	sk := TaskSortKey(task.ID.String())
 
@@ -64,7 +64,7 @@ func (r *TaskRepositoryImpl) Create(ctx context.Context, task *model.Task) error
 }
 
 // GetByID はIDによってタスクを取得する
-func (r *TaskRepositoryImpl) GetByID(ctx context.Context, id, userID uuid.UUID) (*model.Task, error) {
+func (r *TaskRepositoryImpl) GetByID(ctx context.Context, id, userID uuid.UUID) (*entity.Task, error) {
 	pk := UserPartitionKey(userID.String())
 	sk := TaskSortKey(id.String())
 
@@ -98,7 +98,7 @@ func (r *TaskRepositoryImpl) GetByID(ctx context.Context, id, userID uuid.UUID) 
 }
 
 // GetAllByUserID はユーザーIDに紐づくすべてのタスクを取得する
-func (r *TaskRepositoryImpl) GetAllByUserID(ctx context.Context, userID uuid.UUID) ([]*model.Task, error) {
+func (r *TaskRepositoryImpl) GetAllByUserID(ctx context.Context, userID uuid.UUID) ([]*entity.Task, error) {
 	pk := UserPartitionKey(userID.String())
 
 	input := &dynamodb.QueryInput{
@@ -116,7 +116,7 @@ func (r *TaskRepositoryImpl) GetAllByUserID(ctx context.Context, userID uuid.UUI
 		return nil, appErrors.NewDynamoDBOperationError("get_tasks_by_user_id", err)
 	}
 
-	tasks := make([]*model.Task, 0, len(result.Items))
+	tasks := make([]*entity.Task, 0, len(result.Items))
 	for _, item := range result.Items {
 		task, err := r.itemToTask(item)
 		if err != nil {
@@ -131,7 +131,7 @@ func (r *TaskRepositoryImpl) GetAllByUserID(ctx context.Context, userID uuid.UUI
 }
 
 // Update はタスクの詳細を更新する
-func (r *TaskRepositoryImpl) Update(ctx context.Context, task *model.Task) error {
+func (r *TaskRepositoryImpl) Update(ctx context.Context, task *entity.Task) error {
 	pk := UserPartitionKey(task.UserID.String())
 	sk := TaskSortKey(task.ID.String())
 
@@ -212,8 +212,8 @@ func (r *TaskRepositoryImpl) Delete(ctx context.Context, id, userID uuid.UUID) e
 // Helper methods
 
 // itemToTask はDynamoDBアイテムをTaskモデルに変換する
-func (r *TaskRepositoryImpl) itemToTask(item map[string]types.AttributeValue) (*model.Task, error) {
-	task := &model.Task{}
+func (r *TaskRepositoryImpl) itemToTask(item map[string]types.AttributeValue) (*entity.Task, error) {
+	task := &entity.Task{}
 
 	// user_id
 	if userIDAttr, exists := item["user_id"]; exists {

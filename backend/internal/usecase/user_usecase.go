@@ -6,7 +6,7 @@ import (
 	"slices"
 
 	"github.com/google/uuid"
-	"github.com/tsunakit99/selfpomodoro/internal/domain/model"
+	"github.com/tsunakit99/selfpomodoro/internal/domain/entity"
 	"github.com/tsunakit99/selfpomodoro/internal/domain/repository"
 	appErrors "github.com/tsunakit99/selfpomodoro/internal/errors"
 	"github.com/tsunakit99/selfpomodoro/internal/infrastructure/logger"
@@ -15,13 +15,13 @@ import (
 // UserUseCase はユーザーに関するユースケースを定義するインターフェース（ドメイン強化版）
 type UserUseCase interface {
 	// GetUserProfile はユーザープロフィールを取得する
-	GetUserProfile(ctx context.Context, userID uuid.UUID) (*model.UserResponse, error)
+	GetUserProfile(ctx context.Context, userID uuid.UUID) (*entity.UserResponse, error)
 
 	// UpdateUserProfile はユーザープロフィール（名前・メール）を更新する
-	UpdateUserProfile(ctx context.Context, userID uuid.UUID, req *model.UpdateUserRequest) (*model.UserResponse, error)
+	UpdateUserProfile(ctx context.Context, userID uuid.UUID, req *entity.UpdateUserRequest) (*entity.UserResponse, error)
 
 	// GetUserByEmail はメールアドレスでユーザーを検索する（管理・デバッグ用）
-	GetUserByEmail(ctx context.Context, email string) (*model.UserResponse, error)
+	GetUserByEmail(ctx context.Context, email string) (*entity.UserResponse, error)
 
 	// CheckUserExists はユーザーの存在確認を行う（軽量版・認証用）
 	CheckUserExists(ctx context.Context, userID uuid.UUID) (bool, error)
@@ -30,7 +30,7 @@ type UserUseCase interface {
 	DeleteUser(ctx context.Context, userID uuid.UUID) error
 
 	// GetUsersByProvider はプロバイダー別ユーザー一覧を取得する（管理用）
-	GetUsersByProvider(ctx context.Context, provider string, limit, offset int) ([]*model.UserResponse, error)
+	GetUsersByProvider(ctx context.Context, provider string, limit, offset int) ([]*entity.UserResponse, error)
 }
 
 // userUseCase はUserUseCaseインターフェースの実装（ドメイン強化版）
@@ -48,7 +48,7 @@ func NewUserUseCase(userRepo repository.UserRepository, logger logger.Logger) Us
 }
 
 // GetUserProfile はユーザープロフィールを取得する（ドメイン強化版）
-func (uc *userUseCase) GetUserProfile(ctx context.Context, userID uuid.UUID) (*model.UserResponse, error) {
+func (uc *userUseCase) GetUserProfile(ctx context.Context, userID uuid.UUID) (*entity.UserResponse, error) {
 	user, err := uc.userRepo.GetByID(ctx, userID)
 	if err != nil {
 		uc.logger.Errorf("ユーザープロフィール取得エラー: %v", err)
@@ -67,7 +67,7 @@ func (uc *userUseCase) GetUserProfile(ctx context.Context, userID uuid.UUID) (*m
 }
 
 // UpdateUserProfile はユーザープロフィールを更新する（ドメイン強化版）
-func (uc *userUseCase) UpdateUserProfile(ctx context.Context, userID uuid.UUID, req *model.UpdateUserRequest) (*model.UserResponse, error) {
+func (uc *userUseCase) UpdateUserProfile(ctx context.Context, userID uuid.UUID, req *entity.UpdateUserRequest) (*entity.UserResponse, error) {
 	// 既存ユーザーの取得
 	user, err := uc.userRepo.GetByID(ctx, userID)
 	if err != nil {
@@ -144,7 +144,7 @@ func (uc *userUseCase) UpdateUserProfile(ctx context.Context, userID uuid.UUID, 
 }
 
 // GetUserByEmail はメールアドレスでユーザーを検索する（ドメイン強化版）
-func (uc *userUseCase) GetUserByEmail(ctx context.Context, email string) (*model.UserResponse, error) {
+func (uc *userUseCase) GetUserByEmail(ctx context.Context, email string) (*entity.UserResponse, error) {
 	// 基本的なメールアドレス形式チェック
 	if email == "" || !uc.isValidEmailFormat(email) {
 		return nil, appErrors.NewValidationError("有効なメールアドレスを入力してください")
@@ -219,7 +219,7 @@ func (uc *userUseCase) DeleteUser(ctx context.Context, userID uuid.UUID) error {
 }
 
 // GetUsersByProvider はプロバイダー別ユーザー一覧を取得する（ドメイン強化版・管理用）
-func (uc *userUseCase) GetUsersByProvider(ctx context.Context, provider string, limit, offset int) ([]*model.UserResponse, error) {
+func (uc *userUseCase) GetUsersByProvider(ctx context.Context, provider string, limit, offset int) ([]*entity.UserResponse, error) {
 	// プロバイダー名の検証
 	if provider == "" {
 		return nil, appErrors.NewValidationError("プロバイダー名を指定してください")
@@ -245,7 +245,7 @@ func (uc *userUseCase) GetUsersByProvider(ctx context.Context, provider string, 
 	}
 
 	// レスポンス形式に変換
-	userResponses := make([]*model.UserResponse, len(users))
+	userResponses := make([]*entity.UserResponse, len(users))
 	for i, user := range users {
 		userResponses[i] = user.ToResponse()
 	}
@@ -299,4 +299,3 @@ func (uc *userUseCase) isValidProviderName(provider string) bool {
 
 	return slices.Contains(validProviders, provider)
 }
-

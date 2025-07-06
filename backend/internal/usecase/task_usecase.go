@@ -5,7 +5,7 @@ import (
 	"errors"
 
 	"github.com/google/uuid"
-	"github.com/tsunakit99/selfpomodoro/internal/domain/model"
+	"github.com/tsunakit99/selfpomodoro/internal/domain/entity"
 	"github.com/tsunakit99/selfpomodoro/internal/domain/repository"
 	appErrors "github.com/tsunakit99/selfpomodoro/internal/errors"
 	"github.com/tsunakit99/selfpomodoro/internal/infrastructure/logger"
@@ -14,19 +14,19 @@ import (
 // TaskUseCase はタスクに関するユースケースを定義するインターフェース
 type TaskUseCase interface {
 	// CreateTask は新しいタスクを作成する
-	CreateTask(ctx context.Context, userID uuid.UUID, req *model.CreateTaskRequest) (*model.TaskResponse, error)
+	CreateTask(ctx context.Context, userID uuid.UUID, req *entity.CreateTaskRequest) (*entity.TaskResponse, error)
 
 	// GetTask は指定されたIDのタスクを取得する
-	GetTask(ctx context.Context, id, userID uuid.UUID) (*model.TaskResponse, error)
+	GetTask(ctx context.Context, id, userID uuid.UUID) (*entity.TaskResponse, error)
 
 	// GetAllTasks はユーザーIDに紐づくすべてのタスクを取得する
-	GetAllTasks(ctx context.Context, userID uuid.UUID) (*model.TasksResponse, error)
+	GetAllTasks(ctx context.Context, userID uuid.UUID) (*entity.TasksResponse, error)
 
 	// UpdateTask はタスクの詳細を更新する
-	UpdateTask(ctx context.Context, id, userID uuid.UUID, req *model.UpdateTaskRequest) (*model.TaskResponse, error)
+	UpdateTask(ctx context.Context, id, userID uuid.UUID, req *entity.UpdateTaskRequest) (*entity.TaskResponse, error)
 
 	// ToggleTaskCompletion はタスクの完了状態を切り替える
-	ToggleTaskCompletion(ctx context.Context, id, userID uuid.UUID) (*model.TaskResponse, error)
+	ToggleTaskCompletion(ctx context.Context, id, userID uuid.UUID) (*entity.TaskResponse, error)
 
 	// DeleteTask はタスクを削除する
 	DeleteTask(ctx context.Context, id, userID uuid.UUID) error
@@ -47,8 +47,8 @@ func NewTaskUseCase(taskRepo repository.TaskRepository, logger logger.Logger) Ta
 }
 
 // CreateTask は新しいタスクを作成する（新エラーハンドリング対応版）
-func (uc *taskUseCase) CreateTask(ctx context.Context, userID uuid.UUID, req *model.CreateTaskRequest) (*model.TaskResponse, error) {
-	task := model.NewTask(userID, req.Detail)
+func (uc *taskUseCase) CreateTask(ctx context.Context, userID uuid.UUID, req *entity.CreateTaskRequest) (*entity.TaskResponse, error) {
+	task := entity.NewTask(userID, req.Detail)
 
 	if err := uc.taskRepo.Create(ctx, task); err != nil {
 		uc.logger.Errorf("タスク作成エラー: %v", err)
@@ -67,7 +67,7 @@ func (uc *taskUseCase) CreateTask(ctx context.Context, userID uuid.UUID, req *mo
 }
 
 // GetTask は指定されたIDのタスクを取得する（新エラーハンドリング対応版）
-func (uc *taskUseCase) GetTask(ctx context.Context, id, userID uuid.UUID) (*model.TaskResponse, error) {
+func (uc *taskUseCase) GetTask(ctx context.Context, id, userID uuid.UUID) (*entity.TaskResponse, error) {
 	task, err := uc.taskRepo.GetByID(ctx, id, userID)
 	if err != nil {
 		uc.logger.Errorf("タスク取得エラー: %v", err)
@@ -86,7 +86,7 @@ func (uc *taskUseCase) GetTask(ctx context.Context, id, userID uuid.UUID) (*mode
 }
 
 // GetAllTasks はユーザーIDに紐づくすべてのタスクを取得する（新エラーハンドリング対応版）
-func (uc *taskUseCase) GetAllTasks(ctx context.Context, userID uuid.UUID) (*model.TasksResponse, error) {
+func (uc *taskUseCase) GetAllTasks(ctx context.Context, userID uuid.UUID) (*entity.TasksResponse, error) {
 	tasks, err := uc.taskRepo.GetAllByUserID(ctx, userID)
 	if err != nil {
 		uc.logger.Errorf("タスク一覧取得エラー: %v", err)
@@ -99,15 +99,15 @@ func (uc *taskUseCase) GetAllTasks(ctx context.Context, userID uuid.UUID) (*mode
 		return nil, appErrors.NewInternalError(err)
 	}
 
-	taskResponses := make([]*model.TaskResponse, len(tasks))
+	taskResponses := make([]*entity.TaskResponse, len(tasks))
 	for i, task := range tasks {
 		taskResponses[i] = task.ToResponse()
 	}
-	return &model.TasksResponse{Tasks: taskResponses}, nil
+	return &entity.TasksResponse{Tasks: taskResponses}, nil
 }
 
 // UpdateTask はタスクの詳細を更新する（新エラーハンドリング対応版）
-func (uc *taskUseCase) UpdateTask(ctx context.Context, id, userID uuid.UUID, req *model.UpdateTaskRequest) (*model.TaskResponse, error) {
+func (uc *taskUseCase) UpdateTask(ctx context.Context, id, userID uuid.UUID, req *entity.UpdateTaskRequest) (*entity.TaskResponse, error) {
 	task, err := uc.taskRepo.GetByID(ctx, id, userID)
 	if err != nil {
 		uc.logger.Errorf("タスク取得エラー: %v", err)
@@ -157,7 +157,7 @@ func (uc *taskUseCase) UpdateTask(ctx context.Context, id, userID uuid.UUID, req
 }
 
 // ToggleTaskCompletion はタスクの完了状態を切り替える（新エラーハンドリング対応版）
-func (uc *taskUseCase) ToggleTaskCompletion(ctx context.Context, id, userID uuid.UUID) (*model.TaskResponse, error) {
+func (uc *taskUseCase) ToggleTaskCompletion(ctx context.Context, id, userID uuid.UUID) (*entity.TaskResponse, error) {
 	if err := uc.taskRepo.ToggleCompletion(ctx, id, userID); err != nil {
 		uc.logger.Errorf("タスク完了状態切り替えエラー: %v", err)
 

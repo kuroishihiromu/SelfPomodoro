@@ -7,7 +7,7 @@ import (
 	"time"
 
 	"github.com/google/uuid"
-	"github.com/tsunakit99/selfpomodoro/internal/domain/model"
+	"github.com/tsunakit99/selfpomodoro/internal/domain/entity"
 	"github.com/tsunakit99/selfpomodoro/internal/domain/repository"
 	appErrors "github.com/tsunakit99/selfpomodoro/internal/errors"
 	"github.com/tsunakit99/selfpomodoro/internal/infrastructure/logger"
@@ -16,19 +16,19 @@ import (
 // UserConfigUseCase はユーザー設定に関するユースケースを定義するインターフェース
 type UserConfigUseCase interface {
 	// GetUserConfig はユーザー設定を取得する（デフォルト値フォールバック付き）
-	GetUserConfig(ctx context.Context, userID uuid.UUID) (*model.UserConfigResponse, error)
+	GetUserConfig(ctx context.Context, userID uuid.UUID) (*entity.UserConfigResponse, error)
 
 	// CreateUserConfig は新しいユーザー設定を作成する（PostConfirmation専用）
-	CreateUserConfig(ctx context.Context, userID uuid.UUID, req *model.CreateUserConfigRequest) (*model.UserConfigResponse, error)
+	CreateUserConfig(ctx context.Context, userID uuid.UUID, req *entity.CreateUserConfigRequest) (*entity.UserConfigResponse, error)
 
 	// UpdateUserConfig はユーザー設定を更新する
-	UpdateUserConfig(ctx context.Context, userID uuid.UUID, req *model.UpdateUserConfigRequest) (*model.UserConfigResponse, error)
+	UpdateUserConfig(ctx context.Context, userID uuid.UUID, req *entity.UpdateUserConfigRequest) (*entity.UserConfigResponse, error)
 
 	// DeleteUserConfig はユーザー設定を削除する
 	DeleteUserConfig(ctx context.Context, userID uuid.UUID) error
 
 	// GetUserConfigForOptimization は最適化処理用にユーザー設定を取得する（内部使用・デフォルト値フォールバック）
-	GetUserConfigForOptimization(ctx context.Context, userID uuid.UUID) (*model.UserConfig, error)
+	GetUserConfigForOptimization(ctx context.Context, userID uuid.UUID) (*entity.UserConfig, error)
 }
 
 // userConfigUseCase はUserConfigUseCaseインターフェースの実装（ドメイン強化版）
@@ -46,11 +46,11 @@ func NewUserConfigUseCase(userConfigRepo repository.UserConfigRepository, logger
 }
 
 // GetUserConfig はユーザー設定を取得する（ドメイン強化版・デフォルト値フォールバック付き）
-func (uc *userConfigUseCase) GetUserConfig(ctx context.Context, userID uuid.UUID) (*model.UserConfigResponse, error) {
+func (uc *userConfigUseCase) GetUserConfig(ctx context.Context, userID uuid.UUID) (*entity.UserConfigResponse, error) {
 	if uc.userConfigRepo == nil {
 		uc.logger.Warn("UserConfigRepository が初期化されていません。デフォルト設定を返します")
 		// ✅ ドメインファクトリー使用：DynamoDBが利用できない場合のフォールバック
-		defaultConfig := model.NewDefaultUserConfig(userID)
+		defaultConfig := entity.NewDefaultUserConfig(userID)
 		return defaultConfig.ToResponse(), nil
 	}
 
@@ -58,7 +58,7 @@ func (uc *userConfigUseCase) GetUserConfig(ctx context.Context, userID uuid.UUID
 	if err != nil {
 		uc.logger.Errorf("ユーザー設定取得エラー、デフォルト設定を返します: %v", err)
 		// ✅ ドメインファクトリー使用：設定が存在しない場合のデフォルト値フォールバック
-		defaultConfig := model.NewDefaultUserConfig(userID)
+		defaultConfig := entity.NewDefaultUserConfig(userID)
 
 		// ✅ ドメインロジック活用：デフォルト値ログ出力
 		uc.logger.Infof("デフォルト設定使用: work=%d分, break=%d分, rounds=%d, sessionBreak=%d分",
@@ -81,13 +81,13 @@ func (uc *userConfigUseCase) GetUserConfig(ctx context.Context, userID uuid.UUID
 }
 
 // CreateUserConfig は新しいユーザー設定を作成する（ドメイン強化版）
-func (uc *userConfigUseCase) CreateUserConfig(ctx context.Context, userID uuid.UUID, req *model.CreateUserConfigRequest) (*model.UserConfigResponse, error) {
+func (uc *userConfigUseCase) CreateUserConfig(ctx context.Context, userID uuid.UUID, req *entity.CreateUserConfigRequest) (*entity.UserConfigResponse, error) {
 	if uc.userConfigRepo == nil {
 		return nil, appErrors.NewInternalError(fmt.Errorf("ユーザー設定機能は現在利用できません"))
 	}
 
 	// ✅ ドメインファクトリー使用：リクエストから新しい設定を作成
-	config := model.NewDefaultUserConfig(userID)
+	config := entity.NewDefaultUserConfig(userID)
 	config.UpdateSettings(req.RoundWorkTime, req.RoundBreakTime, req.SessionRounds, req.SessionBreakTime)
 
 	// ✅ ドメインロジック活用：設定の有効性をチェック
@@ -112,7 +112,7 @@ func (uc *userConfigUseCase) CreateUserConfig(ctx context.Context, userID uuid.U
 }
 
 // UpdateUserConfig はユーザー設定を更新する（ドメイン強化版）
-func (uc *userConfigUseCase) UpdateUserConfig(ctx context.Context, userID uuid.UUID, req *model.UpdateUserConfigRequest) (*model.UserConfigResponse, error) {
+func (uc *userConfigUseCase) UpdateUserConfig(ctx context.Context, userID uuid.UUID, req *entity.UpdateUserConfigRequest) (*entity.UserConfigResponse, error) {
 	if uc.userConfigRepo == nil {
 		return nil, appErrors.NewInternalError(fmt.Errorf("ユーザー設定機能は現在利用できません"))
 	}
@@ -173,18 +173,18 @@ func (uc *userConfigUseCase) DeleteUserConfig(ctx context.Context, userID uuid.U
 }
 
 // GetUserConfigForOptimization は最適化処理用にユーザー設定を取得する（ドメイン強化版・デフォルト値フォールバック）
-func (uc *userConfigUseCase) GetUserConfigForOptimization(ctx context.Context, userID uuid.UUID) (*model.UserConfig, error) {
+func (uc *userConfigUseCase) GetUserConfigForOptimization(ctx context.Context, userID uuid.UUID) (*entity.UserConfig, error) {
 	if uc.userConfigRepo == nil {
 		uc.logger.Warn("UserConfigRepository が初期化されていません。デフォルト設定を返します")
 		// ✅ ドメインファクトリー使用
-		return model.NewDefaultUserConfig(userID), nil
+		return entity.NewDefaultUserConfig(userID), nil
 	}
 
 	config, err := uc.userConfigRepo.GetUserConfig(ctx, userID)
 	if err != nil {
 		uc.logger.Warnf("最適化用ユーザー設定取得エラー、デフォルト設定にフォールバックします: %v", err)
 		// ✅ ドメインファクトリー使用：エラーの場合もデフォルト設定でフォールバック（最適化処理は継続）
-		defaultConfig := model.NewDefaultUserConfig(userID)
+		defaultConfig := entity.NewDefaultUserConfig(userID)
 
 		// ✅ ドメインロジック活用：最適化用のベース値ログ出力
 		work, breakTime, rounds, sessionBreak := defaultConfig.GetOptimizationBaseValues()
@@ -203,7 +203,7 @@ func (uc *userConfigUseCase) GetUserConfigForOptimization(ctx context.Context, u
 }
 
 // ✅ ドメインロジック活用：部分更新適用
-func (uc *userConfigUseCase) applyPartialUpdate(config *model.UserConfig, req *model.UpdateUserConfigRequest) {
+func (uc *userConfigUseCase) applyPartialUpdate(config *entity.UserConfig, req *entity.UpdateUserConfigRequest) {
 	updateCount := 0
 
 	if req.RoundWorkTime != nil {

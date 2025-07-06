@@ -4,7 +4,7 @@ import (
 	"context"
 
 	"github.com/google/uuid"
-	"github.com/tsunakit99/selfpomodoro/internal/domain/model"
+	"github.com/tsunakit99/selfpomodoro/internal/domain/entity"
 	"github.com/tsunakit99/selfpomodoro/internal/infrastructure/logger"
 	dynamo "github.com/tsunakit99/selfpomodoro/internal/infrastructure/repository/dynamodb"
 )
@@ -12,7 +12,7 @@ import (
 // StatisticsAggregationService は統計データの事前集約を行うサービス
 type StatisticsAggregationService interface {
 	// UpdateStatisticsOnRoundComplete ラウンド完了時に統計データを更新する
-	UpdateStatisticsOnRoundComplete(ctx context.Context, userID uuid.UUID, round *model.Round) error
+	UpdateStatisticsOnRoundComplete(ctx context.Context, userID uuid.UUID, round *entity.Round) error
 }
 
 // statisticsAggregationService は統計データ事前集約サービスの実装
@@ -30,7 +30,7 @@ func NewStatisticsAggregationService(dynamoStatsRepo *dynamo.StatisticsRepositor
 }
 
 // UpdateStatisticsOnRoundComplete はラウンド完了時に統計データを更新する
-func (s *statisticsAggregationService) UpdateStatisticsOnRoundComplete(ctx context.Context, userID uuid.UUID, round *model.Round) error {
+func (s *statisticsAggregationService) UpdateStatisticsOnRoundComplete(ctx context.Context, userID uuid.UUID, round *entity.Round) error {
 	// 集中度スコアのないラウンドは統計から除外
 	if round.FocusScore == nil {
 		s.logger.Debugf("統計更新スキップ: ラウンドID=%s (集中度スコアなし)", round.ID.String())
@@ -69,7 +69,7 @@ func (s *statisticsAggregationService) UpdateStatisticsOnRoundComplete(ctx conte
 }
 
 // convertRoundToDynamoDBFormat はRoundモデルをDynamoDB形式に変換する（統計更新用）
-func (s *statisticsAggregationService) convertRoundToDynamoDBFormat(_ string, round *model.Round) *model.Round {
+func (s *statisticsAggregationService) convertRoundToDynamoDBFormat(_ string, round *entity.Round) *entity.Round {
 	// 統計処理では直接Roundモデルを使用するため、変換は不要
 	return round
 }
@@ -94,7 +94,7 @@ func (f *StatisticsAggregationServiceFactory) CreateService() StatisticsAggregat
 		f.logger.Warn("DynamoDB統計リポジトリが利用できないため、統計集約サービスは無効化されます")
 		return &noOpStatisticsAggregationService{logger: f.logger}
 	}
-	
+
 	return NewStatisticsAggregationService(f.dynamoStatsRepo, f.logger)
 }
 
@@ -104,7 +104,7 @@ type noOpStatisticsAggregationService struct {
 }
 
 // UpdateStatisticsOnRoundComplete は何もしない実装
-func (s *noOpStatisticsAggregationService) UpdateStatisticsOnRoundComplete(ctx context.Context, userID uuid.UUID, round *model.Round) error {
+func (s *noOpStatisticsAggregationService) UpdateStatisticsOnRoundComplete(ctx context.Context, userID uuid.UUID, round *entity.Round) error {
 	s.logger.Debug("統計集約サービスが無効化されているため、統計更新をスキップします")
 	return nil
 }

@@ -4,16 +4,16 @@ import (
 	"context"
 
 	"github.com/google/uuid"
-	"github.com/tsunakit99/selfpomodoro/internal/domain/model"
+	"github.com/tsunakit99/selfpomodoro/internal/domain/entity"
 )
 
 // SessionRepository はセッション永続化のためのインターフェース
 type SessionRepository interface {
 	// Create は新しいセッションを作成する
-	Create(ctx context.Context, session *model.Session) error
+	Create(ctx context.Context, session *entity.Session) error
 
 	// GetByID はIDからセッションを取得する
-	GetByID(ctx context.Context, id, userID uuid.UUID) (*model.Session, error)
+	GetByID(ctx context.Context, id, userID uuid.UUID) (*entity.Session, error)
 
 	// Complete はセッションを完了する(終了時刻、平均集中度、総作業時間を設定)
 	Complete(ctx context.Context, id, userID uuid.UUID, averageFocus float64, totalWorkMin, roundCount, breakTime int) error

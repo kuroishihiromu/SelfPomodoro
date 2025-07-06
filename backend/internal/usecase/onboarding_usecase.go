@@ -5,7 +5,7 @@ import (
 	"errors"
 
 	"github.com/google/uuid"
-	"github.com/tsunakit99/selfpomodoro/internal/domain/model"
+	"github.com/tsunakit99/selfpomodoro/internal/domain/entity"
 	"github.com/tsunakit99/selfpomodoro/internal/domain/repository"
 	appErrors "github.com/tsunakit99/selfpomodoro/internal/errors"
 	"github.com/tsunakit99/selfpomodoro/internal/infrastructure/logger"
@@ -87,7 +87,7 @@ func (uc *onboardingUseCase) createUserWithDomainLogic(ctx context.Context, para
 	}
 
 	// ✅ PostConfirmationParamsをCognitoUserParamsに変換
-	cognitoParams := model.CognitoUserParams{
+	cognitoParams := entity.CognitoUserParams{
 		UserID:     params.UserID,
 		Email:      params.Email,
 		Name:       params.Name,
@@ -101,7 +101,7 @@ func (uc *onboardingUseCase) createUserWithDomainLogic(ctx context.Context, para
 	}
 
 	// ✅ ドメインファクトリー使用：Cognito属性からUser作成
-	user := model.NewUserFromCognitoAttributes(cognitoParams)
+	user := entity.NewUserFromCognitoAttributes(cognitoParams)
 
 	// ✅ ドメインロジック活用：作成前バリデーション
 	if !user.IsValidForCreation() {
@@ -150,7 +150,7 @@ func (uc *onboardingUseCase) createUserConfigWithDomainLogic(ctx context.Context
 	}
 
 	// ✅ ドメインファクトリー使用：デフォルトのUserConfigを作成
-	userConfig := model.NewDefaultUserConfig(userID)
+	userConfig := entity.NewDefaultUserConfig(userID)
 
 	// ✅ ドメインロジック活用：作成前バリデーション
 	if !userConfig.IsValid() {

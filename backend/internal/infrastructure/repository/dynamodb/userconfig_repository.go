@@ -12,7 +12,7 @@ import (
 	"github.com/aws/aws-sdk-go-v2/service/dynamodb/types"
 	"github.com/google/uuid"
 	"github.com/tsunakit99/selfpomodoro/internal/config"
-	"github.com/tsunakit99/selfpomodoro/internal/domain/model"
+	"github.com/tsunakit99/selfpomodoro/internal/domain/entity"
 	"github.com/tsunakit99/selfpomodoro/internal/domain/repository"
 	appErrors "github.com/tsunakit99/selfpomodoro/internal/errors"
 	"github.com/tsunakit99/selfpomodoro/internal/infrastructure/logger"
@@ -35,10 +35,10 @@ func NewUserConfigRepository(client *dynamodb.Client, cfg *config.Config, logger
 }
 
 // GetUserConfig はユーザーIDからユーザー設定を取得する（統合テーブル対応版）
-func (r *UserConfigRepositoryImpl) GetUserConfig(ctx context.Context, userID uuid.UUID) (*model.UserConfig, error) {
+func (r *UserConfigRepositoryImpl) GetUserConfig(ctx context.Context, userID uuid.UUID) (*entity.UserConfig, error) {
 	pk := UserPartitionKey(userID.String())
 	sk := UserConfigSortKey()
-	
+
 	input := &dynamodb.GetItemInput{
 		TableName: aws.String(r.tableName),
 		Key: map[string]types.AttributeValue{
@@ -59,7 +59,7 @@ func (r *UserConfigRepositoryImpl) GetUserConfig(ctx context.Context, userID uui
 	}
 
 	// 手動でDynamoDBアイテムから構造体に変換
-	config := &model.UserConfig{}
+	config := &entity.UserConfig{}
 
 	// user_id
 	if userIDAttr, exists := result.Item["user_id"]; exists {
@@ -129,10 +129,10 @@ func (r *UserConfigRepositoryImpl) GetUserConfig(ctx context.Context, userID uui
 }
 
 // CreateUserConfig は新しいユーザー設定を作成する（統合テーブル対応版）
-func (r *UserConfigRepositoryImpl) CreateUserConfig(ctx context.Context, config *model.UserConfig) error {
+func (r *UserConfigRepositoryImpl) CreateUserConfig(ctx context.Context, config *entity.UserConfig) error {
 	pk := UserPartitionKey(config.UserID)
 	sk := UserConfigSortKey()
-	
+
 	r.logger.Infof("CreateUserConfig 入力データ: UserID=%s, WorkTime=%d, BreakTime=%d",
 		config.UserID, config.RoundWorkTime, config.RoundBreakTime)
 
@@ -175,10 +175,10 @@ func (r *UserConfigRepositoryImpl) CreateUserConfig(ctx context.Context, config 
 }
 
 // UpdateUserConfig はユーザー設定を更新する（統合テーブル対応版）
-func (r *UserConfigRepositoryImpl) UpdateUserConfig(ctx context.Context, config *model.UserConfig) error {
+func (r *UserConfigRepositoryImpl) UpdateUserConfig(ctx context.Context, config *entity.UserConfig) error {
 	// 更新時刻を設定
 	config.UpdatedAt = time.Now()
-	
+
 	pk := UserPartitionKey(config.UserID)
 	sk := UserConfigSortKey()
 
@@ -225,7 +225,7 @@ func (r *UserConfigRepositoryImpl) UpdateUserConfig(ctx context.Context, config 
 func (r *UserConfigRepositoryImpl) DeleteUserConfig(ctx context.Context, userID uuid.UUID) error {
 	pk := UserPartitionKey(userID.String())
 	sk := UserConfigSortKey()
-	
+
 	input := &dynamodb.DeleteItemInput{
 		TableName: aws.String(r.tableName),
 		Key: map[string]types.AttributeValue{

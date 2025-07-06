@@ -10,7 +10,7 @@ import (
 	"github.com/aws/aws-sdk-go-v2/service/dynamodb/types"
 	"github.com/google/uuid"
 	"github.com/tsunakit99/selfpomodoro/internal/config"
-	"github.com/tsunakit99/selfpomodoro/internal/domain/model"
+	"github.com/tsunakit99/selfpomodoro/internal/domain/entity"
 	"github.com/tsunakit99/selfpomodoro/internal/domain/repository"
 	appErrors "github.com/tsunakit99/selfpomodoro/internal/errors"
 	"github.com/tsunakit99/selfpomodoro/internal/infrastructure/logger"
@@ -33,14 +33,14 @@ func NewSessionRepository(client *dynamodb.Client, cfg *config.Config, logger lo
 }
 
 // Create はセッションを作成する
-func (r *SessionRepositoryImpl) Create(ctx context.Context, session *model.Session) error {
+func (r *SessionRepositoryImpl) Create(ctx context.Context, session *entity.Session) error {
 	date := session.StartTime.Format("2006-01-02")
 	pk := UserPartitionKey(session.UserID.String())
 	sk := SessionSortKey(date, session.ID.String())
 
 	// TTL設定: 30日後に自動削除（完了時のみ作成されるため）
 	ttl := session.CreatedAt.Add(30 * 24 * time.Hour).Unix()
-	
+
 	item := map[string]types.AttributeValue{
 		"PK":         &types.AttributeValueMemberS{Value: pk},
 		"SK":         &types.AttributeValueMemberS{Value: sk},
@@ -87,18 +87,18 @@ func (r *SessionRepositoryImpl) Create(ctx context.Context, session *model.Sessi
 }
 
 // GetByID はIDによってセッションを取得する（GSI最適化版）
-func (r *SessionRepositoryImpl) GetByID(ctx context.Context, id, userID uuid.UUID) (*model.Session, error) {
+func (r *SessionRepositoryImpl) GetByID(ctx context.Context, id, userID uuid.UUID) (*entity.Session, error) {
 	r.logger.Infof("セッション取得開始: SessionID=%s, UserID=%s", id.String(), userID.String())
-	
+
 	// 🎯 SessionIdIndex GSIを使用して効率的に検索
 	input := &dynamodb.QueryInput{
-		TableName: aws.String(r.tableName),
-		IndexName: aws.String("SessionIdIndex"),  // GSI使用
+		TableName:              aws.String(r.tableName),
+		IndexName:              aws.String("SessionIdIndex"), // GSI使用
 		KeyConditionExpression: aws.String("session_id = :session_id"),
 		ExpressionAttributeValues: map[string]types.AttributeValue{
 			":session_id": &types.AttributeValueMemberS{Value: id.String()},
 		},
-		Limit: aws.Int32(1),  // 最初の1件のみ
+		Limit: aws.Int32(1), // 最初の1件のみ
 	}
 
 	result, err := r.client.Query(ctx, input)
@@ -123,7 +123,7 @@ func (r *SessionRepositoryImpl) GetByID(ctx context.Context, id, userID uuid.UUI
 
 	// ユーザーIDの整合性チェック
 	if session.UserID != userID {
-		r.logger.Warnf("セッションのユーザーID不一致: SessionID=%s, Expected=%s, Actual=%s", 
+		r.logger.Warnf("セッションのユーザーID不一致: SessionID=%s, Expected=%s, Actual=%s",
 			id.String(), userID.String(), session.UserID.String())
 		return nil, appErrors.ErrRecordNotFound
 	}
@@ -133,7 +133,7 @@ func (r *SessionRepositoryImpl) GetByID(ctx context.Context, id, userID uuid.UUI
 }
 
 // GetAllByUserID はユーザーIDに紐づくすべてのセッションを取得する
-func (r *SessionRepositoryImpl) GetAllByUserID(ctx context.Context, userID uuid.UUID) ([]*model.Session, error) {
+func (r *SessionRepositoryImpl) GetAllByUserID(ctx context.Context, userID uuid.UUID) ([]*entity.Session, error) {
 	pk := UserPartitionKey(userID.String())
 
 	input := &dynamodb.QueryInput{
@@ -151,7 +151,7 @@ func (r *SessionRepositoryImpl) GetAllByUserID(ctx context.Context, userID uuid.
 		return nil, appErrors.NewDynamoDBOperationError("get_sessions_by_user_id", err)
 	}
 
-	sessions := make([]*model.Session, 0, len(result.Items))
+	sessions := make([]*entity.Session, 0, len(result.Items))
 	for _, item := range result.Items {
 		session, err := r.itemToSession(item)
 		if err != nil {
@@ -166,7 +166,7 @@ func (r *SessionRepositoryImpl) GetAllByUserID(ctx context.Context, userID uuid.
 }
 
 // Update はセッションを更新する
-func (r *SessionRepositoryImpl) Update(ctx context.Context, session *model.Session) error {
+func (r *SessionRepositoryImpl) Update(ctx context.Context, session *entity.Session) error {
 	date := session.StartTime.Format("2006-01-02")
 	pk := UserPartitionKey(session.UserID.String())
 	sk := SessionSortKey(date, session.ID.String())
@@ -240,12 +240,11 @@ func (r *SessionRepositoryImpl) Complete(ctx context.Context, id, userID uuid.UU
 		return err
 	}
 
-	r.logger.Infof("セッション完了成功: ID=%s, avgFocus=%.2f, workMin=%d, rounds=%d", 
+	r.logger.Infof("セッション完了成功: ID=%s, avgFocus=%.2f, workMin=%d, rounds=%d",
 		id.String(), averageFocus, totalWorkMin, roundCount)
-	
+
 	return nil
 }
-
 
 // Delete はセッションを削除する
 func (r *SessionRepositoryImpl) Delete(ctx context.Context, id, userID uuid.UUID) error {
@@ -281,17 +280,17 @@ func (r *SessionRepositoryImpl) Delete(ctx context.Context, id, userID uuid.UUID
 // GetUserIDBySessionID はセッションIDからユーザーIDを効率的に取得する（GSI使用）
 func (r *SessionRepositoryImpl) GetUserIDBySessionID(ctx context.Context, sessionID uuid.UUID) (uuid.UUID, error) {
 	r.logger.Infof("GSIでSessionIDからUserID検索開始: SessionID=%s", sessionID.String())
-	
+
 	// 🎯 GSIを使用してsession_idで効率的に検索
 	input := &dynamodb.QueryInput{
-		TableName: aws.String(r.tableName),
-		IndexName: aws.String("SessionIdIndex"),  // GSI使用
+		TableName:              aws.String(r.tableName),
+		IndexName:              aws.String("SessionIdIndex"), // GSI使用
 		KeyConditionExpression: aws.String("session_id = :session_id"),
 		ExpressionAttributeValues: map[string]types.AttributeValue{
 			":session_id": &types.AttributeValueMemberS{Value: sessionID.String()},
 		},
 		ProjectionExpression: aws.String("user_id, PK, SK"),
-		Limit:                aws.Int32(1),  // 最初の1件のみ
+		Limit:                aws.Int32(1), // 最初の1件のみ
 	}
 
 	result, err := r.client.Query(ctx, input)
@@ -326,10 +325,9 @@ func (r *SessionRepositoryImpl) GetUserIDBySessionID(ctx context.Context, sessio
 
 // Helper methods
 
-
 // itemToSession はDynamoDBアイテムをSessionモデルに変換する
-func (r *SessionRepositoryImpl) itemToSession(item map[string]types.AttributeValue) (*model.Session, error) {
-	session := &model.Session{}
+func (r *SessionRepositoryImpl) itemToSession(item map[string]types.AttributeValue) (*entity.Session, error) {
+	session := &entity.Session{}
 
 	// user_id
 	if userIDAttr, exists := item["user_id"]; exists {
@@ -357,7 +355,6 @@ func (r *SessionRepositoryImpl) itemToSession(item map[string]types.AttributeVal
 			}
 		}
 	}
-
 
 	// end_time
 	if endTimeAttr, exists := item["end_time"]; exists {
@@ -424,5 +421,3 @@ func (r *SessionRepositoryImpl) itemToSession(item map[string]types.AttributeVal
 
 	return session, nil
 }
-
-

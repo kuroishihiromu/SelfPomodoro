@@ -10,7 +10,7 @@ import (
 	"github.com/aws/aws-sdk-go-v2/service/dynamodb/types"
 	"github.com/google/uuid"
 	"github.com/tsunakit99/selfpomodoro/internal/config"
-	"github.com/tsunakit99/selfpomodoro/internal/domain/model"
+	"github.com/tsunakit99/selfpomodoro/internal/domain/entity"
 	"github.com/tsunakit99/selfpomodoro/internal/domain/repository"
 	appErrors "github.com/tsunakit99/selfpomodoro/internal/errors"
 	"github.com/tsunakit99/selfpomodoro/internal/infrastructure/logger"
@@ -33,21 +33,21 @@ func NewRoundRepository(client *dynamodb.Client, cfg *config.Config, logger logg
 }
 
 // Create はラウンドを作成する（UserIDを直接指定）
-func (r *RoundRepositoryImpl) Create(ctx context.Context, round *model.Round, userID uuid.UUID) error {
+func (r *RoundRepositoryImpl) Create(ctx context.Context, round *entity.Round, userID uuid.UUID) error {
 	date := round.StartTime.Format("2006-01-02")
 	userIDStr := userID.String()
-	
-	r.logger.Infof("ラウンド作成開始: RoundID=%s, SessionID=%s, UserID=%s", 
+
+	r.logger.Infof("ラウンド作成開始: RoundID=%s, SessionID=%s, UserID=%s",
 		round.ID.String(), round.SessionID.String(), userIDStr)
-	
+
 	pk := UserPartitionKey(userIDStr)
 	sk := RoundSortKey(date, round.SessionID.String(), round.RoundOrder)
-	
+
 	r.logger.Infof("DynamoDB キー生成: PK=%s, SK=%s", pk, sk)
 
 	// TTL設定: 30日後に自動削除（完了時のみ作成されるため）
 	ttl := round.CreatedAt.Add(30 * 24 * time.Hour).Unix()
-	
+
 	item := map[string]types.AttributeValue{
 		"PK":          &types.AttributeValueMemberS{Value: pk},
 		"SK":          &types.AttributeValueMemberS{Value: sk},
@@ -90,24 +90,24 @@ func (r *RoundRepositoryImpl) Create(ctx context.Context, round *model.Round, us
 		return appErrors.NewDynamoDBOperationError("create_round", err)
 	}
 
-	r.logger.Infof("ラウンド作成成功: ID=%s, SessionID=%s, Order=%d, UserID=%s, PK=%s, SK=%s", 
+	r.logger.Infof("ラウンド作成成功: ID=%s, SessionID=%s, Order=%d, UserID=%s, PK=%s, SK=%s",
 		round.ID.String(), round.SessionID.String(), round.RoundOrder, userID, pk, sk)
 	return nil
 }
 
 // GetByID はIDによってラウンドを取得する（GSI最適化版）
-func (r *RoundRepositoryImpl) GetByID(ctx context.Context, id uuid.UUID) (*model.Round, error) {
+func (r *RoundRepositoryImpl) GetByID(ctx context.Context, id uuid.UUID) (*entity.Round, error) {
 	r.logger.Infof("ラウンド取得開始: RoundID=%s", id.String())
-	
+
 	// 🎯 RoundIdIndex GSIを使用して効率的に検索
 	input := &dynamodb.QueryInput{
-		TableName: aws.String(r.tableName),
-		IndexName: aws.String("RoundIdIndex"),  // GSI使用
+		TableName:              aws.String(r.tableName),
+		IndexName:              aws.String("RoundIdIndex"), // GSI使用
 		KeyConditionExpression: aws.String("round_id = :round_id"),
 		ExpressionAttributeValues: map[string]types.AttributeValue{
 			":round_id": &types.AttributeValueMemberS{Value: id.String()},
 		},
-		Limit: aws.Int32(1),  // 最初の1件のみ
+		Limit: aws.Int32(1), // 最初の1件のみ
 	}
 
 	result, err := r.client.Query(ctx, input)
@@ -136,9 +136,9 @@ func (r *RoundRepositoryImpl) GetByID(ctx context.Context, id uuid.UUID) (*model
 }
 
 // getByIDFallback はGSIが利用できない場合のフォールバック（従来のScan方式）
-func (r *RoundRepositoryImpl) getByIDFallback(ctx context.Context, id uuid.UUID) (*model.Round, error) {
+func (r *RoundRepositoryImpl) getByIDFallback(ctx context.Context, id uuid.UUID) (*entity.Round, error) {
 	r.logger.Warnf("GSI利用不可、Scanフォールバック使用: RoundID=%s", id.String())
-	
+
 	input := &dynamodb.ScanInput{
 		TableName:        aws.String(r.tableName),
 		FilterExpression: aws.String("round_id = :round_id"),
@@ -170,7 +170,7 @@ func (r *RoundRepositoryImpl) getByIDFallback(ctx context.Context, id uuid.UUID)
 }
 
 // GetByIDWithUserID はIDとユーザーIDによってラウンドを取得する
-func (r *RoundRepositoryImpl) GetByIDWithUserID(ctx context.Context, id, userID uuid.UUID) (*model.Round, error) {
+func (r *RoundRepositoryImpl) GetByIDWithUserID(ctx context.Context, id, userID uuid.UUID) (*entity.Round, error) {
 	pk := UserPartitionKey(userID.String())
 
 	input := &dynamodb.QueryInput{
@@ -178,9 +178,9 @@ func (r *RoundRepositoryImpl) GetByIDWithUserID(ctx context.Context, id, userID 
 		KeyConditionExpression: aws.String("PK = :pk AND begins_with(SK, :sk_prefix)"),
 		FilterExpression:       aws.String("round_id = :round_id"),
 		ExpressionAttributeValues: map[string]types.AttributeValue{
-			":pk":       &types.AttributeValueMemberS{Value: pk},
+			":pk":        &types.AttributeValueMemberS{Value: pk},
 			":sk_prefix": &types.AttributeValueMemberS{Value: RoundQueryPrefix("")},
-			":round_id": &types.AttributeValueMemberS{Value: id.String()},
+			":round_id":  &types.AttributeValueMemberS{Value: id.String()},
 		},
 		Limit: aws.Int32(1),
 	}
@@ -206,9 +206,8 @@ func (r *RoundRepositoryImpl) GetByIDWithUserID(ctx context.Context, id, userID 
 	return round, nil
 }
 
-
 // GetBySessionIDWithUserID はセッションIDとユーザーIDに紐づくすべてのラウンドを取得する
-func (r *RoundRepositoryImpl) GetBySessionIDWithUserID(ctx context.Context, sessionID, userID uuid.UUID) ([]*model.Round, error) {
+func (r *RoundRepositoryImpl) GetBySessionIDWithUserID(ctx context.Context, sessionID, userID uuid.UUID) ([]*entity.Round, error) {
 	pk := UserPartitionKey(userID.String())
 
 	input := &dynamodb.QueryInput{
@@ -216,8 +215,8 @@ func (r *RoundRepositoryImpl) GetBySessionIDWithUserID(ctx context.Context, sess
 		KeyConditionExpression: aws.String("PK = :pk AND begins_with(SK, :sk_prefix)"),
 		FilterExpression:       aws.String("session_id = :session_id"),
 		ExpressionAttributeValues: map[string]types.AttributeValue{
-			":pk":        &types.AttributeValueMemberS{Value: pk},
-			":sk_prefix": &types.AttributeValueMemberS{Value: RoundQueryPrefix("")},
+			":pk":         &types.AttributeValueMemberS{Value: pk},
+			":sk_prefix":  &types.AttributeValueMemberS{Value: RoundQueryPrefix("")},
 			":session_id": &types.AttributeValueMemberS{Value: sessionID.String()},
 		},
 	}
@@ -228,7 +227,7 @@ func (r *RoundRepositoryImpl) GetBySessionIDWithUserID(ctx context.Context, sess
 		return nil, appErrors.NewDynamoDBOperationError("get_rounds_by_session_id_with_user_id", err)
 	}
 
-	rounds := make([]*model.Round, 0, len(result.Items))
+	rounds := make([]*entity.Round, 0, len(result.Items))
 	for _, item := range result.Items {
 		round, err := r.itemToRound(item)
 		if err != nil {
@@ -238,12 +237,10 @@ func (r *RoundRepositoryImpl) GetBySessionIDWithUserID(ctx context.Context, sess
 		rounds = append(rounds, round)
 	}
 
-	r.logger.Infof("セッションラウンド取得成功: SessionID=%s, UserID=%s, count=%d", 
+	r.logger.Infof("セッションラウンド取得成功: SessionID=%s, UserID=%s, count=%d",
 		sessionID.String(), userID.String(), len(rounds))
 	return rounds, nil
 }
-
-
 
 // Complete はラウンドを完了する（インターフェース準拠）
 func (r *RoundRepositoryImpl) Complete(ctx context.Context, id uuid.UUID, focusScore *int, worktime, breaktime int) error {
@@ -269,16 +266,11 @@ func (r *RoundRepositoryImpl) Complete(ctx context.Context, id uuid.UUID, focusS
 	return nil
 }
 
-
-
-
 // Helper methods
 
-
-
 // itemToRound はDynamoDBアイテムをRoundモデルに変換する
-func (r *RoundRepositoryImpl) itemToRound(item map[string]types.AttributeValue) (*model.Round, error) {
-	round := &model.Round{}
+func (r *RoundRepositoryImpl) itemToRound(item map[string]types.AttributeValue) (*entity.Round, error) {
+	round := &entity.Round{}
 
 	// round_id
 	if roundIDAttr, exists := item["round_id"]; exists {
@@ -352,7 +344,6 @@ func (r *RoundRepositoryImpl) itemToRound(item map[string]types.AttributeValue) 
 		}
 	}
 
-
 	// created_at
 	if createdAttr, exists := item["created_at"]; exists {
 		if s, ok := createdAttr.(*types.AttributeValueMemberS); ok {
@@ -375,17 +366,17 @@ func (r *RoundRepositoryImpl) itemToRound(item map[string]types.AttributeValue) 
 }
 
 // updateRoundByGSI はGSIを使用してラウンドを更新する
-func (r *RoundRepositoryImpl) updateRoundByGSI(ctx context.Context, round *model.Round) error {
+func (r *RoundRepositoryImpl) updateRoundByGSI(ctx context.Context, round *entity.Round) error {
 	// GSIを使用して既存のレコードのPK/SKを取得
 	input := &dynamodb.QueryInput{
-		TableName: aws.String(r.tableName),
-		IndexName: aws.String("RoundIdIndex"),
+		TableName:              aws.String(r.tableName),
+		IndexName:              aws.String("RoundIdIndex"),
 		KeyConditionExpression: aws.String("round_id = :round_id"),
 		ExpressionAttributeValues: map[string]types.AttributeValue{
 			":round_id": &types.AttributeValueMemberS{Value: round.ID.String()},
 		},
 		ProjectionExpression: aws.String("PK, SK, user_id"),
-		Limit: aws.Int32(1),
+		Limit:                aws.Int32(1),
 	}
 
 	result, err := r.client.Query(ctx, input)
@@ -400,7 +391,7 @@ func (r *RoundRepositoryImpl) updateRoundByGSI(ctx context.Context, round *model
 	if !ok {
 		return appErrors.NewDynamoDBOperationError("pk_not_found", nil)
 	}
-	skAttr, ok := existingItem["SK"] 
+	skAttr, ok := existingItem["SK"]
 	if !ok {
 		return appErrors.NewDynamoDBOperationError("sk_not_found", nil)
 	}
@@ -410,7 +401,7 @@ func (r *RoundRepositoryImpl) updateRoundByGSI(ctx context.Context, round *model
 
 	// UpdateExpressionを使用して効率的に更新
 	round.UpdatedAt = time.Now()
-	
+
 	updateExpression := "SET end_time = :end_time, work_time = :work_time, break_time = :break_time, updated_at = :updated_at"
 	expressionAttributeValues := map[string]types.AttributeValue{
 		":end_time":   &types.AttributeValueMemberS{Value: round.EndTime.Format(time.RFC3339)},
@@ -444,4 +435,3 @@ func (r *RoundRepositoryImpl) updateRoundByGSI(ctx context.Context, round *model
 	r.logger.Infof("ラウンドGSI更新成功: ID=%s", round.ID.String())
 	return nil
 }
-

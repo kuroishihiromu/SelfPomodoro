@@ -11,6 +11,7 @@ import (
 	"github.com/aws/aws-sdk-go-v2/service/dynamodb/types"
 	"github.com/google/uuid"
 	"github.com/tsunakit99/selfpomodoro/internal/config"
+	"github.com/tsunakit99/selfpomodoro/internal/domain/entity"
 	"github.com/tsunakit99/selfpomodoro/internal/domain/model"
 	"github.com/tsunakit99/selfpomodoro/internal/domain/repository"
 	appErrors "github.com/tsunakit99/selfpomodoro/internal/errors"
@@ -36,7 +37,7 @@ func NewStatisticsRepository(client *dynamodb.Client, cfg *config.Config, logger
 // GetFocusTrend は指定期間内の日別集中度統計を取得する
 func (r *StatisticsRepositoryImpl) GetFocusTrend(ctx context.Context, userID uuid.UUID, period *model.StatisticsPeriod) ([]*model.FocusTrendItem, error) {
 	pk := UserPartitionKey(userID.String())
-	
+
 	// クエリで期間内の日別統計を取得
 	startDate := DateFromTime(period.StartDate)
 	endDate := DateFromTime(period.EndDate)
@@ -81,7 +82,7 @@ func (r *StatisticsRepositoryImpl) GetFocusTrend(ctx context.Context, userID uui
 // GetFocusHeatmap は指定期間内の時間帯別集中度統計を取得する
 func (r *StatisticsRepositoryImpl) GetFocusHeatmap(ctx context.Context, userID uuid.UUID, period *model.StatisticsPeriod) ([]*model.FocusHeatmapItem, error) {
 	pk := UserPartitionKey(userID.String())
-	
+
 	// クエリで期間内の時間別統計を取得
 	startDate := DateFromTime(period.StartDate)
 	endDate := DateFromTime(period.EndDate)
@@ -123,11 +124,11 @@ func (r *StatisticsRepositoryImpl) GetFocusHeatmap(ctx context.Context, userID u
 // GetWeeklyStats は指定期間内の週別統計を取得する
 func (r *StatisticsRepositoryImpl) GetWeeklyStats(ctx context.Context, userID uuid.UUID, period *model.StatisticsPeriod) ([]*model.FocusTrendItem, error) {
 	pk := UserPartitionKey(userID.String())
-	
+
 	// 期間の週境界を計算
 	startWeek, _ := model.GetWeekBoundaries(period.StartDate)
 	endWeek, _ := model.GetWeekBoundaries(period.EndDate)
-	
+
 	// クエリで期間内の週別統計を取得
 	startSK, endSK := WeeklyStatsQueryRange(startWeek, endWeek)
 
@@ -440,7 +441,7 @@ func (r *StatisticsRepositoryImpl) fillMissingWeeks(items []*model.FocusTrendIte
 	currentDate := period.StartDate
 	for !currentDate.After(period.EndDate) {
 		weekStart, _ := model.GetWeekBoundaries(currentDate)
-		
+
 		// この週のデータが存在しない場合は0値を設定
 		if !weekMap[weekStart] {
 			result = append(result, &model.FocusTrendItem{
@@ -448,7 +449,7 @@ func (r *StatisticsRepositoryImpl) fillMissingWeeks(items []*model.FocusTrendIte
 				FocusScore: 0,
 			})
 		}
-		
+
 		// 次の週へ
 		currentDate = currentDate.AddDate(0, 0, 7)
 	}
@@ -488,7 +489,7 @@ func (r *StatisticsRepositoryImpl) sortByDate(items []*model.FocusTrendItem) []*
 // 統計データの更新・管理メソッド群
 
 // UpdateDailyStats は日別統計を更新する
-func (r *StatisticsRepositoryImpl) UpdateDailyStats(ctx context.Context, userID string, date string, round *model.Round) error {
+func (r *StatisticsRepositoryImpl) UpdateDailyStats(ctx context.Context, userID string, date string, round *entity.Round) error {
 	pk := UserPartitionKey(userID)
 	sk := DailyStatsSortKey(date)
 
@@ -507,7 +508,7 @@ func (r *StatisticsRepositoryImpl) UpdateDailyStats(ctx context.Context, userID 
 }
 
 // UpdateHourlyStats は時間別統計を更新する
-func (r *StatisticsRepositoryImpl) UpdateHourlyStats(ctx context.Context, userID string, date string, hour int, round *model.Round) error {
+func (r *StatisticsRepositoryImpl) UpdateHourlyStats(ctx context.Context, userID string, date string, hour int, round *entity.Round) error {
 	pk := UserPartitionKey(userID)
 	sk := HourlyStatsSortKey(date, hour)
 
@@ -526,14 +527,14 @@ func (r *StatisticsRepositoryImpl) UpdateHourlyStats(ctx context.Context, userID
 }
 
 // UpdateWeeklyStats は週別統計を更新する
-func (r *StatisticsRepositoryImpl) UpdateWeeklyStats(ctx context.Context, userID string, date string, round *model.Round) error {
+func (r *StatisticsRepositoryImpl) UpdateWeeklyStats(ctx context.Context, userID string, date string, round *entity.Round) error {
 	// 週の境界を計算
 	roundDate, err := time.Parse("2006-01-02", date)
 	if err != nil {
 		return fmt.Errorf("invalid date format: %s", date)
 	}
 	weekStart, weekEnd := model.GetWeekBoundaries(roundDate)
-	
+
 	pk := UserPartitionKey(userID)
 	sk := WeeklyStatsSortKey(weekStart)
 
@@ -598,16 +599,16 @@ func (r *StatisticsRepositoryImpl) getHourlyStats(ctx context.Context, pk, sk st
 // putDailyStats は日別統計を保存する
 func (r *StatisticsRepositoryImpl) putDailyStats(ctx context.Context, pk, sk string, stats *model.AggregatedDailyStats) error {
 	item := map[string]types.AttributeValue{
-		"PK":               &types.AttributeValueMemberS{Value: pk},
-		"SK":               &types.AttributeValueMemberS{Value: sk},
-		"user_id":          &types.AttributeValueMemberS{Value: stats.UserID},
-		"date":             &types.AttributeValueMemberS{Value: stats.Date},
-		"total_rounds":     &types.AttributeValueMemberN{Value: fmt.Sprintf("%d", stats.TotalRounds)},
-		"avg_focus_score":  &types.AttributeValueMemberN{Value: fmt.Sprintf("%.2f", stats.AvgFocusScore)},
-		"total_work_min":   &types.AttributeValueMemberN{Value: fmt.Sprintf("%d", stats.TotalWorkMin)},
-		"total_break_min":  &types.AttributeValueMemberN{Value: fmt.Sprintf("%d", stats.TotalBreakMin)},
-		"session_count":    &types.AttributeValueMemberN{Value: fmt.Sprintf("%d", stats.SessionCount)},
-		"updated_at":       &types.AttributeValueMemberS{Value: stats.UpdatedAt.Format(time.RFC3339)},
+		"PK":              &types.AttributeValueMemberS{Value: pk},
+		"SK":              &types.AttributeValueMemberS{Value: sk},
+		"user_id":         &types.AttributeValueMemberS{Value: stats.UserID},
+		"date":            &types.AttributeValueMemberS{Value: stats.Date},
+		"total_rounds":    &types.AttributeValueMemberN{Value: fmt.Sprintf("%d", stats.TotalRounds)},
+		"avg_focus_score": &types.AttributeValueMemberN{Value: fmt.Sprintf("%.2f", stats.AvgFocusScore)},
+		"total_work_min":  &types.AttributeValueMemberN{Value: fmt.Sprintf("%d", stats.TotalWorkMin)},
+		"total_break_min": &types.AttributeValueMemberN{Value: fmt.Sprintf("%d", stats.TotalBreakMin)},
+		"session_count":   &types.AttributeValueMemberN{Value: fmt.Sprintf("%d", stats.SessionCount)},
+		"updated_at":      &types.AttributeValueMemberS{Value: stats.UpdatedAt.Format(time.RFC3339)},
 	}
 
 	input := &dynamodb.PutItemInput{
@@ -622,16 +623,16 @@ func (r *StatisticsRepositoryImpl) putDailyStats(ctx context.Context, pk, sk str
 // putHourlyStats は時間別統計を保存する
 func (r *StatisticsRepositoryImpl) putHourlyStats(ctx context.Context, pk, sk string, stats *model.AggregatedHourlyStats) error {
 	item := map[string]types.AttributeValue{
-		"PK":               &types.AttributeValueMemberS{Value: pk},
-		"SK":               &types.AttributeValueMemberS{Value: sk},
-		"user_id":          &types.AttributeValueMemberS{Value: stats.UserID},
-		"date":             &types.AttributeValueMemberS{Value: stats.Date},
-		"hour":             &types.AttributeValueMemberN{Value: fmt.Sprintf("%d", stats.Hour)},
-		"total_rounds":     &types.AttributeValueMemberN{Value: fmt.Sprintf("%d", stats.TotalRounds)},
-		"avg_focus_score":  &types.AttributeValueMemberN{Value: fmt.Sprintf("%.2f", stats.AvgFocusScore)},
-		"total_work_min":   &types.AttributeValueMemberN{Value: fmt.Sprintf("%d", stats.TotalWorkMin)},
-		"total_break_min":  &types.AttributeValueMemberN{Value: fmt.Sprintf("%d", stats.TotalBreakMin)},
-		"updated_at":       &types.AttributeValueMemberS{Value: stats.UpdatedAt.Format(time.RFC3339)},
+		"PK":              &types.AttributeValueMemberS{Value: pk},
+		"SK":              &types.AttributeValueMemberS{Value: sk},
+		"user_id":         &types.AttributeValueMemberS{Value: stats.UserID},
+		"date":            &types.AttributeValueMemberS{Value: stats.Date},
+		"hour":            &types.AttributeValueMemberN{Value: fmt.Sprintf("%d", stats.Hour)},
+		"total_rounds":    &types.AttributeValueMemberN{Value: fmt.Sprintf("%d", stats.TotalRounds)},
+		"avg_focus_score": &types.AttributeValueMemberN{Value: fmt.Sprintf("%.2f", stats.AvgFocusScore)},
+		"total_work_min":  &types.AttributeValueMemberN{Value: fmt.Sprintf("%d", stats.TotalWorkMin)},
+		"total_break_min": &types.AttributeValueMemberN{Value: fmt.Sprintf("%d", stats.TotalBreakMin)},
+		"updated_at":      &types.AttributeValueMemberS{Value: stats.UpdatedAt.Format(time.RFC3339)},
 	}
 
 	input := &dynamodb.PutItemInput{
@@ -668,18 +669,18 @@ func (r *StatisticsRepositoryImpl) getWeeklyStats(ctx context.Context, pk, sk st
 // putWeeklyStats は週別統計を保存する
 func (r *StatisticsRepositoryImpl) putWeeklyStats(ctx context.Context, pk, sk string, stats *model.AggregatedWeeklyStats) error {
 	item := map[string]types.AttributeValue{
-		"PK":               &types.AttributeValueMemberS{Value: pk},
-		"SK":               &types.AttributeValueMemberS{Value: sk},
-		"user_id":          &types.AttributeValueMemberS{Value: stats.UserID},
-		"week_start":       &types.AttributeValueMemberS{Value: stats.WeekStart},
-		"week_end":         &types.AttributeValueMemberS{Value: stats.WeekEnd},
-		"total_rounds":     &types.AttributeValueMemberN{Value: fmt.Sprintf("%d", stats.TotalRounds)},
-		"avg_focus_score":  &types.AttributeValueMemberN{Value: fmt.Sprintf("%.2f", stats.AvgFocusScore)},
-		"total_work_min":   &types.AttributeValueMemberN{Value: fmt.Sprintf("%d", stats.TotalWorkMin)},
-		"total_break_min":  &types.AttributeValueMemberN{Value: fmt.Sprintf("%d", stats.TotalBreakMin)},
-		"session_count":    &types.AttributeValueMemberN{Value: fmt.Sprintf("%d", stats.SessionCount)},
-		"days_active":      &types.AttributeValueMemberN{Value: fmt.Sprintf("%d", stats.DaysActive)},
-		"updated_at":       &types.AttributeValueMemberS{Value: stats.UpdatedAt.Format(time.RFC3339)},
+		"PK":              &types.AttributeValueMemberS{Value: pk},
+		"SK":              &types.AttributeValueMemberS{Value: sk},
+		"user_id":         &types.AttributeValueMemberS{Value: stats.UserID},
+		"week_start":      &types.AttributeValueMemberS{Value: stats.WeekStart},
+		"week_end":        &types.AttributeValueMemberS{Value: stats.WeekEnd},
+		"total_rounds":    &types.AttributeValueMemberN{Value: fmt.Sprintf("%d", stats.TotalRounds)},
+		"avg_focus_score": &types.AttributeValueMemberN{Value: fmt.Sprintf("%.2f", stats.AvgFocusScore)},
+		"total_work_min":  &types.AttributeValueMemberN{Value: fmt.Sprintf("%d", stats.TotalWorkMin)},
+		"total_break_min": &types.AttributeValueMemberN{Value: fmt.Sprintf("%d", stats.TotalBreakMin)},
+		"session_count":   &types.AttributeValueMemberN{Value: fmt.Sprintf("%d", stats.SessionCount)},
+		"days_active":     &types.AttributeValueMemberN{Value: fmt.Sprintf("%d", stats.DaysActive)},
+		"updated_at":      &types.AttributeValueMemberS{Value: stats.UpdatedAt.Format(time.RFC3339)},
 	}
 
 	input := &dynamodb.PutItemInput{

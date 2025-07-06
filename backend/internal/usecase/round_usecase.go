@@ -5,6 +5,7 @@ import (
 	"errors"
 
 	"github.com/google/uuid"
+	"github.com/tsunakit99/selfpomodoro/internal/domain/entity"
 	"github.com/tsunakit99/selfpomodoro/internal/domain/model"
 	"github.com/tsunakit99/selfpomodoro/internal/domain/repository"
 	appErrors "github.com/tsunakit99/selfpomodoro/internal/errors"
@@ -15,36 +16,36 @@ import (
 // RoundUseCase はラウンドに関するユースケースを定義するインターフェース
 type RoundUseCase interface {
 	// StartRound は新しいラウンドを開始する
-	StartRound(ctx context.Context, sessionID uuid.UUID, userID uuid.UUID, req *model.RoundCreateRequest) (*model.RoundResponse, error)
+	StartRound(ctx context.Context, sessionID uuid.UUID, userID uuid.UUID, req *entity.RoundCreateRequest) (*entity.RoundResponse, error)
 
 	// CompleteRound はラウンドを完了する(SQSメッセージ送信付き)
-	CompleteRound(ctx context.Context, id uuid.UUID, userID uuid.UUID, req *model.RoundCompleteRequest) (*model.RoundResponse, error)
+	CompleteRound(ctx context.Context, id uuid.UUID, userID uuid.UUID, req *entity.RoundCompleteRequest) (*entity.RoundResponse, error)
 }
 
 // roundUseCase はラウンドに関するユースケースの実装（新エラーハンドリング完全対応版）
 type roundUseCase struct {
-	roundRepo      repository.RoundRepository
-	sessionRepo    repository.SessionRepository
-	userConfigRepo repository.UserConfigRepository
-	sqsClient      *sqs.SQSClient
+	roundRepo       repository.RoundRepository
+	sessionRepo     repository.SessionRepository
+	userConfigRepo  repository.UserConfigRepository
+	sqsClient       *sqs.SQSClient
 	statsAggregator StatisticsAggregationService
-	logger         logger.Logger
+	logger          logger.Logger
 }
 
 // NewRoundUseCase は新しいラウンドユースケースを作成する
 func NewRoundUseCase(roundrepo repository.RoundRepository, sessionRepo repository.SessionRepository, userConfigRepo repository.UserConfigRepository, sqsClient *sqs.SQSClient, statsAggregator StatisticsAggregationService, logger logger.Logger) RoundUseCase {
 	return &roundUseCase{
-		roundRepo:      roundrepo,
-		sessionRepo:    sessionRepo,
-		userConfigRepo: userConfigRepo,
-		sqsClient:      sqsClient,
+		roundRepo:       roundrepo,
+		sessionRepo:     sessionRepo,
+		userConfigRepo:  userConfigRepo,
+		sqsClient:       sqsClient,
 		statsAggregator: statsAggregator,
-		logger:         logger,
+		logger:          logger,
 	}
 }
 
 // StartRound は新しいラウンドを開始する（元の設計に戻す：開始時DB作成）
-func (uc *roundUseCase) StartRound(ctx context.Context, sessionID uuid.UUID, userID uuid.UUID, req *model.RoundCreateRequest) (*model.RoundResponse, error) {
+func (uc *roundUseCase) StartRound(ctx context.Context, sessionID uuid.UUID, userID uuid.UUID, req *entity.RoundCreateRequest) (*entity.RoundResponse, error) {
 	// セッションが存在するか確認
 	session, err := uc.sessionRepo.GetByID(ctx, sessionID, userID)
 	if err != nil {
@@ -61,7 +62,7 @@ func (uc *roundUseCase) StartRound(ctx context.Context, sessionID uuid.UUID, use
 		return nil, appErrors.NewInternalError(err)
 	}
 
-	// 既存ラウンド数を取得して上限チェック
+	// ✅ DDD Aggregate: 既存ラウンドをSessionに読み込み
 	rounds, err := uc.roundRepo.GetBySessionIDWithUserID(ctx, session.ID, userID)
 	if err != nil && !errors.Is(err, appErrors.ErrRecordNotFound) {
 		uc.logger.Errorf("ラウンド一覧取得エラー: %v", err)
@@ -74,22 +75,19 @@ func (uc *roundUseCase) StartRound(ctx context.Context, sessionID uuid.UUID, use
 		return nil, appErrors.NewInternalError(err)
 	}
 
+	// ✅ DDD Aggregate: SessionにRoundsを読み込み
+	session.LoadRounds(rounds)
+
 	// UserConfigから直接session_roundsを取得
 	userConfig := uc.getUserConfigWithFallback(ctx, userID)
 	maxRounds := userConfig.GetSessionRoundsOrDefault()
-	
-	// session_rounds上限チェック
-	existingRoundCount := len(rounds)
-	if existingRoundCount >= maxRounds {
-		uc.logger.Errorf("ラウンド上限到達: 既存=%d, 上限=%d（UserConfig）", existingRoundCount, maxRounds)
-		return nil, appErrors.NewBadRequestError("セッションの最大ラウンド数に達しています")
-	}
-	
-	// 新しいラウンド順序を計算
-	newRoundOrder := existingRoundCount + 1
 
-	// ✅ ドメインファクトリー使用
-	round := model.NewRound(session.ID, newRoundOrder)
+	// ✅ DDD Aggregate: Sessionドメインロジックでラウンド追加
+	round, err := session.AddRound(maxRounds)
+	if err != nil {
+		uc.logger.Errorf("ラウンド追加エラー: %v", err)
+		return nil, appErrors.NewBadRequestError(err.Error())
+	}
 
 	// データベースにラウンドを保存（開始時作成）
 	if err = uc.roundRepo.Create(ctx, round, userID); err != nil {
@@ -107,14 +105,13 @@ func (uc *roundUseCase) StartRound(ctx context.Context, sessionID uuid.UUID, use
 	}
 
 	uc.logger.Infof("ラウンド開始成功: ID=%s, SessionID=%s, Order=%d",
-		round.ID.String(), sessionID.String(), newRoundOrder)
+		round.ID.String(), sessionID.String(), round.RoundOrder)
 
 	return round.ToResponse(), nil
 }
 
-
 // CompleteRound はラウンドを完了する（元の設計に戻す：既存ラウンドの更新）
-func (uc *roundUseCase) CompleteRound(ctx context.Context, id uuid.UUID, userID uuid.UUID, req *model.RoundCompleteRequest) (*model.RoundResponse, error) {
+func (uc *roundUseCase) CompleteRound(ctx context.Context, id uuid.UUID, userID uuid.UUID, req *entity.RoundCompleteRequest) (*entity.RoundResponse, error) {
 	// ラウンドの存在確認
 	round, err := uc.roundRepo.GetByID(ctx, id)
 	if err != nil {
@@ -205,25 +202,23 @@ func (uc *roundUseCase) CompleteRound(ctx context.Context, id uuid.UUID, userID 
 	return completedRound.ToResponse(), nil
 }
 
-
 // ✅ ドメインロジック活用：UserConfig安全取得（フォールバック）
-func (uc *roundUseCase) getUserConfigWithFallback(ctx context.Context, userID uuid.UUID) *model.UserConfig {
+func (uc *roundUseCase) getUserConfigWithFallback(ctx context.Context, userID uuid.UUID) *entity.UserConfig {
 	if uc.userConfigRepo == nil {
 		uc.logger.Warn("UserConfigRepository が nil です - デフォルト設定使用")
-		return model.NewDefaultUserConfig(userID)
+		return entity.NewDefaultUserConfig(userID)
 	}
 
 	userConfig, err := uc.userConfigRepo.GetUserConfig(ctx, userID)
 	if err != nil {
 		uc.logger.Warnf("UserConfig取得エラー、デフォルト設定を使用: %v", err)
-		return model.NewDefaultUserConfig(userID)
+		return entity.NewDefaultUserConfig(userID)
 	}
 
 	uc.logger.Infof("UserConfig取得成功: workTime=%d, breakTime=%d, sessionRounds=%d",
 		userConfig.GetWorkTimeOrDefault(), userConfig.GetBreakTimeOrDefault(), userConfig.GetSessionRoundsOrDefault())
 	return userConfig
 }
-
 
 // sendRoundOptimizationMessage はラウンド最適化メッセージをSQSに送信する（同期）
 func (uc *roundUseCase) sendRoundOptimizationMessage(ctx context.Context, userID, roundID uuid.UUID, focusScore int) {

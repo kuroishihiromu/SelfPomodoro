@@ -5,6 +5,7 @@ import (
 	"errors"
 
 	"github.com/google/uuid"
+	"github.com/tsunakit99/selfpomodoro/internal/domain/entity"
 	"github.com/tsunakit99/selfpomodoro/internal/domain/model"
 	"github.com/tsunakit99/selfpomodoro/internal/domain/repository"
 	appErrors "github.com/tsunakit99/selfpomodoro/internal/errors"
@@ -15,10 +16,10 @@ import (
 // SessionUseCase はセッションに関するユースケースを定義するインターフェース
 type SessionUseCase interface {
 	// StartSession は新しいセッションを開始する
-	StartSession(ctx context.Context, userID uuid.UUID) (*model.SessionResponse, error)
+	StartSession(ctx context.Context, userID uuid.UUID) (*entity.SessionResponse, error)
 
 	// CompleteSession はセッションを完了する（SQSメッセージ送信付き）
-	CompleteSession(ctx context.Context, id, userID uuid.UUID) (*model.SessionResponse, error)
+	CompleteSession(ctx context.Context, id, userID uuid.UUID) (*entity.SessionResponse, error)
 }
 
 // sessionUseCase はSessionUseCaseインターフェースの実装（新エラーハンドリング対応版）
@@ -48,7 +49,7 @@ func NewSessionUseCase(
 }
 
 // StartSession は新しいセッションを開始する（新エラーハンドリング対応版）
-func (uc *sessionUseCase) StartSession(ctx context.Context, userID uuid.UUID) (*model.SessionResponse, error) {
+func (uc *sessionUseCase) StartSession(ctx context.Context, userID uuid.UUID) (*entity.SessionResponse, error) {
 	// ✅ ドメインロジック活用：UserConfig安全取得（デフォルト値フォールバック）
 	userConfig := uc.getUserConfigWithFallback(ctx, userID)
 
@@ -57,7 +58,7 @@ func (uc *sessionUseCase) StartSession(ctx context.Context, userID uuid.UUID) (*
 		userConfig.GetWorkTimeOrDefault(), userConfig.GetBreakTimeOrDefault(), userConfig.GetSessionRoundsOrDefault())
 
 	// ✅ ドメインファクトリー使用（シンプルなセッション作成）
-	session := model.NewSession(userID)
+	session := entity.NewSession(userID)
 
 	// DBにセッションを保存
 	if err := uc.sessionRepo.Create(ctx, session); err != nil {
@@ -78,9 +79,8 @@ func (uc *sessionUseCase) StartSession(ctx context.Context, userID uuid.UUID) (*
 	return session.ToResponse(), nil
 }
 
-
 // CompleteSession はセッションを完了する（新エラーハンドリング対応版）
-func (uc *sessionUseCase) CompleteSession(ctx context.Context, id, userID uuid.UUID) (*model.SessionResponse, error) {
+func (uc *sessionUseCase) CompleteSession(ctx context.Context, id, userID uuid.UUID) (*entity.SessionResponse, error) {
 	// セッション取得
 	session, err := uc.sessionRepo.GetByID(ctx, id, userID)
 	if err != nil {
@@ -103,7 +103,7 @@ func (uc *sessionUseCase) CompleteSession(ctx context.Context, id, userID uuid.U
 		return nil, appErrors.NewSessionAlreadyEndedError()
 	}
 
-	// ✅ ドメインロジック活用：ラウンド取得と統計計算
+	// ✅ DDD Aggregate: ラウンド取得してSessionに読み込み
 	rounds, err := uc.roundRepo.GetBySessionIDWithUserID(ctx, id, userID)
 	if err != nil {
 		uc.logger.Errorf("セッションラウンド取得エラー: %v", err)
@@ -116,13 +116,16 @@ func (uc *sessionUseCase) CompleteSession(ctx context.Context, id, userID uuid.U
 		return nil, appErrors.NewInternalError(err)
 	}
 
-	// ✅ ドメインロジック活用：セッション統計計算（Repository依存なし！）
-	stats := session.CalculateStatistics(rounds)
+	// ✅ DDD Aggregate: SessionにRoundsを読み込み
+	session.LoadRounds(rounds)
+
+	// ✅ DDD Aggregate: 統計計算とセッション完了（Aggregate内部で完結）
+	session.CompleteWithRounds()
+
+	// 統計ログ出力
+	stats := session.CalculateStatistics()
 	uc.logger.Infof("セッション統計計算完了: 平均集中度=%.1f, 総作業時間=%d分, ラウンド数=%d, 休憩時間=%d分",
 		stats.AverageFocus, stats.TotalWorkMin, stats.RoundCount, stats.TotalBreakTime)
-
-	// ✅ ドメインロジック活用：セッション完了処理
-	session.CompleteWithStatistics(stats)
 
 	// データベース更新
 	err = uc.sessionRepo.Complete(ctx, id, userID, stats.AverageFocus, stats.TotalWorkMin, stats.RoundCount, stats.TotalBreakTime)
@@ -176,18 +179,17 @@ func (uc *sessionUseCase) CompleteSession(ctx context.Context, id, userID uuid.U
 	return updatedSession.ToResponse(), nil
 }
 
-
 // ✅ ドメインロジック活用：UserConfig安全取得（フォールバック）
-func (uc *sessionUseCase) getUserConfigWithFallback(ctx context.Context, userID uuid.UUID) *model.UserConfig {
+func (uc *sessionUseCase) getUserConfigWithFallback(ctx context.Context, userID uuid.UUID) *entity.UserConfig {
 	if uc.userConfigRepo == nil {
 		uc.logger.Warn("UserConfigRepository が nil です - デフォルト設定使用")
-		return model.NewDefaultUserConfig(userID)
+		return entity.NewDefaultUserConfig(userID)
 	}
 
 	userConfig, err := uc.userConfigRepo.GetUserConfig(ctx, userID)
 	if err != nil {
 		uc.logger.Warnf("UserConfig取得エラー、デフォルト設定を使用: %v", err)
-		return model.NewDefaultUserConfig(userID)
+		return entity.NewDefaultUserConfig(userID)
 	}
 
 	return userConfig
