@@ -65,7 +65,9 @@ extension TaskAPIClient {
 
             let data = try await Amplify.API.post(request: request)
             print("Add task response → \(String(data: data, encoding: .utf8) ?? "Invalid UTF-8")")
-            return try APIFormatters.jsonDecoder.decode(TaskResult.self, from: data)
+            
+            // ✅ AppDecoder.default に統一する！
+            return try AppDecoder.default.decode(TaskResult.self, from: data)
         },
 
         deleteTask: { id in
