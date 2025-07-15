@@ -73,7 +73,7 @@ struct TimerFeature {
                 while !Task.isCancelled {
                     let now = ContinuousClock().now
                     let realElapsed = start.duration(to: now).components.seconds
-                    let acceleratedElapsed = Int(Double(realElapsed) * 100)  // 10倍速！
+                    let acceleratedElapsed = Int(Double(realElapsed)) 
 
                     if acceleratedElapsed != lastElapsed {
                         await send(.tick(acceleratedElapsed))

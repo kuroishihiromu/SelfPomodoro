@@ -15,15 +15,8 @@ struct TaskResult: Equatable, Identifiable, Codable {
     var isCompleted: Bool
     var createdAt: Date?
     var updatedAt: Date?
-
-    enum CodingKeys: String, CodingKey {
-        case id
-        case detail
-        case isCompleted = "is_completed"
-        case createdAt = "created_at"
-        case updatedAt = "updated_at"
-    }
 }
+
 
 enum taskAPIError: Error, Equatable {
     case networkError
@@ -36,7 +29,6 @@ struct TaskAPIClient {
     var addTask: (_ detail: String) async throws -> TaskResult
     var deleteTask: (_ id: UUID) async throws -> Void
     var toggleCompletion: (_ id: UUID) async throws -> TaskResult
-    var editTask: (_ id: UUID, _ detail: String) async throws -> TaskResult
 }
 
 extension TaskAPIClient {
@@ -57,7 +49,8 @@ extension TaskAPIClient {
                 let tasks: [TaskResult]
             }
 
-            return try APIFormatters.jsonDecoder.decode(TaskListResponse.self, from: data).tasks
+            return try AppDecoder.default.decode(TaskListResponse.self, from: data).tasks
+
         },
         
         addTask: { detail in
@@ -72,7 +65,9 @@ extension TaskAPIClient {
 
             let data = try await Amplify.API.post(request: request)
             print("Add task response → \(String(data: data, encoding: .utf8) ?? "Invalid UTF-8")")
-            return try APIFormatters.jsonDecoder.decode(TaskResult.self, from: data)
+            
+            // ✅ AppDecoder.default に統一する！
+            return try AppDecoder.default.decode(TaskResult.self, from: data)
         },
 
         deleteTask: { id in
@@ -98,19 +93,7 @@ extension TaskAPIClient {
 
             print("Toggle task response → \(String(data: data, encoding: .utf8) ?? "Invalid UTF-8")")
 
-            return try APIFormatters.jsonDecoder.decode(TaskResult.self, from: data)
-        },
-        
-        editTask: { id, detail in
-            var request = URLRequest(url: URL(string: "http://localhost:8080/api/v1/tasks/\(id)/edit")!)
-            request.httpMethod = "PATCH"
-            request.setValue("Bearer dev-token", forHTTPHeaderField: "Authorization")
-            request.setValue("application/json", forHTTPHeaderField: "Content-Type")
-            request.httpBody = try JSONEncoder().encode(["detail": detail])
-
-            let (data, _) = try await URLSession.shared.data(for: request)
-            print("Edit task response → \(String(data: data, encoding: .utf8) ?? "Invalid UTF-8")")
-            return try APIFormatters.jsonDecoder.decode(TaskResult.self, from: data)
+            return try AppDecoder.default.decode(TaskResult.self, from: data) // ← ここを変更！
         }
     )
 }
