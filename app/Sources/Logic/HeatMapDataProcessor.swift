@@ -47,4 +47,28 @@ enum HeatMapDataProcessor {
     static func dayNumber(for date: Date) -> Int {
         return Calendar.current.component(.day, from: date)
     }
+
+    static func generateHourlyGridData(_ data: [FocusData], for month: Date) -> [Date: [Int: Int?]] {
+        let calendar = Calendar.current
+        let monthStart = calendar.date(from: calendar.dateComponents([.year, .month], from: month))!
+        let range = calendar.range(of: .day, in: .month, for: month)!
+
+        var result: [Date: [Int: Int?]] = [:]
+
+        for day in range {
+            if let date = calendar.date(byAdding: .day, value: day - 1, to: monthStart) {
+                let dayKey = calendar.startOfDay(for: date)
+                result[dayKey] = (0..<24).reduce(into: [:]) { $0[$1] = nil }
+            }
+        }
+
+        for item in data {
+            let dayKey = calendar.startOfDay(for: item.date)
+            if result[dayKey] != nil {
+                result[dayKey]?[item.hour] = item.focus_score
+            }
+        }
+
+        return result
+    }
 }

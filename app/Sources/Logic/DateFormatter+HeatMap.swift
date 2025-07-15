@@ -27,4 +27,10 @@ enum HeatMapDateFormatter {
         formatter.timeZone = .current
         return formatter
     }()
+
+    static let day: DateFormatter = {
+        let formatter = DateFormatter()
+        formatter.dateFormat = "d"
+        return formatter
+    }()
 }
