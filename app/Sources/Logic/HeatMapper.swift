@@ -1,14 +1,19 @@
 //
-//  DummyDataLoader.swift
+//  HeatMapper.swift
 //  SelfPomodoro
 //
 //  Created by し on 2025/07/13.
 //
 
+import Dependencies
 import Foundation
 
-enum DummyDataLoader {
-    static func loadFocusData() -> [FocusData] {
+struct HeatMapper {
+    var loadFocusData: () -> [FocusData]
+}
+
+extension HeatMapper: DependencyKey {
+    static let liveValue = HeatMapper {
         guard let url = Bundle.main.url(forResource: "heatmap_data", withExtension: "json"),
               let data = try? Data(contentsOf: url) else {
             return []
@@ -22,5 +27,12 @@ enum DummyDataLoader {
         }
 
         return []
+    }
+}
+
+extension DependencyValues {
+    var heatMapper: HeatMapper {
+        get { self[HeatMapper.self] }
+        set { self[HeatMapper.self] = newValue }
     }
 }
