@@ -18,6 +18,7 @@ struct HeatMapView: View {
                     .font(.headline)
                     .padding(.horizontal)
 
+                // 月選択
                 HStack {
                     Button(action: {
                         withAnimation(.easeInOut(duration: 0.3)) {
@@ -53,6 +54,7 @@ struct HeatMapView: View {
                     currentMonth: viewStore.currentMonth
                 )
 
+                // 凡例
                 HStack {
                     Text("縦軸：日　横軸：時間")
                         .font(.caption2)
@@ -84,55 +86,7 @@ struct HeatMapView: View {
     }
 }
 
-struct CalendarGridView: View {
-    let data: [FocusData]
-    let currentMonth: Date
-
-    var body: some View {
-        let gridData = HeatMapDataProcessor.generateCalendarData(for: currentMonth)
-         VStack(spacing: 4) {
-             HStack(spacing: 4) {
-                ForEach(0..<7, id: \.self) { index in
-                    Text(HeatMapDateFormatter.weekdaySymbols[index])
-                        .font(.caption)
-                        .frame(width: 32, height: 16)
-                        .multilineTextAlignment(.center)
-                }
-            }
-
-             ForEach(gridData, id: \.self) { week in
-                 HStack(spacing: 4) {
-                     ForEach(week, id: \.self) { date in
-                         if let date {
-                             let score = score(for: date)
-                             ZStack {
-                                 Rectangle()
-                                     .fill(HeatMapColorMapper.color(for: score))
-                                     .frame(width: 32, height: 32)
-                                     .cornerRadius(6)
-
-                                 Text("\(HeatMapDataProcessor.dayNumber(for: date))")
-                                     .font(.caption2)
-                                     .foregroundColor(score.map { $0 > 60 ? .white : .black } ?? .gray)
-                             }
-                         } else {
-                             Rectangle()
-                                 .fill(Color.clear)
-                                 .frame(width: 32, height: 32)
-                         }
-                     }
-                 }
-             }
-        }
-    }
-
-    private func score(for date: Date) -> Int? {
-        return data.first(where: {
-            Calendar.current.isDate($0.date, inSameDayAs: date)
-        })?.focus_score
-    }
-}
-
+// ヒートマップ本体
 struct HourlyHeatMapGridView: View {
     let focusData: [FocusData]
     let currentMonth: Date
@@ -143,7 +97,7 @@ struct HourlyHeatMapGridView: View {
 
         ScrollView(.vertical) {
             VStack(alignment: .leading, spacing: 6) {
-                // 上部時間ラベル
+                // 横軸
                 HStack(spacing: 3.5) {
                     Text("")
                         .frame(width: 10)
@@ -154,7 +108,7 @@ struct HourlyHeatMapGridView: View {
                     }
                 }
 
-                // 本体
+                // 縦軸+マス
                 ForEach(sortedDates, id: \.self) { date in
                     HStack(spacing: 2) {
                         Text(HeatMapDateFormatter.day.string(from: date))
