@@ -16,6 +16,10 @@ enum AppDecoder {
         decoder.dateDecodingStrategy = .custom { decoder in
             let container = try decoder.singleValueContainer()
             let dateStr = try container.decode(String.self)
+            
+            if let date = AppDateFormatter.yearMonthDay.date(from: dateStr) {
+                return date
+            }
 
             // ミリ秒あり
             if let date = AppDateFormatter.iso8601WithMillis.date(from: dateStr) {

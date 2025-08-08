@@ -37,6 +37,9 @@ struct MainView: View {
         ToDoListFeature()
     }
     
+    let statisticsStore = Store(initialState: ChartFeature.State()) {
+        ChartFeature()
+    }
     
     var body: some View {
         WithViewStore(store, observe: \.selectedTabIndex) { viewStore in
@@ -50,7 +53,8 @@ struct MainView: View {
                             store: store.scope(state: \.todoListState, action: \.todoList)
                         )
                     case 2:
-                        StatisticsScreenView()
+                        StatisticsScreenView(store: statisticsStore)
+
                     case 3:
                         ProfileScreenView()
                     default:

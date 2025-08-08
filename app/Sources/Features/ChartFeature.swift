@@ -10,15 +10,15 @@ import Foundation
 
 @Reducer
 struct ChartFeature {
-    @Dependency(\.statisticsAPIClient) var apiClient
 
+    @ObservableState
     struct State: Equatable {
         var data: [ConcentrationData] = []
         var currentWeekStart: Date = .startOfCurrentWeek()
 
         var weekDates: [Date] {
-            (0..<8).compactMap { offset in
-                Calendar.current.date(byAdding: .day, value: offset, to: currentWeekStart)
+            (0..<7).compactMap {
+                Calendar.current.date(byAdding: .day, value: $0, to: currentWeekStart)
             }
         }
 
@@ -37,32 +37,32 @@ struct ChartFeature {
         case nextWeek
     }
 
+    @Dependency(\.statisticsAPIClient) var apiClient
+
     var body: some ReducerOf<Self> {
         Reduce { state, action in
             switch action {
-
             case .fetchFocusTrend:
                 return .run { send in
                     do {
-                        let focusTrendResults = try await apiClient.fetchFocusTrend()
-                        let normalizeToDayStart = ChartDataProcessor.normalizeDates(focusTrendResults)
-                        let scoredConcentrationData = ChartDataProcessor.calculateMovingAverage(from: normalizeToDayStart)
-                        await send(.dataLoaded(scoredConcentrationData))
+                        let data = try await apiClient.fetchConcentrationData()
+                        await send(.dataLoaded(data))
                     } catch {
-                        print("データ読み込み失敗: \(error)")
+                        print("データ取得失敗: \(error)")
                     }
                 }
 
             case let .dataLoaded(data):
                 state.data = data
+                state.currentWeekStart = .startOfCurrentWeek()
                 return .none
-
+                
             case .previousWeek:
                 state.currentWeekStart = Calendar.current.date(byAdding: .day, value: -7, to: state.currentWeekStart)!
                 return .none
 
             case .nextWeek:
-                state.currentWeekStart = Calendar.current.date(byAdding: .day, value: +7, to: state.currentWeekStart)!
+                state.currentWeekStart = Calendar.current.date(byAdding: .day, value: 7, to: state.currentWeekStart)!
                 return .none
             }
         }

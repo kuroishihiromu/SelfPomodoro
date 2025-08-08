@@ -18,7 +18,7 @@ enum ChartDataProcessor {
 
     static func calculateMovingAverage(from results: [FocusTrendResult], windowSize: Int = 7) -> [ConcentrationData] {
         let sorted = results.sorted { $0.date < $1.date }
-        let scores = sorted.map { Double($0.focusScore) }
+        let scores = sorted.map { $0.focusScore }
 
         return sorted.enumerated().map { index, result in
             let start = max(0, index - windowSize + 1)

@@ -7,19 +7,18 @@
 
 import SwiftUI
 import Charts
+import ComposableArchitecture
 
 struct ChartView: View {
-    let title: String
-    let state: ChartFeature.State
-    let sendActionWithAnimation: (ChartFeature.Action) -> Void
+    @Bindable var store: StoreOf<ChartFeature>
 
     private let swipeThreshold: CGFloat = 50
 
     private var weekRangeText: String {
         let formatter = DateFormatter()
         formatter.dateFormat = "MM/dd"
-        let endDate = Calendar.current.date(byAdding: .day, value: 6, to: state.currentWeekStart)!
-        return "\(formatter.string(from: state.currentWeekStart))〜\(formatter.string(from: endDate))"
+        let endDate = Calendar.current.date(byAdding: .day, value: 6, to: store.currentWeekStart)!
+        return "\(formatter.string(from: store.currentWeekStart))〜\(formatter.string(from: endDate))"
     }
 
     var body: some View {
@@ -28,19 +27,20 @@ struct ChartView: View {
             chartBody
             legend
         }
+        .task {
+            store.send(.fetchFocusTrend)
+        }
     }
 
     private var header: some View {
         VStack(spacing: 8) {
-            Text(title)
+            Text("Concentration Chart")
                 .font(.headline)
                 .padding(.horizontal)
 
             HStack {
                 Button {
-                    withAnimation(.easeInOut) {
-                        sendActionWithAnimation(.previousWeek)
-                    }
+                    store.send(.previousWeek, animation: .easeInOut)
                 } label: {
                     Image(systemName: "chevron.left")
                     Text("Prev")
@@ -56,9 +56,7 @@ struct ChartView: View {
                 Spacer()
 
                 Button {
-                    withAnimation(.easeInOut) {
-                        sendActionWithAnimation(.nextWeek)
-                    }
+                    store.send(.nextWeek, animation: .easeInOut)
                 } label: {
                     Text("Next")
                     Image(systemName: "chevron.right")
@@ -71,15 +69,12 @@ struct ChartView: View {
 
     private var chartBody: some View {
         Chart {
-            ForEach(state.weekDates, id: \.self) { date in
-                LineMark(
-                    x: .value("日付", date),
-                    y: .value("透明", 0)
-                )
-                .foregroundStyle(.clear)
+            ForEach(store.weekDates, id: \.self) { date in
+                LineMark(x: .value("日付", date), y: .value("透明", 0))
+                    .foregroundStyle(.clear)
             }
 
-            ForEach(state.currentWeekData) { data in
+            ForEach(store.currentWeekData) { data in
                 if data.score > 0 {
                     AreaMark(
                         x: .value("日付", data.date),
@@ -88,11 +83,7 @@ struct ChartView: View {
                     )
                     .foregroundStyle(ColorTheme.Gray.opacity(0.4))
                     .interpolationMethod(.catmullRom)
-                }
-            }
 
-            ForEach(state.currentWeekData) { data in
-                if data.score > 0 {
                     LineMark(
                         x: .value("日付", data.date),
                         y: .value("集中度", data.score),
@@ -121,7 +112,7 @@ struct ChartView: View {
         .frame(height: 260)
         .chartYScale(domain: 1...100)
         .chartXAxis {
-            AxisMarks(values: state.weekDates) { date in
+            AxisMarks(values: store.weekDates) { date in
                 AxisGridLine()
                 AxisTick()
                 AxisValueLabel(format: .dateTime.month(.twoDigits).day(.twoDigits))
@@ -133,12 +124,10 @@ struct ChartView: View {
         .gesture(
             DragGesture()
                 .onEnded { value in
-                    withAnimation(.easeInOut) {
-                        if value.translation.width > swipeThreshold {
-                            sendActionWithAnimation(.previousWeek)
-                        } else if value.translation.width < -swipeThreshold {
-                            sendActionWithAnimation(.nextWeek)
-                        }
+                    if value.translation.width > swipeThreshold {
+                        store.send(.previousWeek, animation: .easeInOut)
+                    } else if value.translation.width < -swipeThreshold {
+                        store.send(.nextWeek, animation: .easeInOut)
                     }
                 }
         )
@@ -151,16 +140,14 @@ struct ChartView: View {
                 RoundedRectangle(cornerRadius: 2)
                     .fill(ColorTheme.navy)
                     .frame(width: 24, height: 4)
-                Text("Concentration")
-                    .font(.caption)
+                Text("Concentration").font(.caption)
             }
 
             HStack(spacing: 6) {
                 RoundedRectangle(cornerRadius: 2)
                     .stroke(ColorTheme.navy, style: StrokeStyle(lineWidth: 2, dash: [5]))
                     .frame(width: 24, height: 4)
-                Text("MovingAverage")
-                    .font(.caption)
+                Text("MovingAverage").font(.caption)
                     .minimumScaleFactor(0.7)
                     .lineLimit(1)
             }
@@ -169,8 +156,7 @@ struct ChartView: View {
                 RoundedRectangle(cornerRadius: 2)
                     .fill(ColorTheme.Gray.opacity(0.4))
                     .frame(width: 24, height: 10)
-                Text("±1 Std. Deviation")
-                    .font(.caption)
+                Text("±1 Std. Deviation").font(.caption)
                     .minimumScaleFactor(0.7)
                     .lineLimit(1)
             }
