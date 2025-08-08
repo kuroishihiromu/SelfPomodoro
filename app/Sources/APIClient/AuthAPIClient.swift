@@ -19,6 +19,7 @@ struct AuthTokens: Equatable {
 
 struct AuthAPIClient {
     var signIn: (_ username: String, _ password: String) async throws -> AuthTokens
+    var signOut: () async throws -> Void
 }
 
 extension DependencyValues {
@@ -35,27 +36,46 @@ extension DependencyValues {
 extension AuthAPIClient {
     static let live = AuthAPIClient(
         signIn: { username, password in
-            let signInResult = try await Amplify.Auth.signIn(username: username, password: password)
+            do {
+                // 既存のサインイン状態をチェックしてサインアウト
+                let currentSession = try await Amplify.Auth.fetchAuthSession()
+                if currentSession.isSignedIn {
+                    print("🔄 User already signed in, signing out first...")
+                    _ = try await Amplify.Auth.signOut()
+                }
+                
+                let signInResult = try await Amplify.Auth.signIn(username: username, password: password)
 
-            guard signInResult.isSignedIn else {
-                throw NSError(domain: "Auth", code: 401, userInfo: [NSLocalizedDescriptionKey: "Sign-in failed"])
+                guard signInResult.isSignedIn else {
+                    throw NSError(domain: "Auth", code: 401, userInfo: [NSLocalizedDescriptionKey: "Sign-in failed"])
+                }
+
+                let session = try await Amplify.Auth.fetchAuthSession()
+
+                guard let cognitoSession = session as? AuthCognitoTokensProvider else {
+                    throw NSError(domain: "Auth", code: 500, userInfo: [NSLocalizedDescriptionKey: "Not a Cognito session"])
+                }
+
+                let tokensResult = cognitoSession.getCognitoTokens()
+                let tokens = try tokensResult.get()
+
+                return AuthTokens(
+                    idToken: tokens.idToken,
+                    accessToken: tokens.accessToken,
+                    refreshToken: tokens.refreshToken
+                )
+            } catch let error as AuthError {
+                print("🔴 AuthError details: \(error)")
+                print("🔴 AuthError localizedDescription: \(error.localizedDescription)")
+                print("🔴 AuthError underlyingError: \(error.underlyingError?.localizedDescription ?? "None")")
+                throw error
+            } catch {
+                print("🔴 Other error: \(error)")
+                throw error
             }
-
-            let session = try await Amplify.Auth.fetchAuthSession()
-
-            guard let cognitoSession = session as? AuthCognitoTokensProvider else {
-                throw NSError(domain: "Auth", code: 500, userInfo: [NSLocalizedDescriptionKey: "Not a Cognito session"])
-            }
-
-
-            let tokensResult = cognitoSession.getCognitoTokens()
-            let tokens = try tokensResult.get()
-
-            return AuthTokens(
-                idToken: tokens.idToken,
-                accessToken: tokens.accessToken,
-                refreshToken: tokens.refreshToken
-            )
+        },
+        signOut: {
+            _ = try await Amplify.Auth.signOut()
         }
     )
 }

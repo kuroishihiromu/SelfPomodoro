@@ -14,6 +14,7 @@ struct TabButtonFeature {
     struct State: Equatable {
         var selectedTabIndex: Int = 0
         var todoListState: ToDoListFeature.State = .init()
+        var chartFeatureState: ChartFeature.State = .init()
     }
 
     enum Action {
@@ -45,14 +46,18 @@ struct TabButtonFeature {
                 return .run { send in
                     do {
                         let tasks = try await apiClient.fetchTasks()
-                        print("✅ fetchTasks succeeded with \(tasks.count) items")
                         await send(.fetchTasksResponse(.success(tasks)))
                     } catch let error as taskAPIError {
-                        print("❌ fetchTasks failed: \(error)")
+                        print("❌ fetchTasks failed with taskAPIError: \(error)")
                         await send(.fetchTasksResponse(.failure(error)))
+                    } catch let error as DecodingError {
+                        print("❌ fetchTasks failed with decoding error: \(error)")
+                        await send(.fetchTasksResponse(.failure(.decodingError)))
                     } catch {
+                        print("❌ fetchTasks failed with unknown error: \(error)")
                         await send(.fetchTasksResponse(.failure(.unknown)))
                     }
+
                 }
                 
             case let .fetchTasksResponse(.success(tasks)):
