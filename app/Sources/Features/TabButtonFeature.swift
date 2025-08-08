@@ -14,6 +14,7 @@ struct TabButtonFeature {
     struct State: Equatable {
         var selectedTabIndex: Int = 0
         var todoListState: ToDoListFeature.State = .init()
+        var chartFeatureState: ChartFeature.State = .init()
     }
 
     enum Action {

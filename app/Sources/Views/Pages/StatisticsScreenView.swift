@@ -6,13 +6,12 @@
 //
 
 import SwiftUI
+import ComposableArchitecture
 
 struct StatisticsScreenView: View {
-    var body: some View {
-        Text(/*@START_MENU_TOKEN@*/"Hello, World!"/*@END_MENU_TOKEN@*/)
-    }
-}
+    let store: StoreOf<ChartFeature>
 
-#Preview {
-    StatisticsScreenView()
+    var body: some View {
+        ChartView(store: store)
+    }
 }
