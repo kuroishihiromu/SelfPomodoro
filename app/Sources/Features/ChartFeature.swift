@@ -48,7 +48,7 @@ struct ChartFeature {
                         let data = try await apiClient.fetchConcentrationData()
                         await send(.dataLoaded(data))
                     } catch {
-                        print("データ取得失敗: \(error)")
+                        // Error handling
                     }
                 }
 

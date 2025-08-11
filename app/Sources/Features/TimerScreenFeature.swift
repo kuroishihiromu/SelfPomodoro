@@ -55,36 +55,30 @@ struct TimerScreenFeature {
             switch action {
 
             case .StartRoundButtonTapped:
-                print(".StartRoundButtonTapped--------------")
                 
                 if !state.isFirstSession {
                     return .send(.startNextRound)
                 } else {
                     return .run { send in
                         let session = try await sessionAPIClient.startSession()
-                        print("🟢 Start session success → \(session.id)")
                         await send(.sessionStartResponse(.success(session)))
                     } catch: { error, send in
-                        print("🔴 Start session failed → \(error)")
                         await send(.sessionStartResponse(.failure(error)))
                     }
                 }
 
             case let .sessionStartResponse(.success(session)):
-                print(".sessionStartResponse--------------")
                 state.sessionId = session.id
                 state.timer.sessionId = session.id
                 state.isFirstSession = false
                 return .send(.startNextRound)
 
             case let .roundStartResponse(.success(round)):
-                print(".roundStartResponse--------------")
                 state.timer.currentRoundId = round.id
 
                 return .send(.timer(.start))
 
             case .timer(.phaseCompleted):
-                print(".timer(.phaseCompleted)--------------")
                 if state.timer.phase == .shortBreak || state.timer.phase == .longBreak {
                     state.evalModal = EvalModalFeature.State(
                         score: 0.5,
@@ -102,46 +96,33 @@ struct TimerScreenFeature {
                 return .none
 
             case .evalModal(.submitEval(let score)):
-                print(".evalModal--------------")
                 state.evalModal = nil
                 guard let roundId = state.timer.currentRoundId else {
-                    print("⚠️ roundId is nil")
                     return .none
                 }
-
-                print("📨 評価送信中: roundId=\(roundId), score=\(score)")
 
                 return .run { send in
                     let result = try await sessionAPIClient.completeRound(roundId, Int(score * 100))
                     await send(.completeRoundResponse(.success(result)))
                 } catch: { error, send in
-                    print("❌ completeRound エラー: \(error)")
                     await send(.completeRoundResponse(.failure(error)))
                 }
 
             case .startNextRound:
-                print(".startNextRound--------------")
                 guard let sessionId = state.timer.sessionId else {
-                    print("⚠️ sessionId is nil")
                     return .none
                 }
                 return .run { send in
-                    print("sessionID: \(sessionId)")
                     let round = try await sessionAPIClient.startRound(sessionId)
-                    print("🔄 Next round started → \(round.id)")
                     await send(.roundStartResponse(.success(round)))
                 } catch: { error, send in
-                    print("❌ Failed to start next round: \(error)")
                     await send(.roundStartResponse(.failure(error)))
                 }
 
             case let .completeRoundResponse(.success(round)):
-                print(".completeRoundRespoonse--------------")
-                print("✅ completeRound 成功: \(round)")
                 return .send(.timer(.start))
 
             case .completeRoundResponse(.failure(let error)):
-                print("❌ completeRound failed: \(error)")
                 return .none
 
             case .dismissEvalModal:
@@ -149,7 +130,6 @@ struct TimerScreenFeature {
                 return .none
 
             case .onAppear:
-                print(".onAppear--------------")
                 guard state.isFirstSession else {
                     return .none
                 }
@@ -158,14 +138,11 @@ struct TimerScreenFeature {
                     let config = try await userConfigAPIClient.getUserConfig()
                     await send(.userConfigResponse(.success(config)))
                 } catch: { error, send in
-                    print("❌ Failed to fetch user config: \(error)")
                     await send(.userConfigResponse(.failure(error)))
                 }
 
             case let .userConfigResponse(.success(config)):
-                print(".userConfigResponse--------------")
                 state.userConfig = config
-                print(state.timer.round)
                 state.roundConfigModalIsPresented = true
                 
                 return .send(.timer(.updateSettings(
@@ -176,7 +153,6 @@ struct TimerScreenFeature {
                 )))
 
             case let .toggleConfigModal(show):
-                print(".toggleConfigModal--------------")
                 state.roundConfigModalIsPresented = show
                 return .none
                 

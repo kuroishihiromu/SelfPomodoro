@@ -40,7 +40,6 @@ extension AuthAPIClient {
                 // 既存のサインイン状態をチェックしてサインアウト
                 let currentSession = try await Amplify.Auth.fetchAuthSession()
                 if currentSession.isSignedIn {
-                    print("🔄 User already signed in, signing out first...")
                     _ = try await Amplify.Auth.signOut()
                 }
                 
@@ -64,13 +63,7 @@ extension AuthAPIClient {
                     accessToken: tokens.accessToken,
                     refreshToken: tokens.refreshToken
                 )
-            } catch let error as AuthError {
-                print("🔴 AuthError details: \(error)")
-                print("🔴 AuthError localizedDescription: \(error.localizedDescription)")
-                print("🔴 AuthError underlyingError: \(error.underlyingError?.localizedDescription ?? "None")")
-                throw error
             } catch {
-                print("🔴 Other error: \(error)")
                 throw error
             }
         },

@@ -25,7 +25,6 @@ extension UserConfigAPIClient {
             )
 
             let data = try await Amplify.API.get(request: request)
-            print("Get Config → \(String(data: data, encoding: .utf8) ?? "Invalid UTF-8")")
             return try APIFormatters.jsonDecoder.decode(UserConfigResult.self, from: data)
         }
     )

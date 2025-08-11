@@ -17,7 +17,6 @@ struct MainView: View {
     
     init(token: AuthTokens) {
         self.token = token
-        print("token: \(self.token)")
     }
     
     let timerStore = Store(

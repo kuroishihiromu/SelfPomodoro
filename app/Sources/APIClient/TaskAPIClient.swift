@@ -43,7 +43,6 @@ extension TaskAPIClient {
             )
 
             let data = try await Amplify.API.get(request: request)
-            print("Fetched tasks → \(String(data: data, encoding: .utf8) ?? "Invalid UTF-8")")
 
             struct TaskListResponse: Decodable {
                 let tasks: [TaskResult]
@@ -64,7 +63,6 @@ extension TaskAPIClient {
             )
 
             let data = try await Amplify.API.post(request: request)
-            print("Add task response → \(String(data: data, encoding: .utf8) ?? "Invalid UTF-8")")
             
             // ✅ AppDecoder.default に統一する！
             return try AppDecoder.default.decode(TaskResult.self, from: data)
@@ -90,8 +88,6 @@ extension TaskAPIClient {
             )
 
             let data = try await Amplify.API.patch(request: request)
-
-            print("Toggle task response → \(String(data: data, encoding: .utf8) ?? "Invalid UTF-8")")
 
             return try AppDecoder.default.decode(TaskResult.self, from: data) // ← ここを変更！
         }

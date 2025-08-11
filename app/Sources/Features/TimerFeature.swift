@@ -63,7 +63,6 @@ struct TimerFeature {
         switch action {
 
         case .start:
-            print(print("Timer: .start--------------"))
             state.isRunning = true
             state.totalSeconds = state.currentPhaseDuration
             let correctedStart = ContinuousClock().now.advanced(by: .seconds(-state.currentSeconds))
@@ -86,7 +85,6 @@ struct TimerFeature {
             .cancellable(id: CancelID.timer)
 
         case .stop:
-            print("Timer: .stop--------------")
             state.isRunning = false
             return .cancel(id: CancelID.timer)
 
@@ -101,16 +99,12 @@ struct TimerFeature {
             return .none
 
         case .phaseCompleted:
-            print("Timer: .phaseCompleted--------------")
             state.isRunning = false
             state.currentSeconds = 0
-            print( "タイマーが検知したラウンド\(state.round)")
-            print("タイマーが検知したセッション全体のラウンド\(state.roundsPerSession)")
             switch state.phase {
             case .task:
                 // セッションの最後のタスクだった場合は longBreak
                 if state.round > state.roundsPerSession {
-                    print("long break")
                     state.phase = .longBreak
                 } else {
                     state.phase = .shortBreak
@@ -120,7 +114,6 @@ struct TimerFeature {
                 state.round += 1
                 
             case .longBreak:
-                print("long break")
                 state.phase = .task
                 state.round = 1
                 
@@ -130,7 +123,6 @@ struct TimerFeature {
             return .send(.stop)
 
         case let .updateSettings(task, short, long, rps):
-            print("Timer: .updateSettings--------------")
             state.taskDuration = task
             state.shortBreakDuration = short
             state.longBreakDuration = long

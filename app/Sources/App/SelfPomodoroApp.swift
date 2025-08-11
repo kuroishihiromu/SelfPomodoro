@@ -47,7 +47,6 @@ struct SelfPomodoroApp: App {
             try Amplify.add(plugin: AWSCognitoAuthPlugin())
             try Amplify.add(plugin: AWSAPIPlugin())
             try Amplify.configure()
-            print("✅ Amplify configured")
             isConfigured = true
 
             let session = try await Amplify.Auth.fetchAuthSession()
@@ -65,12 +64,10 @@ struct SelfPomodoroApp: App {
                 isSignedIn = false
             }
         } catch {
-            print("❌ Initialization failed: \(error)")
             if let authError = error as? AuthError,
                case .service(_, _, let underlyingError) = authError,
                let cognitoError = underlyingError as? AWSCognitoIdentityProvider.NotAuthorizedException,
                cognitoError.properties.message?.contains("Refresh Token has expired") == true {
-                print("🔄 Refresh token expired, user needs to sign in again")
             }
             isSignedIn = false
         }

@@ -29,7 +29,6 @@ extension SessionAPIClient {
             )
 
             let data = try await Amplify.API.post(request: request)
-            print("Start session → \(String(data: data, encoding: .utf8) ?? "Invalid UTF-8")")
             return try APIFormatters.jsonDecoder.decode(SessionResult.self, from: data)
         },
 
@@ -48,7 +47,6 @@ extension SessionAPIClient {
         
         startRound: { sessionId in
             let sessionIdLower = sessionId.uuidString.lowercased()
-            print("sessionIdLower: \(sessionIdLower)")
             let request = RESTRequest(
                 apiName: "selfpomodoro",
                 path: "/dev/api/v1/sessions/\(sessionIdLower)/rounds",

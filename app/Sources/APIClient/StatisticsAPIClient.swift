@@ -33,7 +33,6 @@ extension StatisticsAPIClient {
 
             do {
                 let data = try await Amplify.API.get(request: request)
-                print("Fetched focus trend → \(String(data: data, encoding: .utf8) ?? "Invalid UTF-8")")
 
                 let focusResults = try AppDecoder.default.decode(FocusTrendResponse.self, from: data)
 
@@ -60,10 +59,8 @@ extension StatisticsAPIClient {
 
                 return concentrationDataList
             } catch let decodingError as DecodingError {
-                print("Decoding error: \(decodingError)")
                 throw StatisticsAPIError.decodingError
             } catch {
-                print("Network or unknown error: \(error)")
                 throw StatisticsAPIError.networkError
             }
         }

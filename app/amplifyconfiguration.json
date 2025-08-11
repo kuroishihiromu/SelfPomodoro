@@ -1,0 +1,37 @@
+{
+    "api": {
+        "plugins": {
+            "awsAPIPlugin": {
+                "selfpomodoro": {
+                    "endpointType": "REST",
+                    "endpoint": "https://2sbakg23a4.execute-api.ap-northeast-1.amazonaws.com",
+                    "region": "ap-northeast-1",
+                    "authorizationType": "AMAZON_COGNITO_USER_POOLS"
+                }
+            }
+        }
+    },
+    "auth": {
+        "plugins": {
+            "awsCognitoAuthPlugin": {
+                "UserAgent": "aws-amplify/cli",
+                "Version": "1.0",
+                "IdentityManager": {
+                    "Default": {}
+                },
+                "CognitoUserPool": {
+                    "Default": {
+                        "PoolId": "ap-northeast-1_UltsO4poH",
+                        "AppClientId": "2dbjjcvvon3trtt5imonmpnq9g",
+                        "Region": "ap-northeast-1"
+                    }
+                },
+                "Auth": {
+                    "Default": {
+                        "authenticationFlowType": "USER_PASSWORD_AUTH"
+                    }
+                }
+            }
+        }
+    }
+}

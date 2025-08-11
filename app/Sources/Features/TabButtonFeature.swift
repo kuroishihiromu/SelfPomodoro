@@ -42,26 +42,21 @@ struct TabButtonFeature {
                 return .none
             case .tasksButtonTapped:
                 state.selectedTabIndex = 1
-                print("📲 tasksButtonTapped → fetching tasks from API")
                 return .run { send in
                     do {
                         let tasks = try await apiClient.fetchTasks()
                         await send(.fetchTasksResponse(.success(tasks)))
                     } catch let error as taskAPIError {
-                        print("❌ fetchTasks failed with taskAPIError: \(error)")
                         await send(.fetchTasksResponse(.failure(error)))
                     } catch let error as DecodingError {
-                        print("❌ fetchTasks failed with decoding error: \(error)")
                         await send(.fetchTasksResponse(.failure(.decodingError)))
                     } catch {
-                        print("❌ fetchTasks failed with unknown error: \(error)")
                         await send(.fetchTasksResponse(.failure(.unknown)))
                     }
 
                 }
                 
             case let .fetchTasksResponse(.success(tasks)):
-                print("🟡 fetchTasksResponse (success)")
                 state.todoListState.items = IdentifiedArrayOf(
                     uniqueElements: tasks.map { task in
                         ToDoListRowFeature.State(
@@ -74,7 +69,6 @@ struct TabButtonFeature {
                 return .none
 
             case .fetchTasksResponse(.failure(let error)):
-                print("🔴 fetchTasksResponse (failure): \(error)")
                 // エラー状態に応じた UI 対応も可能
                 return .none
                 

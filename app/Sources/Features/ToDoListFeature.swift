@@ -27,28 +27,22 @@ struct ToDoListFeature {
         Reduce { state, action in
             switch action {
             case let .addItem(detail):
-                print("🟢 addItem called with detail: \(detail)")
                 return .run { send in
                     do {
                         let result = try await apiClient.addTask(detail)
-                        print("✅ addTask succeeded: \(result)")
                         await send(.addItemResponse(.success(result)))
                     } catch let error as taskAPIError {
-                        print("❌ addTask failed with taskAPIError: \(error)")
                         await send(.addItemResponse(.failure(error)))
                     } catch {
-                        print("❌ addTask failed with unknown error: \(error)")
                         await send(.addItemResponse(.failure(.unknown)))
                     }
                 }
                 
             case let .addItemResponse(.success(task)):
-                print("🟡 addItemResponse (success): \(task)")
                 state.items.append(.init(id: task.id, detail: task.detail, isCompleted: task.isCompleted))
                 return .none
 
             case let .addItemResponse(.failure(toggleCompleteResponseErr)):
-                print("🔴 addItemResponse (failure): \(toggleCompleteResponseErr)")
                 return .none
                 
             case .items:
