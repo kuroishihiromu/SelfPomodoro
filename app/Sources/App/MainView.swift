@@ -37,8 +37,8 @@ struct MainView: View {
         ToDoListFeature()
     }
     
-    let statisticsStore = Store(initialState: ChartFeature.State()) {
-        ChartFeature()
+    let statisticsStore = Store(initialState: StatisticsFeature.State()) {
+        StatisticsFeature()
     }
     
     var body: some View {
