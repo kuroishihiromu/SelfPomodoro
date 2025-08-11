@@ -8,10 +8,40 @@
 import SwiftUI
 import ComposableArchitecture
 
+@Reducer
+struct StatisticsFeature {
+    @ObservableState
+    struct State: Equatable {
+        var chart = ChartFeature.State()
+        var heatMap = HeatMapFeature.State()
+    }
+    
+    enum Action {
+        case chart(ChartFeature.Action)
+        case heatMap(HeatMapFeature.Action)
+    }
+    
+    var body: some ReducerOf<Self> {
+        Scope(state: \.chart, action: \.chart) {
+            ChartFeature()
+        }
+        Scope(state: \.heatMap, action: \.heatMap) {
+            HeatMapFeature()
+        }
+    }
+}
+
 struct StatisticsScreenView: View {
-    let store: StoreOf<ChartFeature>
+    let store: StoreOf<StatisticsFeature>
 
     var body: some View {
-        ChartView(store: store)
+        ScrollView {
+            VStack(spacing: 24) {
+                ChartView(store: store.scope(state: \.chart, action: \.chart))
+                
+                HeatMapView(store: store.scope(state: \.heatMap, action: \.heatMap))
+            }
+            .padding(.bottom)
+        }
     }
 }

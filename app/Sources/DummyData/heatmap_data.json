@@ -1,0 +1,989 @@
+{
+  "items": [
+    {
+      "date": "2025-05-01",
+      "hour": 0,
+      "focus_score": 77
+    },
+    {
+      "date": "2025-05-01",
+      "hour": 6,
+      "focus_score": 26
+    },
+    {
+      "date": "2025-05-01",
+      "hour": 7,
+      "focus_score": 76
+    },
+    {
+      "date": "2025-05-01",
+      "hour": 13,
+      "focus_score": 7
+    },
+    {
+      "date": "2025-05-02",
+      "hour": 15,
+      "focus_score": 76
+    },
+    {
+      "date": "2025-05-02",
+      "hour": 18,
+      "focus_score": 28
+    },
+    {
+      "date": "2025-05-02",
+      "hour": 19,
+      "focus_score": 21
+    },
+    {
+      "date": "2025-05-03",
+      "hour": 7,
+      "focus_score": 32
+    },
+    {
+      "date": "2025-05-03",
+      "hour": 22,
+      "focus_score": 0
+    },
+    {
+      "date": "2025-05-04",
+      "hour": 2,
+      "focus_score": 40
+    },
+    {
+      "date": "2025-05-04",
+      "hour": 4,
+      "focus_score": 27
+    },
+    {
+      "date": "2025-05-04",
+      "hour": 13,
+      "focus_score": 66
+    },
+    {
+      "date": "2025-05-05",
+      "hour": 5,
+      "focus_score": 29
+    },
+    {
+      "date": "2025-05-05",
+      "hour": 9,
+      "focus_score": 74
+    },
+    {
+      "date": "2025-05-05",
+      "hour": 18,
+      "focus_score": 58
+    },
+    {
+      "date": "2025-05-06",
+      "hour": 4,
+      "focus_score": 36
+    },
+    {
+      "date": "2025-05-06",
+      "hour": 6,
+      "focus_score": 93
+    },
+    {
+      "date": "2025-05-07",
+      "hour": 6,
+      "focus_score": 85
+    },
+    {
+      "date": "2025-05-07",
+      "hour": 7,
+      "focus_score": 94
+    },
+    {
+      "date": "2025-05-07",
+      "hour": 10,
+      "focus_score": 81
+    },
+    {
+      "date": "2025-05-07",
+      "hour": 11,
+      "focus_score": 97
+    },
+    {
+      "date": "2025-05-08",
+      "hour": 3,
+      "focus_score": 85
+    },
+    {
+      "date": "2025-05-08",
+      "hour": 11,
+      "focus_score": 83
+    },
+    {
+      "date": "2025-05-08",
+      "hour": 13,
+      "focus_score": 45
+    },
+    {
+      "date": "2025-05-09",
+      "hour": 5,
+      "focus_score": 53
+    },
+    {
+      "date": "2025-05-09",
+      "hour": 14,
+      "focus_score": 9
+    },
+    {
+      "date": "2025-05-09",
+      "hour": 16,
+      "focus_score": 61
+    },
+    {
+      "date": "2025-05-09",
+      "hour": 23,
+      "focus_score": 89
+    },
+    {
+      "date": "2025-05-10",
+      "hour": 1,
+      "focus_score": 57
+    },
+    {
+      "date": "2025-05-10",
+      "hour": 5,
+      "focus_score": 7
+    },
+    {
+      "date": "2025-05-10",
+      "hour": 7,
+      "focus_score": 37
+    },
+    {
+      "date": "2025-05-10",
+      "hour": 19,
+      "focus_score": 99
+    },
+    {
+      "date": "2025-05-11",
+      "hour": 10,
+      "focus_score": 39
+    },
+    {
+      "date": "2025-05-11",
+      "hour": 17,
+      "focus_score": 16
+    },
+    {
+      "date": "2025-05-11",
+      "hour": 19,
+      "focus_score": 62
+    },
+    {
+      "date": "2025-05-12",
+      "hour": 2,
+      "focus_score": 89
+    },
+    {
+      "date": "2025-05-12",
+      "hour": 6,
+      "focus_score": 91
+    },
+    {
+      "date": "2025-05-12",
+      "hour": 19,
+      "focus_score": 55
+    },
+    {
+      "date": "2025-05-13",
+      "hour": 4,
+      "focus_score": 9
+    },
+    {
+      "date": "2025-05-13",
+      "hour": 9,
+      "focus_score": 29
+    },
+    {
+      "date": "2025-05-13",
+      "hour": 19,
+      "focus_score": 63
+    },
+    {
+      "date": "2025-05-14",
+      "hour": 14,
+      "focus_score": 70
+    },
+    {
+      "date": "2025-05-14",
+      "hour": 16,
+      "focus_score": 1
+    },
+    {
+      "date": "2025-05-15",
+      "hour": 5,
+      "focus_score": 9
+    },
+    {
+      "date": "2025-05-15",
+      "hour": 10,
+      "focus_score": 20
+    },
+    {
+      "date": "2025-05-15",
+      "hour": 13,
+      "focus_score": 33
+    },
+    {
+      "date": "2025-05-15",
+      "hour": 21,
+      "focus_score": 45
+    },
+    {
+      "date": "2025-05-16",
+      "hour": 0,
+      "focus_score": 90
+    },
+    {
+      "date": "2025-05-16",
+      "hour": 12,
+      "focus_score": 39
+    },
+    {
+      "date": "2025-05-16",
+      "hour": 13,
+      "focus_score": 37
+    },
+    {
+      "date": "2025-05-16",
+      "hour": 19,
+      "focus_score": 11
+    },
+    {
+      "date": "2025-05-17",
+      "hour": 11,
+      "focus_score": 82
+    },
+    {
+      "date": "2025-05-17",
+      "hour": 13,
+      "focus_score": 47
+    },
+    {
+      "date": "2025-05-17",
+      "hour": 14,
+      "focus_score": 46
+    },
+    {
+      "date": "2025-05-18",
+      "hour": 0,
+      "focus_score": 80
+    },
+    {
+      "date": "2025-05-18",
+      "hour": 15,
+      "focus_score": 37
+    },
+    {
+      "date": "2025-05-18",
+      "hour": 16,
+      "focus_score": 32
+    },
+    {
+      "date": "2025-05-18",
+      "hour": 21,
+      "focus_score": 52
+    },
+    {
+      "date": "2025-05-19",
+      "hour": 0,
+      "focus_score": 41
+    },
+    {
+      "date": "2025-05-19",
+      "hour": 18,
+      "focus_score": 81
+    },
+    {
+      "date": "2025-05-20",
+      "hour": 3,
+      "focus_score": 76
+    },
+    {
+      "date": "2025-05-20",
+      "hour": 7,
+      "focus_score": 21
+    },
+    {
+      "date": "2025-05-20",
+      "hour": 13,
+      "focus_score": 21
+    },
+    {
+      "date": "2025-05-21",
+      "hour": 6,
+      "focus_score": 36
+    },
+    {
+      "date": "2025-05-21",
+      "hour": 15,
+      "focus_score": 68
+    },
+    {
+      "date": "2025-05-21",
+      "hour": 18,
+      "focus_score": 22
+    },
+    {
+      "date": "2025-05-21",
+      "hour": 20,
+      "focus_score": 20
+    },
+    {
+      "date": "2025-05-22",
+      "hour": 12,
+      "focus_score": 78
+    },
+    {
+      "date": "2025-05-22",
+      "hour": 14,
+      "focus_score": 31
+    },
+    {
+      "date": "2025-05-22",
+      "hour": 22,
+      "focus_score": 31
+    },
+    {
+      "date": "2025-05-22",
+      "hour": 23,
+      "focus_score": 75
+    },
+    {
+      "date": "2025-05-23",
+      "hour": 1,
+      "focus_score": 36
+    },
+    {
+      "date": "2025-05-23",
+      "hour": 11,
+      "focus_score": 24
+    },
+    {
+      "date": "2025-05-24",
+      "hour": 1,
+      "focus_score": 93
+    },
+    {
+      "date": "2025-05-24",
+      "hour": 4,
+      "focus_score": 0
+    },
+    {
+      "date": "2025-05-24",
+      "hour": 6,
+      "focus_score": 42
+    },
+    {
+      "date": "2025-05-24",
+      "hour": 17,
+      "focus_score": 52
+    },
+    {
+      "date": "2025-05-25",
+      "hour": 5,
+      "focus_score": 69
+    },
+    {
+      "date": "2025-05-25",
+      "hour": 11,
+      "focus_score": 59
+    },
+    {
+      "date": "2025-05-25",
+      "hour": 13,
+      "focus_score": 19
+    },
+    {
+      "date": "2025-05-26",
+      "hour": 2,
+      "focus_score": 61
+    },
+    {
+      "date": "2025-05-26",
+      "hour": 20,
+      "focus_score": 94
+    },
+    {
+      "date": "2025-05-26",
+      "hour": 21,
+      "focus_score": 37
+    },
+    {
+      "date": "2025-05-27",
+      "hour": 6,
+      "focus_score": 94
+    },
+    {
+      "date": "2025-05-27",
+      "hour": 9,
+      "focus_score": 35
+    },
+    {
+      "date": "2025-05-27",
+      "hour": 11,
+      "focus_score": 28
+    },
+    {
+      "date": "2025-05-27",
+      "hour": 14,
+      "focus_score": 24
+    },
+    {
+      "date": "2025-05-28",
+      "hour": 6,
+      "focus_score": 79
+    },
+    {
+      "date": "2025-05-28",
+      "hour": 9,
+      "focus_score": 100
+    },
+    {
+      "date": "2025-05-28",
+      "hour": 20,
+      "focus_score": 49
+    },
+    {
+      "date": "2025-05-29",
+      "hour": 0,
+      "focus_score": 94
+    },
+    {
+      "date": "2025-05-29",
+      "hour": 2,
+      "focus_score": 64
+    },
+    {
+      "date": "2025-05-29",
+      "hour": 4,
+      "focus_score": 31
+    },
+    {
+      "date": "2025-05-29",
+      "hour": 18,
+      "focus_score": 2
+    },
+    {
+      "date": "2025-05-30",
+      "hour": 1,
+      "focus_score": 20
+    },
+    {
+      "date": "2025-05-30",
+      "hour": 4,
+      "focus_score": 90
+    },
+    {
+      "date": "2025-05-30",
+      "hour": 9,
+      "focus_score": 1
+    },
+    {
+      "date": "2025-05-30",
+      "hour": 14,
+      "focus_score": 35
+    },
+    {
+      "date": "2025-05-31",
+      "hour": 2,
+      "focus_score": 74
+    },
+    {
+      "date": "2025-05-31",
+      "hour": 19,
+      "focus_score": 64
+    },
+    {
+      "date": "2025-05-31",
+      "hour": 22,
+      "focus_score": 69
+    },
+    {
+      "date": "2025-05-31",
+      "hour": 23,
+      "focus_score": 3
+    },
+    {
+      "date": "2025-06-01",
+      "hour": 8,
+      "focus_score": 46
+    },
+    {
+      "date": "2025-06-01",
+      "hour": 13,
+      "focus_score": 2
+    },
+    {
+      "date": "2025-06-01",
+      "hour": 22,
+      "focus_score": 50
+    },
+    {
+      "date": "2025-06-02",
+      "hour": 2,
+      "focus_score": 83
+    },
+    {
+      "date": "2025-06-02",
+      "hour": 14,
+      "focus_score": 55
+    },
+    {
+      "date": "2025-06-03",
+      "hour": 6,
+      "focus_score": 28
+    },
+    {
+      "date": "2025-06-03",
+      "hour": 8,
+      "focus_score": 20
+    },
+    {
+      "date": "2025-06-03",
+      "hour": 22,
+      "focus_score": 22
+    },
+    {
+      "date": "2025-06-03",
+      "hour": 23,
+      "focus_score": 26
+    },
+    {
+      "date": "2025-06-04",
+      "hour": 1,
+      "focus_score": 29
+    },
+    {
+      "date": "2025-06-04",
+      "hour": 9,
+      "focus_score": 2
+    },
+    {
+      "date": "2025-06-04",
+      "hour": 18,
+      "focus_score": 55
+    },
+    {
+      "date": "2025-06-04",
+      "hour": 23,
+      "focus_score": 72
+    },
+    {
+      "date": "2025-06-05",
+      "hour": 16,
+      "focus_score": 57
+    },
+    {
+      "date": "2025-06-05",
+      "hour": 21,
+      "focus_score": 69
+    },
+    {
+      "date": "2025-06-06",
+      "hour": 5,
+      "focus_score": 100
+    },
+    {
+      "date": "2025-06-06",
+      "hour": 8,
+      "focus_score": 4
+    },
+    {
+      "date": "2025-06-06",
+      "hour": 9,
+      "focus_score": 18
+    },
+    {
+      "date": "2025-06-06",
+      "hour": 11,
+      "focus_score": 59
+    },
+    {
+      "date": "2025-06-07",
+      "hour": 2,
+      "focus_score": 47
+    },
+    {
+      "date": "2025-06-07",
+      "hour": 12,
+      "focus_score": 87
+    },
+    {
+      "date": "2025-06-08",
+      "hour": 2,
+      "focus_score": 48
+    },
+    {
+      "date": "2025-06-08",
+      "hour": 18,
+      "focus_score": 45
+    },
+    {
+      "date": "2025-06-08",
+      "hour": 20,
+      "focus_score": 82
+    },
+    {
+      "date": "2025-06-09",
+      "hour": 4,
+      "focus_score": 0
+    },
+    {
+      "date": "2025-06-09",
+      "hour": 17,
+      "focus_score": 10
+    },
+    {
+      "date": "2025-06-09",
+      "hour": 18,
+      "focus_score": 93
+    },
+    {
+      "date": "2025-06-09",
+      "hour": 23,
+      "focus_score": 94
+    },
+    {
+      "date": "2025-06-10",
+      "hour": 7,
+      "focus_score": 18
+    },
+    {
+      "date": "2025-06-10",
+      "hour": 12,
+      "focus_score": 42
+    },
+    {
+      "date": "2025-06-10",
+      "hour": 23,
+      "focus_score": 13
+    },
+    {
+      "date": "2025-06-11",
+      "hour": 6,
+      "focus_score": 49
+    },
+    {
+      "date": "2025-06-11",
+      "hour": 12,
+      "focus_score": 9
+    },
+    {
+      "date": "2025-06-11",
+      "hour": 14,
+      "focus_score": 17
+    },
+    {
+      "date": "2025-06-11",
+      "hour": 19,
+      "focus_score": 6
+    },
+    {
+      "date": "2025-06-12",
+      "hour": 2,
+      "focus_score": 37
+    },
+    {
+      "date": "2025-06-12",
+      "hour": 6,
+      "focus_score": 19
+    },
+    {
+      "date": "2025-06-12",
+      "hour": 17,
+      "focus_score": 66
+    },
+    {
+      "date": "2025-06-13",
+      "hour": 1,
+      "focus_score": 60
+    },
+    {
+      "date": "2025-06-13",
+      "hour": 6,
+      "focus_score": 46
+    },
+    {
+      "date": "2025-06-13",
+      "hour": 11,
+      "focus_score": 59
+    },
+    {
+      "date": "2025-06-13",
+      "hour": 20,
+      "focus_score": 59
+    },
+    {
+      "date": "2025-06-14",
+      "hour": 5,
+      "focus_score": 18
+    },
+    {
+      "date": "2025-06-14",
+      "hour": 13,
+      "focus_score": 66
+    },
+    {
+      "date": "2025-06-14",
+      "hour": 15,
+      "focus_score": 46
+    },
+    {
+      "date": "2025-06-14",
+      "hour": 19,
+      "focus_score": 28
+    },
+    {
+      "date": "2025-06-15",
+      "hour": 0,
+      "focus_score": 77
+    },
+    {
+      "date": "2025-06-15",
+      "hour": 7,
+      "focus_score": 54
+    },
+    {
+      "date": "2025-06-16",
+      "hour": 0,
+      "focus_score": 74
+    },
+    {
+      "date": "2025-06-16",
+      "hour": 12,
+      "focus_score": 12
+    },
+    {
+      "date": "2025-06-16",
+      "hour": 19,
+      "focus_score": 99
+    },
+    {
+      "date": "2025-06-17",
+      "hour": 9,
+      "focus_score": 85
+    },
+    {
+      "date": "2025-06-17",
+      "hour": 16,
+      "focus_score": 13
+    },
+    {
+      "date": "2025-06-18",
+      "hour": 11,
+      "focus_score": 15
+    },
+    {
+      "date": "2025-06-18",
+      "hour": 12,
+      "focus_score": 11
+    },
+    {
+      "date": "2025-06-18",
+      "hour": 20,
+      "focus_score": 59
+    },
+    {
+      "date": "2025-06-19",
+      "hour": 13,
+      "focus_score": 79
+    },
+    {
+      "date": "2025-06-19",
+      "hour": 14,
+      "focus_score": 52
+    },
+    {
+      "date": "2025-06-19",
+      "hour": 17,
+      "focus_score": 70
+    },
+    {
+      "date": "2025-06-19",
+      "hour": 23,
+      "focus_score": 43
+    },
+    {
+      "date": "2025-06-20",
+      "hour": 0,
+      "focus_score": 39
+    },
+    {
+      "date": "2025-06-20",
+      "hour": 3,
+      "focus_score": 56
+    },
+    {
+      "date": "2025-06-20",
+      "hour": 19,
+      "focus_score": 85
+    },
+    {
+      "date": "2025-06-20",
+      "hour": 23,
+      "focus_score": 19
+    },
+    {
+      "date": "2025-06-21",
+      "hour": 1,
+      "focus_score": 48
+    },
+    {
+      "date": "2025-06-21",
+      "hour": 3,
+      "focus_score": 98
+    },
+    {
+      "date": "2025-06-21",
+      "hour": 19,
+      "focus_score": 71
+    },
+    {
+      "date": "2025-06-22",
+      "hour": 2,
+      "focus_score": 43
+    },
+    {
+      "date": "2025-06-22",
+      "hour": 18,
+      "focus_score": 97
+    },
+    {
+      "date": "2025-06-23",
+      "hour": 1,
+      "focus_score": 8
+    },
+    {
+      "date": "2025-06-23",
+      "hour": 8,
+      "focus_score": 1
+    },
+    {
+      "date": "2025-06-23",
+      "hour": 18,
+      "focus_score": 58
+    },
+    {
+      "date": "2025-06-23",
+      "hour": 23,
+      "focus_score": 32
+    },
+    {
+      "date": "2025-06-24",
+      "hour": 0,
+      "focus_score": 36
+    },
+    {
+      "date": "2025-06-24",
+      "hour": 7,
+      "focus_score": 51
+    },
+    {
+      "date": "2025-06-24",
+      "hour": 10,
+      "focus_score": 5
+    },
+    {
+      "date": "2025-06-24",
+      "hour": 16,
+      "focus_score": 45
+    },
+    {
+      "date": "2025-06-25",
+      "hour": 7,
+      "focus_score": 1
+    },
+    {
+      "date": "2025-06-25",
+      "hour": 11,
+      "focus_score": 27
+    },
+    {
+      "date": "2025-06-25",
+      "hour": 19,
+      "focus_score": 15
+    },
+    {
+      "date": "2025-06-26",
+      "hour": 14,
+      "focus_score": 51
+    },
+    {
+      "date": "2025-06-26",
+      "hour": 16,
+      "focus_score": 27
+    },
+    {
+      "date": "2025-06-26",
+      "hour": 18,
+      "focus_score": 12
+    },
+    {
+      "date": "2025-06-27",
+      "hour": 4,
+      "focus_score": 84
+    },
+    {
+      "date": "2025-06-27",
+      "hour": 16,
+      "focus_score": 54
+    },
+    {
+      "date": "2025-06-27",
+      "hour": 23,
+      "focus_score": 98
+    },
+    {
+      "date": "2025-06-28",
+      "hour": 15,
+      "focus_score": 85
+    },
+    {
+      "date": "2025-06-28",
+      "hour": 18,
+      "focus_score": 68
+    },
+    {
+      "date": "2025-06-28",
+      "hour": 20,
+      "focus_score": 44
+    },
+    {
+      "date": "2025-06-29",
+      "hour": 6,
+      "focus_score": 40
+    },
+    {
+      "date": "2025-06-29",
+      "hour": 16,
+      "focus_score": 32
+    },
+    {
+      "date": "2025-06-29",
+      "hour": 21,
+      "focus_score": 28
+    },
+    {
+      "date": "2025-06-29",
+      "hour": 22,
+      "focus_score": 35
+    },
+    {
+      "date": "2025-06-30",
+      "hour": 0,
+      "focus_score": 58
+    },
+    {
+      "date": "2025-06-30",
+      "hour": 1,
+      "focus_score": 40
+    }
+  ]
+}
