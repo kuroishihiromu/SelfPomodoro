@@ -29,7 +29,7 @@ struct AuthScreenView: View {
                     height: 44,
                     text: $store.email
                 )
-                NormalTextField(
+                PasswordTextField(
                     placeholder: "Enter your password",
                     icon: Image(.key),
                     width: 350,
