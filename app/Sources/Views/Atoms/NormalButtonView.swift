@@ -1,3 +1,10 @@
+//
+//  NormalButtonView.swift
+//  SelfPomodoro
+//
+//  Created by 黒石陽夢 on 2025/03/20.
+//
+
 import SwiftUI
 
 struct NormalButton: View {
@@ -45,59 +52,5 @@ struct NormalButton: View {
             .background(bgColor)
             .cornerRadius(10)
         }
-    }
-}
-
-#Preview {
-    VStack {
-        NormalButton(
-            text: "Get Started",
-            bgColor: ColorTheme.navy,
-            fontColor: ColorTheme.white,
-            width: 350,
-            height: 52,
-            action: { print("yahhoi!") }
-        )
-        NormalButton(
-            text: "Sign Up ",
-            bgColor: ColorTheme.navy,
-            fontColor: ColorTheme.white,
-            width: 350,
-            height: 44,
-            action: { print("yahhoi!") }
-        )
-        NormalButton(
-            text: "Save",
-            bgColor: ColorTheme.navy,
-            fontColor: ColorTheme.white,
-            width: 160,
-            height: 44,
-            action: { print("yahhoi!") }
-        )
-        NormalButton(
-            text: "Reset",
-            bgColor: ColorTheme.lightSkyBlue,
-            fontColor: ColorTheme.navy,
-            width: 160,
-            height: 44,
-            action: { print("yahhoi!") }
-        )
-        NormalButton(
-            text: "Start",
-            bgColor: ColorTheme.black,
-            fontColor: ColorTheme.white,
-            width: 160,
-            height: 44,
-            action: { print("yahhoi!") }
-        )
-        NormalButton(
-            text: "Add Task",
-            bgColor: ColorTheme.navy,
-            fontColor: ColorTheme.white,
-            icon: Image(.add),
-            width: 160,
-            height: 44,
-            action: { print("yahhoi!") }
-        )
     }
 }

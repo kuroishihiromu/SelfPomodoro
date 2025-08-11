@@ -10,6 +10,8 @@ import SwiftUI
 struct TaskTimerView: View {
     let currentSeconds: Int
     let totalSeconds: Int
+    let mainColor: Color
+    let subColor: Color
     private let barWidth: CGFloat = 350
 
     var body: some View {
@@ -21,12 +23,12 @@ struct TaskTimerView: View {
             ZStack(alignment: .leading) {
                 // 背景バー
                 Capsule()
-                    .fill(ColorTheme.lightSkyBlue)
+                    .fill(subColor)
                     .frame(width: barWidth, height: 7)
 
                 // 進捗バー
                 Capsule()
-                    .fill(ColorTheme.navy)
+                    .fill(mainColor)
                     .frame(
                         width: barWidth * progress(current: currentSeconds, total: totalSeconds),
                         height: 7
@@ -47,10 +49,10 @@ struct TaskTimerView: View {
 
 #Preview {
     VStack(spacing: 40) {
-        TaskTimerView(currentSeconds: 0, totalSeconds: 60)
-        TaskTimerView(currentSeconds: 10, totalSeconds: 60)
-        TaskTimerView(currentSeconds: 30, totalSeconds: 60)
-        TaskTimerView(currentSeconds: 60, totalSeconds: 60)
+        TaskTimerView(currentSeconds:   10, totalSeconds: 60, mainColor: ColorTheme.navy, subColor: ColorTheme.lightSkyBlue)
+        TaskTimerView(currentSeconds: 30, totalSeconds: 60,mainColor: ColorTheme.navy, subColor: ColorTheme.lightSkyBlue)
+        TaskTimerView(currentSeconds: 30, totalSeconds: 60,mainColor: ColorTheme.lightSkyBlue, subColor: ColorTheme.navy)
+        TaskTimerView(currentSeconds: 50, totalSeconds: 60,mainColor: ColorTheme.lightSkyBlue, subColor: ColorTheme.navy)
     }
     .padding()
 }

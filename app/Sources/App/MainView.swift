@@ -9,32 +9,61 @@ import ComposableArchitecture
 import SwiftUI
 
 struct MainView: View {
-    let store: StoreOf<TabButtonFeature>
-
+    var token: AuthTokens
+    
+    let store: StoreOf<TabButtonFeature> = Store(initialState: TabButtonFeature.State()) {
+        TabButtonFeature()
+    }
+    
+    init(token: AuthTokens) {
+        self.token = token
+    }
+    
+    let timerStore = Store(
+        initialState: TimerScreenFeature.State(
+            timer: TimerFeature.State(
+                totalSeconds: 23*62,
+                taskDuration: 30,
+                shortBreakDuration: 5*60,
+                longBreakDuration: 20,
+                roundsPerSession: 3
+            ),
+            evalModal: nil
+        ),
+        reducer: { TimerScreenFeature() }
+    )
+    let toDoStore = Store(initialState: ToDoListFeature.State()) {
+        ToDoListFeature()
+    }
+    
+    let statisticsStore = Store(initialState: StatisticsFeature.State()) {
+        StatisticsFeature()
+    }
+    
     var body: some View {
-        WithViewStore(store, observe: { $0 }) { viewStore in
+        WithViewStore(store, observe: \.selectedTabIndex) { viewStore in
             VStack(spacing: 0) {
-                // タブによって画面切り替え
                 Group {
-                    switch viewStore.selectedTabIndex {
-                    case 0: HomeScreenView()
-                    case 1: TaskManagementScreenView()
-                    case 2: StatisticsScreenView()
-                    case 3: ProfileScreenView()
-                    default: EmptyView()
+                    switch viewStore.state {
+                    case 0:
+                        TimerScreenView(store: timerStore)
+                    case 1:
+                        TaskManagementScreenView(
+                            store: store.scope(state: \.todoListState, action: \.todoList)
+                        )
+                    case 2:
+                        StatisticsScreenView(store: statisticsStore)
+
+                    case 3:
+                        ProfileScreenView()
+                    default:
+                        EmptyView()
                     }
                 }
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
-                // タブバーを表示
+
                 TabBarView(store: store)
             }
         }
     }
-}
-
-#Preview {
-    MainView(store: Store(initialState: TabButtonFeature.State()) {
-        TabButtonFeature()
-    }
-    )
 }

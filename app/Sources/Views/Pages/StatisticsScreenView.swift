@@ -6,13 +6,42 @@
 //
 
 import SwiftUI
+import ComposableArchitecture
 
-struct StatisticsScreenView: View {
-    var body: some View {
-        Text(/*@START_MENU_TOKEN@*/"Hello, World!"/*@END_MENU_TOKEN@*/)
+@Reducer
+struct StatisticsFeature {
+    @ObservableState
+    struct State: Equatable {
+        var chart = ChartFeature.State()
+        var heatMap = HeatMapFeature.State()
+    }
+    
+    enum Action {
+        case chart(ChartFeature.Action)
+        case heatMap(HeatMapFeature.Action)
+    }
+    
+    var body: some ReducerOf<Self> {
+        Scope(state: \.chart, action: \.chart) {
+            ChartFeature()
+        }
+        Scope(state: \.heatMap, action: \.heatMap) {
+            HeatMapFeature()
+        }
     }
 }
 
-#Preview {
-    StatisticsScreenView()
+struct StatisticsScreenView: View {
+    let store: StoreOf<StatisticsFeature>
+
+    var body: some View {
+        ScrollView {
+            VStack(spacing: 24) {
+                ChartView(store: store.scope(state: \.chart, action: \.chart))
+                
+                HeatMapView(store: store.scope(state: \.heatMap, action: \.heatMap))
+            }
+            .padding(.bottom)
+        }
+    }
 }
