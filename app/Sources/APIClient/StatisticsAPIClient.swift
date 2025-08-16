@@ -23,20 +23,9 @@ struct StatisticsAPIClient {
 extension StatisticsAPIClient {
     static let live = StatisticsAPIClient(
         fetchConcentrationData: {
-            @Dependency(\.tokenProvider) var tokenProvider
-            
-            var headers = [
-                "Content-Type": "application/json"
-            ]
-            
-            if let token = tokenProvider.getAuthToken() {
-                headers["Authorization"] = "Bearer \(token)"
-            }
-            
             let request = RESTRequest(
                 apiName: "selfpomodoro",
-                path: "/dev/api/v1/statistics/focus-trend",
-                headers: headers
+                path: "/dev/api/v1/statistics/focus-trend"
             )
 
             do {

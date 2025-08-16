@@ -60,15 +60,9 @@ struct SelfPomodoroApp: App {
                     refreshToken: token.refreshToken
                 )
                 tokens = authTokens
-                
-                // トークンをTokenStorageに保存
-                TokenStorage.shared.setToken(authTokens)
-                
                 isSignedIn = true
             } else {
                 isSignedIn = false
-                // トークンをクリア
-                TokenStorage.shared.clearToken()
             }
         } catch {
             if let authError = error as? AuthError,
@@ -77,8 +71,6 @@ struct SelfPomodoroApp: App {
                cognitoError.properties.message?.contains("Refresh Token has expired") == true {
             }
             isSignedIn = false
-            // エラー時はトークンをクリア
-            TokenStorage.shared.clearToken()
         }
     }
 }

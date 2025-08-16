@@ -16,20 +16,9 @@ struct UserConfigAPIClient {
 extension UserConfigAPIClient {
     static let live = UserConfigAPIClient(
         getUserConfig: {
-            @Dependency(\.tokenProvider) var tokenProvider
-            
-            var headers = [
-                "Content-Type": "application/json"
-            ]
-            
-            if let token = tokenProvider.getAuthToken() {
-                headers["Authorization"] = "Bearer \(token)"
-            }
-            
             let request = RESTRequest(
                 apiName: "selfpomodoro",
-                path: "/dev/api/v1/user-config",
-                headers: headers
+                path: "/dev/api/v1/user-config"
             )
 
             let data = try await Amplify.API.get(request: request)

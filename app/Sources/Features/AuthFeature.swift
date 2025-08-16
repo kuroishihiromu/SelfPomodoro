@@ -54,9 +54,6 @@ struct AuthFeature: Reducer {
                 state.isLoggedIn = true
                 state.errorMessage = nil
                 
-                // トークンをTokenStorageに保存
-                TokenStorage.shared.setToken(tokens)
-                
                 return .none
 
             case let .loginResponse(.failure(error)):
