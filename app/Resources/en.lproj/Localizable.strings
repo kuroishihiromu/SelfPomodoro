@@ -1,0 +1,82 @@
+/* 
+  Localizable.strings (English)
+  SelfPomodoro
+  
+  Created by Claude on 2025/01/16.
+*/
+
+// MARK: - Authentication Screen
+"auth.create_account" = "Create Account";
+"auth.description" = "Create your account to start managing your time effectively";
+"auth.email_placeholder" = "Your email address";
+"auth.password_placeholder" = "Enter your password";
+"auth.terms_agreement" = "I agree with Terms & Conditions";
+"auth.login_button" = "Log in";
+"auth.signup_button" = "Sign Up";
+"auth.terms_required" = "Please agree to the Terms & Conditions.";
+
+// MARK: - Timer Screen
+"timer.pomodoro" = "Pomodoro";
+"timer.short_break" = "Short Break";
+"timer.long_break" = "Long Break";
+"timer.start" = "Start";
+"timer.pause" = "Pause";
+"timer.resume" = "Resume";
+"timer.stop" = "Stop";
+"timer.reset" = "Reset";
+
+// MARK: - Task Management
+"tasks.title" = "Task Management";
+"tasks.add_task" = "Add Task";
+"tasks.task_placeholder" = "Enter new task";
+"tasks.completed" = "Completed";
+"tasks.pending" = "Pending";
+"tasks.delete" = "Delete";
+
+// MARK: - Statistics Screen
+"stats.title" = "Statistics";
+"stats.focus_trend" = "Focus Trend";
+"stats.daily_summary" = "Daily Summary";
+"stats.weekly_summary" = "Weekly Summary";
+"stats.concentration_score" = "Concentration Score";
+
+// MARK: - Profile Screen
+"profile.title" = "Profile";
+"profile.settings" = "Settings";
+"profile.logout" = "Logout";
+"profile.account" = "Account";
+
+// MARK: - Settings Screen
+"settings.title" = "Settings";
+"settings.timer_settings" = "Timer Settings";
+"settings.work_duration" = "Work Duration";
+"settings.short_break_duration" = "Short Break Duration";
+"settings.long_break_duration" = "Long Break Duration";
+"settings.rounds_per_session" = "Rounds per Session";
+"settings.notifications" = "Notifications";
+"settings.sound" = "Sound";
+
+// MARK: - General
+"general.cancel" = "Cancel";
+"general.ok" = "OK";
+"general.save" = "Save";
+"general.delete" = "Delete";
+"general.edit" = "Edit";
+"general.done" = "Done";
+"general.close" = "Close";
+"general.yes" = "Yes";
+"general.no" = "No";
+
+// MARK: - Error Messages
+"error.network" = "Network error occurred";
+"error.authentication" = "Authentication failed";
+"error.invalid_email" = "Please enter a valid email address";
+"error.invalid_password" = "Password must be at least 8 characters";
+"error.unknown" = "An unexpected error occurred";
+
+// MARK: - Success Messages
+"success.login" = "Successfully logged in";
+"success.signup" = "Account created successfully";
+"success.task_added" = "Task added successfully";
+"success.task_completed" = "Task completed successfully";
+"success.settings_saved" = "Settings saved successfully";

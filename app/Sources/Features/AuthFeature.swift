@@ -36,7 +36,7 @@ struct AuthFeature: Reducer {
             switch action {
             case .tappedLogin:
                 guard state.isAgreed else {
-                    state.errorMessage = "利用規約に同意してください。"
+                    state.errorMessage = L10n.Auth.termsRequired
                     return .none
                 }
 
