@@ -7,6 +7,8 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		431AA95E2E50D3C100340D75 /* Localizable.strings in Resources */ = {isa = PBXBuildFile; fileRef = 431AA95B2E50D3C100340D75 /* Localizable.strings */; };
+		431AA9622E50D3D400340D75 /* Localizable.strings in Resources */ = {isa = PBXBuildFile; fileRef = 431AA9612E50D3D400340D75 /* Localizable.strings */; };
 		433B07D32E16265A009DAFAF /* amplifyconfiguration.json in Sources */ = {isa = PBXBuildFile; fileRef = 433B07D22E162659009DAFAF /* amplifyconfiguration.json */; };
 		433B07D42E16275D009DAFAF /* amplifyconfiguration.json in Resources */ = {isa = PBXBuildFile; fileRef = 433B07D22E162659009DAFAF /* amplifyconfiguration.json */; };
 		434F40862DB1D86200EE4D6D /* PostgREST in Frameworks */ = {isa = PBXBuildFile; productRef = 434F40852DB1D86200EE4D6D /* PostgREST */; };
@@ -39,6 +41,8 @@
 /* End PBXContainerItemProxy section */
 
 /* Begin PBXFileReference section */
+		431AA95A2E50D3C100340D75 /* en */ = {isa = PBXFileReference; lastKnownFileType = text.plist.strings; name = en; path = en.lproj/Localizable.strings; sourceTree = "<group>"; };
+		431AA9602E50D3D400340D75 /* ja */ = {isa = PBXFileReference; lastKnownFileType = text.plist.strings; name = ja; path = ja.lproj/Localizable.strings; sourceTree = "<group>"; };
 		433A04352CE4979100E73A8E /* SelfPomodoro.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = SelfPomodoro.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		433A04452CE4979200E73A8E /* SelfPomodoroTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = SelfPomodoroTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		433A044F2CE4979200E73A8E /* SelfPomodoroUITests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = SelfPomodoroUITests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
@@ -103,6 +107,23 @@
 /* End PBXFrameworksBuildPhase section */
 
 /* Begin PBXGroup section */
+		431AA9592E50D3C100340D75 /* MockData */ = {
+			isa = PBXGroup;
+			children = (
+			);
+			path = MockData;
+			sourceTree = "<group>";
+		};
+		431AA95D2E50D3C100340D75 /* Resources */ = {
+			isa = PBXGroup;
+			children = (
+				431AA9592E50D3C100340D75 /* MockData */,
+				431AA95B2E50D3C100340D75 /* Localizable.strings */,
+				431AA9612E50D3D400340D75 /* Localizable.strings */,
+			);
+			path = Resources;
+			sourceTree = "<group>";
+		};
 		433A042C2CE4979100E73A8E = {
 			isa = PBXGroup;
 			children = (
@@ -111,9 +132,9 @@
 				433A04372CE4979100E73A8E /* Sources */,
 				433A04482CE4979200E73A8E /* Tests */,
 				433A04522CE4979200E73A8E /* UITests */,
-				439F0F5D2D3506E600C3D3F4 /* Frameworks */,
 				433A04362CE4979100E73A8E /* Products */,
 				43CC49892D8D6E85003CA625 /* Assets.xcassets */,
+				431AA95D2E50D3C100340D75 /* Resources */,
 			);
 			sourceTree = "<group>";
 		};
@@ -125,13 +146,6 @@
 				433A044F2CE4979200E73A8E /* SelfPomodoroUITests.xctest */,
 			);
 			name = Products;
-			sourceTree = "<group>";
-		};
-		439F0F5D2D3506E600C3D3F4 /* Frameworks */ = {
-			isa = PBXGroup;
-			children = (
-			);
-			name = Frameworks;
 			sourceTree = "<group>";
 		};
 /* End PBXGroup section */
@@ -244,6 +258,7 @@
 			knownRegions = (
 				en,
 				Base,
+				ja,
 			);
 			mainGroup = 433A042C2CE4979100E73A8E;
 			minimizedProjectReferenceProxies = 1;
@@ -271,6 +286,8 @@
 			files = (
 				433B07D42E16275D009DAFAF /* amplifyconfiguration.json in Resources */,
 				43CC498A2D8D6E85003CA625 /* Assets.xcassets in Resources */,
+				431AA95E2E50D3C100340D75 /* Localizable.strings in Resources */,
+				431AA9622E50D3D400340D75 /* Localizable.strings in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -327,6 +344,25 @@
 			targetProxy = 433A04502CE4979200E73A8E /* PBXContainerItemProxy */;
 		};
 /* End PBXTargetDependency section */
+
+/* Begin PBXVariantGroup section */
+		431AA95B2E50D3C100340D75 /* Localizable.strings */ = {
+			isa = PBXVariantGroup;
+			children = (
+				431AA95A2E50D3C100340D75 /* en */,
+			);
+			name = Localizable.strings;
+			sourceTree = "<group>";
+		};
+		431AA9612E50D3D400340D75 /* Localizable.strings */ = {
+			isa = PBXVariantGroup;
+			children = (
+				431AA9602E50D3D400340D75 /* ja */,
+			);
+			name = Localizable.strings;
+			sourceTree = "<group>";
+		};
+/* End PBXVariantGroup section */
 
 /* Begin XCBuildConfiguration section */
 		433A04572CE4979200E73A8E /* Debug */ = {

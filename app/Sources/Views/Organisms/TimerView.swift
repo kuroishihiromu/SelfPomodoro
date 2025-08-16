@@ -19,7 +19,7 @@ struct TimerView: View {
                     .font(.system(size: 22, weight: .bold))
 
                 // フェーズ（Task/Break）の表示
-                Text(viewStore.phase == .task ? "Task Time" : "Break Time")
+                Text(viewStore.phase == .task ? L10n.Timer.taskTime : L10n.Timer.breakTime)
                     .font(.system(size: 18, weight: .medium))
                     .foregroundColor(.gray)
 

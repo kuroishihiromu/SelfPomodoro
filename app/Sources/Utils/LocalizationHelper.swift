@@ -44,6 +44,18 @@ enum L10n {
         static let resume = "timer.resume".localized
         static let stop = "timer.stop".localized
         static let reset = "timer.reset".localized
+        static let startBreak = "timer.start_break".localized
+        static let taskTime = "timer.task_time".localized
+        static let breakTime = "timer.break_time".localized
+    }
+    
+    // MARK: - 評価画面
+    enum Evaluation {
+        static let title = "evaluation.title".localized
+        static let round = "evaluation.round".localized
+        static let sessionComplete = "evaluation.session_complete".localized
+        static let selectTime = "evaluation.select_time".localized
+        static let achieved = "evaluation.achieved".localized
     }
     
     // MARK: - タスク管理
@@ -63,6 +75,26 @@ enum L10n {
         static let dailySummary = "stats.daily_summary".localized
         static let weeklySummary = "stats.weekly_summary".localized
         static let concentrationScore = "stats.concentration_score".localized
+    }
+    
+    // MARK: - ヒートマップ画面
+    enum HeatMap {
+        static let title = "heatmap.title".localized
+        static let prev = "heatmap.prev".localized
+        static let next = "heatmap.next".localized
+        static let axisLabel = "heatmap.axis_label".localized
+        static let low = "heatmap.low".localized
+        static let high = "heatmap.high".localized
+    }
+    
+    // MARK: - チャート画面
+    enum Chart {
+        static let title = "chart.title".localized
+        static let prev = "chart.prev".localized
+        static let next = "chart.next".localized
+        static let concentration = "chart.concentration".localized
+        static let movingAverage = "chart.moving_average".localized
+        static let stdDeviation = "chart.std_deviation".localized
     }
     
     // MARK: - プロフィール画面

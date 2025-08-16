@@ -24,6 +24,8 @@
 "timer.resume" = "再開";
 "timer.stop" = "停止";
 "timer.reset" = "リセット";
+"timer.task_time" = "作業時間";
+"timer.break_time" = "休憩時間";
 
 // MARK: - タスク管理
 "tasks.title" = "タスク管理";
@@ -39,6 +41,22 @@
 "stats.daily_summary" = "日別サマリー";
 "stats.weekly_summary" = "週別サマリー";
 "stats.concentration_score" = "集中度スコア";
+
+// MARK: - ヒートマップ画面
+"heatmap.title" = "集中度スコア ヒートマップ";
+"heatmap.prev" = "前月";
+"heatmap.next" = "次月";
+"heatmap.axis_label" = "縦軸：日　横軸：時間";
+"heatmap.low" = "低";
+"heatmap.high" = "高";
+
+// MARK: - チャート画面
+"chart.title" = "集中度チャート";
+"chart.prev" = "前週";
+"chart.next" = "次週";
+"chart.concentration" = "集中度";
+"chart.moving_average" = "移動平均";
+"chart.std_deviation" = "±1標準偏差";
 
 // MARK: - プロフィール画面
 "profile.title" = "プロフィール";

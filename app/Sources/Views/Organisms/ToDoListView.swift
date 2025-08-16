@@ -28,12 +28,12 @@ struct ToDoListView: View {
             }
             .padding()
             VStack {
-                TextField("新しいタスク", text: $newTaskDetail)
+                TextField(L10n.Tasks.taskPlaceholder, text: $newTaskDetail)
                     .textFieldStyle(.roundedBorder)
                     .frame(width: 350, height: 50)
 
                 NormalButton(
-                    text: "Add Task",
+                    text: L10n.Tasks.addTask,
                     bgColor: ColorTheme.navy,
                     fontColor: ColorTheme.white,
                     icon: Image(.add),

@@ -24,6 +24,8 @@
 "timer.resume" = "Resume";
 "timer.stop" = "Stop";
 "timer.reset" = "Reset";
+"timer.task_time" = "Task Time";
+"timer.break_time" = "Break Time";
 
 // MARK: - Task Management
 "tasks.title" = "Task Management";
@@ -39,6 +41,22 @@
 "stats.daily_summary" = "Daily Summary";
 "stats.weekly_summary" = "Weekly Summary";
 "stats.concentration_score" = "Concentration Score";
+
+// MARK: - Heat Map Screen
+"heatmap.title" = "Concentration Score Heat Map";
+"heatmap.prev" = "Prev";
+"heatmap.next" = "Next";
+"heatmap.axis_label" = "Vertical: Days, Horizontal: Hours";
+"heatmap.low" = "Low";
+"heatmap.high" = "High";
+
+// MARK: - Chart Screen
+"chart.title" = "Concentration Chart";
+"chart.prev" = "Prev";
+"chart.next" = "Next";
+"chart.concentration" = "Concentration";
+"chart.moving_average" = "Moving Average";
+"chart.std_deviation" = "±1 Std. Deviation";
 
 // MARK: - Profile Screen
 "profile.title" = "Profile";
