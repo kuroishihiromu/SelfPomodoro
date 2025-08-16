@@ -34,12 +34,20 @@ struct TaskAPIClient {
 extension TaskAPIClient {
     static let live = TaskAPIClient(
         fetchTasks: {
+            @Dependency(\.tokenProvider) var tokenProvider
+            
+            var headers = [
+                "Content-Type": "application/json"
+            ]
+            
+            if let token = tokenProvider.getAuthToken() {
+                headers["Authorization"] = "Bearer \(token)"
+            }
+            
             let request = RESTRequest(
                 apiName: "selfpomodoro",
                 path: "/dev/api/v1/tasks",
-                headers: [
-                    "Content-Type": "application/json"
-                ]
+                headers: headers
             )
 
             let data = try await Amplify.API.get(request: request)
@@ -53,12 +61,21 @@ extension TaskAPIClient {
         },
         
         addTask: { detail in
+            @Dependency(\.tokenProvider) var tokenProvider
+            
+            var headers = [
+                "Content-Type": "application/json"
+            ]
+            
+            if let token = tokenProvider.getAuthToken() {
+                headers["Authorization"] = "Bearer \(token)"
+            }
+            
             let body = try JSONEncoder().encode(["detail": detail])
             let request = RESTRequest(
+                apiName: "selfpomodoro",
                 path: "/dev/api/v1/tasks",
-                headers: [
-                    "Content-Type": "application/json"
-                ],
+                headers: headers,
                 body: body
             )
 
@@ -69,21 +86,40 @@ extension TaskAPIClient {
         },
 
         deleteTask: { id in
+            @Dependency(\.tokenProvider) var tokenProvider
+            
+            var headers = [
+                "Content-Type": "application/json"
+            ]
+            
+            if let token = tokenProvider.getAuthToken() {
+                headers["Authorization"] = "Bearer \(token)"
+            }
+            
             let request = RESTRequest(
+                apiName: "selfpomodoro",
                 path: "/dev/api/v1/tasks/\(id.uuidString)",
-                headers: [
-                    "Content-Type": "application/json"
-                ]
+                headers: headers
             )
 
             _ = try await Amplify.API.delete(request: request)
         },
 
         toggleCompletion: { id in
+            @Dependency(\.tokenProvider) var tokenProvider
+            
+            var headers = [
+                "Content-Type": "application/json"
+            ]
+            
+            if let token = tokenProvider.getAuthToken() {
+                headers["Authorization"] = "Bearer \(token)"
+            }
+            
             let request = RESTRequest(
                 apiName: "selfpomodoro",
                 path: "/dev/api/v1/tasks/\(id)/toggle",
-                headers: ["Content-Type": "application/json"],
+                headers: headers,
                 body: nil
             )
 

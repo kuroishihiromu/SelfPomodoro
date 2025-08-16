@@ -20,12 +20,20 @@ struct SessionAPIClient {
 extension SessionAPIClient {
     static let live = SessionAPIClient(
         startSession: {
+            @Dependency(\.tokenProvider) var tokenProvider
+            
+            var headers = [
+                "Content-Type": "application/json"
+            ]
+            
+            if let token = tokenProvider.getAuthToken() {
+                headers["Authorization"] = "Bearer \(token)"
+            }
+            
             let request = RESTRequest(
                 apiName: "selfpomodoro",
                 path: "/dev/api/v1/sessions",
-                headers: [
-                    "Content-Type": "application/json"
-                ]
+                headers: headers
             )
 
             let data = try await Amplify.API.post(request: request)
@@ -33,12 +41,20 @@ extension SessionAPIClient {
         },
 
         completeSession: { sessionId in
+            @Dependency(\.tokenProvider) var tokenProvider
+            
+            var headers = [
+                "Content-Type": "application/json"
+            ]
+            
+            if let token = tokenProvider.getAuthToken() {
+                headers["Authorization"] = "Bearer \(token)"
+            }
+            
             let request = RESTRequest(
                 apiName: "selfpomodoro",
                 path: "/dev/api/v1/sessions/\(sessionId)/complete",
-                headers: [
-                    "Content-Type": "application/json"
-                ]
+                headers: headers
             )
 
             let data = try await Amplify.API.patch(request: request)
@@ -46,13 +62,21 @@ extension SessionAPIClient {
         },
         
         startRound: { sessionId in
+            @Dependency(\.tokenProvider) var tokenProvider
+            
+            var headers = [
+                "Content-Type": "application/json"
+            ]
+            
+            if let token = tokenProvider.getAuthToken() {
+                headers["Authorization"] = "Bearer \(token)"
+            }
+            
             let sessionIdLower = sessionId.uuidString.lowercased()
             let request = RESTRequest(
                 apiName: "selfpomodoro",
                 path: "/dev/api/v1/sessions/\(sessionIdLower)/rounds",
-                headers: [
-                    "Content-Type": "application/json"
-                ]
+                headers: headers
             )
 
             let data = try await Amplify.API.post(request: request)
@@ -60,13 +84,21 @@ extension SessionAPIClient {
         },
         
         completeRound: { roundId, focusScore in
+            @Dependency(\.tokenProvider) var tokenProvider
+            
+            var headers = [
+                "Content-Type": "application/json"
+            ]
+            
+            if let token = tokenProvider.getAuthToken() {
+                headers["Authorization"] = "Bearer \(token)"
+            }
+            
             let body = try JSONEncoder().encode(["focus_score": focusScore])
             let request = RESTRequest(
                 apiName: "selfpomodoro",
                 path: "/dev/api/v1/rounds/\(roundId)/complete",
-                headers: [
-                    "Content-Type": "application/json"
-                ],
+                headers: headers,
                 body: body
             )
 
@@ -75,12 +107,20 @@ extension SessionAPIClient {
         },
 
         getSession: { sessionId in
+            @Dependency(\.tokenProvider) var tokenProvider
+            
+            var headers = [
+                "Content-Type": "application/json"
+            ]
+            
+            if let token = tokenProvider.getAuthToken() {
+                headers["Authorization"] = "Bearer \(token)"
+            }
+            
             let request = RESTRequest(
                 apiName: "selfpomodoro",
                 path: "/dev/api/v1/sessions/\(sessionId)",
-                headers: [
-                    "Content-Type": "application/json"
-                ]
+                headers: headers
             )
 
             let data = try await Amplify.API.get(request: request)

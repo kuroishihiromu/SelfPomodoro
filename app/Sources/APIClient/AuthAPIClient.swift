@@ -69,6 +69,8 @@ extension AuthAPIClient {
         },
         signOut: {
             _ = try await Amplify.Auth.signOut()
+            // トークンをクリア
+            TokenStorage.shared.clearToken()
         }
     )
 }
