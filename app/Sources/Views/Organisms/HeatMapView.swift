@@ -14,7 +14,7 @@ struct HeatMapView: View {
     var body: some View {
         WithViewStore(store, observe: { $0 }) { viewStore in
             VStack(spacing: 16) {
-                Text("Concentration Score Heat Map")
+                Text(L10n.HeatMap.title)
                     .font(.headline)
                     .padding(.horizontal)
 
@@ -26,7 +26,7 @@ struct HeatMapView: View {
                         }
                     }) {
                         Image(systemName: "chevron.left")
-                        Text("Prev")
+                        Text(L10n.HeatMap.prev)
                     }
                     .foregroundColor(ColorTheme.black)
 
@@ -42,7 +42,7 @@ struct HeatMapView: View {
                             _ = viewStore.send(.nextMonth)
                         }
                     }) {
-                        Text("Next")
+                        Text(L10n.HeatMap.next)
                         Image(systemName: "chevron.right")
                     }
                     .foregroundColor(ColorTheme.black)
@@ -56,13 +56,13 @@ struct HeatMapView: View {
 
                 // 凡例
                 HStack {
-                    Text("縦軸：日　横軸：時間")
+                    Text(L10n.HeatMap.axisLabel)
                         .font(.caption2)
 
                     Spacer()
 
                     HStack(spacing: 4) {
-                        Text("Low")
+                        Text(L10n.HeatMap.low)
                             .font(.caption2)
 
                         ForEach(0..<5, id: \.self) { i in
@@ -72,7 +72,7 @@ struct HeatMapView: View {
                                 .cornerRadius(2)
                         }
 
-                        Text("High")
+                        Text(L10n.HeatMap.high)
                             .font(.caption2)
                     }
                 }
@@ -127,4 +127,12 @@ struct HourlyHeatMapGridView: View {
         }
         .frame(height: 204)
     }
+}
+
+#Preview {
+    HeatMapView(
+        store: Store(initialState: HeatMapFeature.State()) {
+            HeatMapFeature()
+        }
+    )
 }

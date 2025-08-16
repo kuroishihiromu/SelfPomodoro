@@ -54,11 +54,12 @@ struct SelfPomodoroApp: App {
                let provider = session as? AuthCognitoTokensProvider {
                 let result = provider.getCognitoTokens()
                 let token = try result.get()
-                tokens = AuthTokens(
+                let authTokens = AuthTokens(
                     idToken: token.idToken,
                     accessToken: token.accessToken,
                     refreshToken: token.refreshToken
                 )
+                tokens = authTokens
                 isSignedIn = true
             } else {
                 isSignedIn = false

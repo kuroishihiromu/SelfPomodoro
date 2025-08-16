@@ -1,0 +1,100 @@
+/* 
+  Localizable.strings (Base)
+  SelfPomodoro
+  
+  Created by Claude on 2025/01/16.
+*/
+
+// MARK: - 認証画面
+"auth.create_account" = "アカウント作成";
+"auth.description" = "効率的な時間管理を始めるためにアカウントを作成してください";
+"auth.email_placeholder" = "メールアドレスを入力";
+"auth.password_placeholder" = "パスワードを入力";
+"auth.terms_agreement" = "利用規約に同意する";
+"auth.login_button" = "ログイン";
+"auth.signup_button" = "サインアップ";
+"auth.terms_required" = "利用規約に同意してください。";
+
+// MARK: - タイマー画面
+"timer.pomodoro" = "ポモドーロ";
+"timer.short_break" = "短い休憩";
+"timer.long_break" = "長い休憩";
+"timer.start" = "開始";
+"timer.pause" = "一時停止";
+"timer.resume" = "再開";
+"timer.stop" = "停止";
+"timer.reset" = "リセット";
+"timer.task_time" = "作業時間";
+"timer.break_time" = "休憩時間";
+
+// MARK: - タスク管理
+"tasks.title" = "タスク管理";
+"tasks.add_task" = "タスクを追加";
+"tasks.task_placeholder" = "新しいタスクを入力";
+"tasks.completed" = "完了";
+"tasks.pending" = "未完了";
+"tasks.delete" = "削除";
+
+// MARK: - 統計画面
+"stats.title" = "統計";
+"stats.focus_trend" = "集中度の推移";
+"stats.daily_summary" = "日別サマリー";
+"stats.weekly_summary" = "週別サマリー";
+"stats.concentration_score" = "集中度スコア";
+
+// MARK: - ヒートマップ画面
+"heatmap.title" = "集中度スコア ヒートマップ";
+"heatmap.prev" = "前月";
+"heatmap.next" = "次月";
+"heatmap.axis_label" = "縦軸：日　横軸：時間";
+"heatmap.low" = "低";
+"heatmap.high" = "高";
+
+// MARK: - チャート画面
+"chart.title" = "集中度チャート";
+"chart.prev" = "前週";
+"chart.next" = "次週";
+"chart.concentration" = "集中度";
+"chart.moving_average" = "移動平均";
+"chart.std_deviation" = "±1標準偏差";
+
+// MARK: - プロフィール画面
+"profile.title" = "プロフィール";
+"profile.settings" = "設定";
+"profile.logout" = "ログアウト";
+"profile.account" = "アカウント";
+
+// MARK: - 設定画面
+"settings.title" = "設定";
+"settings.timer_settings" = "タイマー設定";
+"settings.work_duration" = "作業時間";
+"settings.short_break_duration" = "短い休憩時間";
+"settings.long_break_duration" = "長い休憩時間";
+"settings.rounds_per_session" = "セッションあたりのラウンド数";
+"settings.notifications" = "通知";
+"settings.sound" = "サウンド";
+
+// MARK: - 一般
+"general.cancel" = "キャンセル";
+"general.ok" = "OK";
+"general.save" = "保存";
+"general.delete" = "削除";
+"general.edit" = "編集";
+"general.done" = "完了";
+"general.close" = "閉じる";
+"general.yes" = "はい";
+"general.no" = "いいえ";
+
+// MARK: - エラーメッセージ
+"error.network" = "ネットワークエラーが発生しました";
+"error.authentication" = "認証に失敗しました";
+"error.invalid_email" = "有効なメールアドレスを入力してください";
+"error.invalid_password" = "パスワードは8文字以上で入力してください";
+"error.unknown" = "予期しないエラーが発生しました";
+
+// MARK: - 成功メッセージ
+"success.login" = "ログインしました";
+"success.signup" = "アカウントが作成されました";
+"success.task_added" = "タスクが追加されました";
+"success.task_completed" = "タスクが完了しました";
+"success.settings_saved" = "設定が保存されました";

@@ -18,10 +18,7 @@ extension UserConfigAPIClient {
         getUserConfig: {
             let request = RESTRequest(
                 apiName: "selfpomodoro",
-                path: "/dev/api/v1/user-config",
-                headers: [
-                    "Content-Type": "application/json"
-                ]
+                path: "/dev/api/v1/user-config"
             )
 
             let data = try await Amplify.API.get(request: request)

@@ -25,10 +25,7 @@ extension StatisticsAPIClient {
         fetchConcentrationData: {
             let request = RESTRequest(
                 apiName: "selfpomodoro",
-                path: "/dev/api/v1/statistics/focus-trend",
-                headers: [
-                    "Content-Type": "application/json"
-                ]
+                path: "/dev/api/v1/statistics/focus-trend"
             )
 
             do {

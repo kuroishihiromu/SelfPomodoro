@@ -22,10 +22,7 @@ extension SessionAPIClient {
         startSession: {
             let request = RESTRequest(
                 apiName: "selfpomodoro",
-                path: "/dev/api/v1/sessions",
-                headers: [
-                    "Content-Type": "application/json"
-                ]
+                path: "/dev/api/v1/sessions"
             )
 
             let data = try await Amplify.API.post(request: request)
@@ -35,10 +32,7 @@ extension SessionAPIClient {
         completeSession: { sessionId in
             let request = RESTRequest(
                 apiName: "selfpomodoro",
-                path: "/dev/api/v1/sessions/\(sessionId)/complete",
-                headers: [
-                    "Content-Type": "application/json"
-                ]
+                path: "/dev/api/v1/sessions/\(sessionId)/complete"
             )
 
             let data = try await Amplify.API.patch(request: request)
@@ -49,10 +43,7 @@ extension SessionAPIClient {
             let sessionIdLower = sessionId.uuidString.lowercased()
             let request = RESTRequest(
                 apiName: "selfpomodoro",
-                path: "/dev/api/v1/sessions/\(sessionIdLower)/rounds",
-                headers: [
-                    "Content-Type": "application/json"
-                ]
+                path: "/dev/api/v1/sessions/\(sessionIdLower)/rounds"
             )
 
             let data = try await Amplify.API.post(request: request)
@@ -64,9 +55,6 @@ extension SessionAPIClient {
             let request = RESTRequest(
                 apiName: "selfpomodoro",
                 path: "/dev/api/v1/rounds/\(roundId)/complete",
-                headers: [
-                    "Content-Type": "application/json"
-                ],
                 body: body
             )
 
@@ -77,10 +65,7 @@ extension SessionAPIClient {
         getSession: { sessionId in
             let request = RESTRequest(
                 apiName: "selfpomodoro",
-                path: "/dev/api/v1/sessions/\(sessionId)",
-                headers: [
-                    "Content-Type": "application/json"
-                ]
+                path: "/dev/api/v1/sessions/\(sessionId)"
             )
 
             let data = try await Amplify.API.get(request: request)

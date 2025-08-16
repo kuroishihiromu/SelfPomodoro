@@ -16,21 +16,21 @@ struct AuthScreenView: View {
             MainView(token: store.tokens!)
         } else {
             VStack(spacing: 20) {
-                Text("Create Account")
+                Text(L10n.Auth.createAccount)
                     .font(.system(size: 30, weight: .bold))
-                Text("Create your account to start managing your time effectively")
+                Text(L10n.Auth.description)
                     .multilineTextAlignment(.center)
                     .frame(maxWidth: .infinity, alignment: .center)
                     .padding(.bottom, 50)
                 NormalTextField(
-                    placeholder: "Your email address",
+                    placeholder: L10n.Auth.emailPlaceholder,
                     icon: Image(.mail),
                     width: 350,
                     height: 44,
                     text: $store.email
                 )
                 PasswordTextField(
-                    placeholder: "Enter your password",
+                    placeholder: L10n.Auth.passwordPlaceholder,
                     icon: Image(.key),
                     width: 350,
                     height: 44,
@@ -38,22 +38,21 @@ struct AuthScreenView: View {
                 )
                 HStack{
                     CheckboxView(isChecked: $store.isAgreed)
-                    Text("I agree with Terms & Conditions")
+                    Text(L10n.Auth.termsAgreement)
                     Spacer()
                 }
                 .frame(width: 350)
-                NormalButton(text: "Log in", bgColor: ColorTheme.navy, fontColor: ColorTheme.white, width: 350, height: 50, action: {store.send(.tappedLogin)})
+                // エラーメッセージ（統一表示）
                 if let message = store.errorMessage {
                     Text(message)
                         .foregroundColor(.red)
                         .padding()
+                        .multilineTextAlignment(.center)
                 }
-                NormalButton(text: "Sign Up", bgColor: ColorTheme.navy, fontColor: ColorTheme.white, width: 350, height: 50, action: {store.send(.tappedLogin)})
-                if let message = store.errorMessage {
-                    Text(message)
-                        .foregroundColor(.red)
-                        .padding()
-                }
+                
+                NormalButton(text: L10n.Auth.loginButton, bgColor: ColorTheme.navy, fontColor: ColorTheme.white, width: 350, height: 50, action: {store.send(.tappedLogin)})
+                
+                NormalButton(text: L10n.Auth.signupButton, bgColor: ColorTheme.navy, fontColor: ColorTheme.white, width: 350, height: 50, action: {store.send(.tappedLogin)})
 
             }
             .frame(width: 350)

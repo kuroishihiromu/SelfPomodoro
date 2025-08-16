@@ -36,10 +36,7 @@ extension TaskAPIClient {
         fetchTasks: {
             let request = RESTRequest(
                 apiName: "selfpomodoro",
-                path: "/dev/api/v1/tasks",
-                headers: [
-                    "Content-Type": "application/json"
-                ]
+                path: "/dev/api/v1/tasks"
             )
 
             let data = try await Amplify.API.get(request: request)
@@ -55,10 +52,8 @@ extension TaskAPIClient {
         addTask: { detail in
             let body = try JSONEncoder().encode(["detail": detail])
             let request = RESTRequest(
+                apiName: "selfpomodoro",
                 path: "/dev/api/v1/tasks",
-                headers: [
-                    "Content-Type": "application/json"
-                ],
                 body: body
             )
 
@@ -70,10 +65,8 @@ extension TaskAPIClient {
 
         deleteTask: { id in
             let request = RESTRequest(
-                path: "/dev/api/v1/tasks/\(id.uuidString)",
-                headers: [
-                    "Content-Type": "application/json"
-                ]
+                apiName: "selfpomodoro",
+                path: "/dev/api/v1/tasks/\(id.uuidString)"
             )
 
             _ = try await Amplify.API.delete(request: request)
@@ -82,9 +75,7 @@ extension TaskAPIClient {
         toggleCompletion: { id in
             let request = RESTRequest(
                 apiName: "selfpomodoro",
-                path: "/dev/api/v1/tasks/\(id)/toggle",
-                headers: ["Content-Type": "application/json"],
-                body: nil
+                path: "/dev/api/v1/tasks/\(id)/toggle"
             )
 
             let data = try await Amplify.API.patch(request: request)

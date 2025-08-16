@@ -34,7 +34,7 @@ struct ChartView: View {
 
     private var header: some View {
         VStack(spacing: 8) {
-            Text("Concentration Chart")
+            Text(L10n.Chart.title)
                 .font(.headline)
                 .padding(.horizontal)
 
@@ -43,7 +43,7 @@ struct ChartView: View {
                     store.send(.previousWeek, animation: .easeInOut)
                 } label: {
                     Image(systemName: "chevron.left")
-                    Text("Prev")
+                    Text(L10n.Chart.prev)
                 }
                 .foregroundColor(ColorTheme.black)
 
@@ -58,7 +58,7 @@ struct ChartView: View {
                 Button {
                     store.send(.nextWeek, animation: .easeInOut)
                 } label: {
-                    Text("Next")
+                    Text(L10n.Chart.next)
                     Image(systemName: "chevron.right")
                 }
                 .foregroundColor(ColorTheme.black)
@@ -140,14 +140,14 @@ struct ChartView: View {
                 RoundedRectangle(cornerRadius: 2)
                     .fill(ColorTheme.navy)
                     .frame(width: 24, height: 4)
-                Text("Concentration").font(.caption)
+                Text(L10n.Chart.concentration).font(.caption)
             }
 
             HStack(spacing: 6) {
                 RoundedRectangle(cornerRadius: 2)
                     .stroke(ColorTheme.navy, style: StrokeStyle(lineWidth: 2, dash: [5]))
                     .frame(width: 24, height: 4)
-                Text("MovingAverage").font(.caption)
+                Text(L10n.Chart.movingAverage).font(.caption)
                     .minimumScaleFactor(0.7)
                     .lineLimit(1)
             }
@@ -156,7 +156,7 @@ struct ChartView: View {
                 RoundedRectangle(cornerRadius: 2)
                     .fill(ColorTheme.Gray.opacity(0.4))
                     .frame(width: 24, height: 10)
-                Text("±1 Std. Deviation").font(.caption)
+                Text(L10n.Chart.stdDeviation).font(.caption)
                     .minimumScaleFactor(0.7)
                     .lineLimit(1)
             }
