@@ -9,8 +9,6 @@ import ComposableArchitecture
 import Foundation
 
 struct HeatMapFeature: Reducer {
-    @Dependency(\.heatMapper) var heatMapper
-
     struct State: Equatable {
         var currentMonth: Date = Date()
         var focusData: [FocusData] = []
@@ -22,6 +20,10 @@ struct HeatMapFeature: Reducer {
         case previousMonth
         case nextMonth
     }
+
+    public init(){}
+    
+    @Dependency(\.heatMapper) var heatMapper
 
     func reduce(into state: inout State, action: Action) -> Effect<Action> {
         switch action {

@@ -128,3 +128,11 @@ struct HourlyHeatMapGridView: View {
         .frame(height: 204)
     }
 }
+
+#Preview {
+    HeatMapView(
+        store: Store(initialState: HeatMapFeature.State()) {
+            HeatMapFeature()
+        }
+    )
+}
