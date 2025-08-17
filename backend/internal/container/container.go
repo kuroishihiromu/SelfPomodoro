@@ -9,7 +9,7 @@ import (
 	"github.com/tsunakit99/selfpomodoro/internal/infrastructure/database"
 	"github.com/tsunakit99/selfpomodoro/internal/infrastructure/logger"
 	"github.com/tsunakit99/selfpomodoro/internal/infrastructure/repository"
-	"github.com/tsunakit99/selfpomodoro/internal/infrastructure/sqs"
+	"github.com/tsunakit99/selfpomodoro/internal/infrastructure/messaging/sqs"
 	"github.com/tsunakit99/selfpomodoro/internal/usecase"
 )
 
@@ -76,17 +76,13 @@ func (c *LambdaContainer) Initialize(ctx context.Context) error {
 	}
 	c.infraServices = infraServices // 保存
 
-	// 4. UseCases初期化
+	// 4. UseCases初期化（API Gateway Authorizer対応版）
 	c.useCases = usecase.NewUseCases(
 		infraServices.Repositories.User,
 		infraServices.Repositories.Task,
 		infraServices.Repositories.Session,
-		infraServices.Repositories.Round,
 		infraServices.Repositories.Statistics,
-		infraServices.Repositories.UserConfig,
-		infraServices.Repositories.SampleOptimizationData,
-		infraServices.Repositories.Optimization,
-		infraServices.Repositories.Auth,
+		infraServices.Repositories.OptimizationPreferences,
 		infraServices.SQSClient,
 		cfg,
 		appLogger,
@@ -188,10 +184,7 @@ func (c *LambdaContainer) HealthCheck(ctx context.Context) error {
 		return fmt.Errorf("コンテナが初期化されていません")
 	}
 
-	// 各サービスのヘルスチェック
-	if err := c.useCases.Auth.CheckAuthHealth(ctx); err != nil {
-		return fmt.Errorf("認証サービス接続確認失敗: %w", err)
-	}
+	// API Gateway Authorizerを使用するため、認証ヘルスチェックは不要
 
 	// SQSのヘルスチェック
 	if c.infraServices.SQSClient != nil {
