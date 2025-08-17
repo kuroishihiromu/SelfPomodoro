@@ -6,8 +6,10 @@ import (
 	"slices"
 
 	"github.com/google/uuid"
-	"github.com/tsunakit99/selfpomodoro/internal/domain/entity"
 	"github.com/tsunakit99/selfpomodoro/internal/domain/repository"
+	"github.com/tsunakit99/selfpomodoro/internal/usecase/dto"
+	"github.com/tsunakit99/selfpomodoro/internal/usecase/mapper"
+	userVO "github.com/tsunakit99/selfpomodoro/internal/domain/valueobject/user"
 	appErrors "github.com/tsunakit99/selfpomodoro/internal/errors"
 	"github.com/tsunakit99/selfpomodoro/internal/infrastructure/logger"
 )
@@ -15,13 +17,13 @@ import (
 // UserUseCase はユーザーに関するユースケースを定義するインターフェース（ドメイン強化版）
 type UserUseCase interface {
 	// GetUserProfile はユーザープロフィールを取得する
-	GetUserProfile(ctx context.Context, userID uuid.UUID) (*entity.UserResponse, error)
+	GetUserProfile(ctx context.Context, userID uuid.UUID) (*dto.UserResponse, error)
 
 	// UpdateUserProfile はユーザープロフィール（名前・メール）を更新する
-	UpdateUserProfile(ctx context.Context, userID uuid.UUID, req *entity.UpdateUserRequest) (*entity.UserResponse, error)
+	UpdateUserProfile(ctx context.Context, userID uuid.UUID, req *dto.UpdateUserRequest) (*dto.UserResponse, error)
 
 	// GetUserByEmail はメールアドレスでユーザーを検索する（管理・デバッグ用）
-	GetUserByEmail(ctx context.Context, email string) (*entity.UserResponse, error)
+	GetUserByEmail(ctx context.Context, email string) (*dto.UserResponse, error)
 
 	// CheckUserExists はユーザーの存在確認を行う（軽量版・認証用）
 	CheckUserExists(ctx context.Context, userID uuid.UUID) (bool, error)
@@ -30,26 +32,34 @@ type UserUseCase interface {
 	DeleteUser(ctx context.Context, userID uuid.UUID) error
 
 	// GetUsersByProvider はプロバイダー別ユーザー一覧を取得する（管理用）
-	GetUsersByProvider(ctx context.Context, provider string, limit, offset int) ([]*entity.UserResponse, error)
+	GetUsersByProvider(ctx context.Context, provider string, limit, offset int) ([]*dto.UserResponse, error)
 }
 
 // userUseCase はUserUseCaseインターフェースの実装（ドメイン強化版）
 type userUseCase struct {
-	userRepo repository.UserRepository
-	logger   logger.Logger
+	userRepo   repository.UserRepository
+	userMapper *mapper.UserMapper
+	logger     logger.Logger
 }
 
 // NewUserUseCase は新しいUserUseCaseインスタンスを作成する
 func NewUserUseCase(userRepo repository.UserRepository, logger logger.Logger) UserUseCase {
 	return &userUseCase{
-		userRepo: userRepo,
-		logger:   logger,
+		userRepo:   userRepo,
+		userMapper: mapper.NewUserMapper(),
+		logger:     logger,
 	}
 }
 
 // GetUserProfile はユーザープロフィールを取得する（ドメイン強化版）
-func (uc *userUseCase) GetUserProfile(ctx context.Context, userID uuid.UUID) (*entity.UserResponse, error) {
-	user, err := uc.userRepo.GetByID(ctx, userID)
+func (uc *userUseCase) GetUserProfile(ctx context.Context, userID uuid.UUID) (*dto.UserResponse, error) {
+	// UUIDをValue Objectに変換
+	userIDVO, err := userVO.NewUserIDFromString(userID.String())
+	if err != nil {
+		return nil, appErrors.NewInternalError(err)
+	}
+
+	user, err := uc.userRepo.GetByID(ctx, userIDVO)
 	if err != nil {
 		uc.logger.Errorf("ユーザープロフィール取得エラー: %v", err)
 		if errors.Is(err, appErrors.ErrUserNotFound) {
@@ -61,15 +71,21 @@ func (uc *userUseCase) GetUserProfile(ctx context.Context, userID uuid.UUID) (*e
 	// ✅ ドメインロジック活用：プロバイダー情報ログ出力
 	providerDisplay := user.GetProviderDisplayName()
 	uc.logger.Infof("ユーザープロフィール取得成功: %s (%s) - プロバイダー: %s",
-		user.Name, user.Email, providerDisplay)
+		user.Name.Value(), user.Email.Value(), providerDisplay)
 
-	return user.ToResponse(), nil
+	return uc.userMapper.ToUserResponse(user), nil
 }
 
 // UpdateUserProfile はユーザープロフィールを更新する（ドメイン強化版）
-func (uc *userUseCase) UpdateUserProfile(ctx context.Context, userID uuid.UUID, req *entity.UpdateUserRequest) (*entity.UserResponse, error) {
+func (uc *userUseCase) UpdateUserProfile(ctx context.Context, userID uuid.UUID, req *dto.UpdateUserRequest) (*dto.UserResponse, error) {
+	// UUIDをValue Objectに変換
+	userIDVO, err := userVO.NewUserIDFromString(userID.String())
+	if err != nil {
+		return nil, appErrors.NewInternalError(err)
+	}
+
 	// 既存ユーザーの取得
-	user, err := uc.userRepo.GetByID(ctx, userID)
+	user, err := uc.userRepo.GetByID(ctx, userIDVO)
 	if err != nil {
 		uc.logger.Errorf("ユーザー取得エラー: %v", err)
 		if errors.Is(err, appErrors.ErrUserNotFound) {
@@ -85,21 +101,21 @@ func (uc *userUseCase) UpdateUserProfile(ctx context.Context, userID uuid.UUID, 
 	}
 
 	// 更新前の状態をログ出力
-	oldName := user.Name
-	oldEmail := user.Email
+	oldName := user.Name.Value()
+	oldEmail := user.Email.Value()
 
 	// ✅ ドメインロジック活用：プロフィール更新処理
 	var newName, newEmail string
 	if req.Name != nil {
 		newName = *req.Name
 	} else {
-		newName = user.Name
+		newName = user.Name.Value()
 	}
 
 	if req.Email != nil {
 		newEmail = *req.Email
 	} else {
-		newEmail = user.Email
+		newEmail = user.Email.Value()
 	}
 
 	user.UpdateProfile(newName, newEmail)
@@ -140,17 +156,23 @@ func (uc *userUseCase) UpdateUserProfile(ctx context.Context, userID uuid.UUID, 
 	uc.logger.Infof("ユーザープロフィール更新成功: UserID=%s, 更新項目数=%d",
 		userID.String()[:8]+"...", updateCount)
 
-	return user.ToResponse(), nil
+	return uc.userMapper.ToUserResponse(user), nil
 }
 
 // GetUserByEmail はメールアドレスでユーザーを検索する（ドメイン強化版）
-func (uc *userUseCase) GetUserByEmail(ctx context.Context, email string) (*entity.UserResponse, error) {
+func (uc *userUseCase) GetUserByEmail(ctx context.Context, email string) (*dto.UserResponse, error) {
 	// 基本的なメールアドレス形式チェック
 	if email == "" || !uc.isValidEmailFormat(email) {
 		return nil, appErrors.NewValidationError("有効なメールアドレスを入力してください")
 	}
 
-	user, err := uc.userRepo.GetByEmail(ctx, email)
+	// メールアドレスをValue Objectに変換
+	emailVO, err := userVO.NewEmailAddress(email)
+	if err != nil {
+		return nil, appErrors.NewValidationError("有効なメールアドレスを入力してください")
+	}
+
+	user, err := uc.userRepo.GetByEmail(ctx, emailVO)
 	if err != nil {
 		uc.logger.Errorf("メールアドレスによるユーザー検索エラー: %v", err)
 		if errors.Is(err, appErrors.ErrUserNotFound) {
@@ -162,14 +184,20 @@ func (uc *userUseCase) GetUserByEmail(ctx context.Context, email string) (*entit
 	// ✅ ドメインロジック活用：プロバイダー情報ログ出力
 	providerDisplay := user.GetProviderDisplayName()
 	uc.logger.Infof("メールアドレス検索成功: %s (%s) - プロバイダー: %s",
-		user.Name, user.Email, providerDisplay)
+		user.Name.Value(), user.Email.Value(), providerDisplay)
 
-	return user.ToResponse(), nil
+	return uc.userMapper.ToUserResponse(user), nil
 }
 
 // CheckUserExists はユーザーの存在確認を行う（ドメイン強化版・軽量版）
 func (uc *userUseCase) CheckUserExists(ctx context.Context, userID uuid.UUID) (bool, error) {
-	exists, err := uc.userRepo.ExistsByID(ctx, userID)
+	// UUIDをValue Objectに変換
+	userIDVO, err := userVO.NewUserIDFromString(userID.String())
+	if err != nil {
+		return false, appErrors.NewInternalError(err)
+	}
+
+	exists, err := uc.userRepo.ExistsByID(ctx, userIDVO)
 	if err != nil {
 		uc.logger.Errorf("ユーザー存在確認エラー: %v", err)
 		return false, appErrors.NewInternalError(err)
@@ -186,8 +214,14 @@ func (uc *userUseCase) CheckUserExists(ctx context.Context, userID uuid.UUID) (b
 
 // DeleteUser はユーザーを削除する（包括的削除版・GDPR対応）
 func (uc *userUseCase) DeleteUser(ctx context.Context, userID uuid.UUID) error {
+	// UUIDをValue Objectに変換
+	userIDVO, err := userVO.NewUserIDFromString(userID.String())
+	if err != nil {
+		return appErrors.NewInternalError(err)
+	}
+
 	// 削除前にユーザー情報を取得（ログ出力用）
-	user, err := uc.userRepo.GetByID(ctx, userID)
+	user, err := uc.userRepo.GetByID(ctx, userIDVO)
 	if err != nil {
 		uc.logger.Errorf("削除対象ユーザー取得エラー: %v", err)
 		if errors.Is(err, appErrors.ErrUserNotFound) {
@@ -199,11 +233,11 @@ func (uc *userUseCase) DeleteUser(ctx context.Context, userID uuid.UUID) error {
 	// ✅ ドメインロジック活用：削除前情報ログ
 	providerDisplay := user.GetProviderDisplayName()
 	uc.logger.Infof("ユーザー完全削除開始: %s (%s) - プロバイダー: %s",
-		user.Name, user.Email, providerDisplay)
+		user.Name.Value(), user.Email.Value(), providerDisplay)
 
 	// 統合テーブルからユーザーのすべてのデータを削除
 	// PK = USER#{userID} のすべてのアイテム（UserConfig、統計、セッション、ラウンド、タスク、最適化ログなど）
-	err = uc.userRepo.DeleteAllUserData(ctx, userID)
+	err = uc.userRepo.DeleteAllUserData(ctx, userIDVO)
 	if err != nil {
 		uc.logger.Errorf("ユーザーデータ包括削除エラー: %v", err)
 		if errors.Is(err, appErrors.ErrUserNotFound) {
@@ -219,7 +253,7 @@ func (uc *userUseCase) DeleteUser(ctx context.Context, userID uuid.UUID) error {
 }
 
 // GetUsersByProvider はプロバイダー別ユーザー一覧を取得する（ドメイン強化版・管理用）
-func (uc *userUseCase) GetUsersByProvider(ctx context.Context, provider string, limit, offset int) ([]*entity.UserResponse, error) {
+func (uc *userUseCase) GetUsersByProvider(ctx context.Context, provider string, limit, offset int) ([]*dto.UserResponse, error) {
 	// プロバイダー名の検証
 	if provider == "" {
 		return nil, appErrors.NewValidationError("プロバイダー名を指定してください")
@@ -245,9 +279,9 @@ func (uc *userUseCase) GetUsersByProvider(ctx context.Context, provider string, 
 	}
 
 	// レスポンス形式に変換
-	userResponses := make([]*entity.UserResponse, len(users))
+	userResponses := make([]*dto.UserResponse, len(users))
 	for i, user := range users {
-		userResponses[i] = user.ToResponse()
+		userResponses[i] = uc.userMapper.ToUserResponse(user)
 	}
 
 	uc.logger.Infof("プロバイダー別ユーザー一覧取得成功: provider=%s, count=%d, limit=%d, offset=%d",
