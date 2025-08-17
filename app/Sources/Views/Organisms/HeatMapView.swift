@@ -95,37 +95,39 @@ struct HourlyHeatMapGridView: View {
         let gridData = HeatMapDataProcessor.generateHourlyGridData(focusData, for: currentMonth)
         let sortedDates = gridData.keys.sorted()
 
-        ScrollView(.vertical) {
-            VStack(alignment: .leading, spacing: 6) {
-                // 横軸
-                HStack(spacing: 3.5) {
-                    Text("")
-                        .frame(width: 10)
-                    ForEach(0..<13, id: \.self) { bucket in
-                        Text("\(bucket * 2)")
-                            .font(.caption2)
-                            .frame(width: 24, alignment: .leading)
-                    }
+        VStack(alignment: .leading) {
+            // 横軸
+            HStack(spacing: 3.5) {
+                Text("")
+                    .frame(width: 10)
+                ForEach(0..<13, id: \.self) { bucket in
+                    Text("\(bucket * 2)")
+                        .font(.caption2)
+                        .frame(width: 24, alignment: .leading)
                 }
+            }
 
-                // 縦軸+マス
-                ForEach(sortedDates, id: \.self) { date in
-                    HStack(spacing: 2) {
-                        Text(HeatMapDateFormatter.day.string(from: date))
-                            .font(.caption2)
-                            .frame(width: 15, alignment: .leading)
-
-                        ForEach(0..<24, id: \.self) { bucket in
-                            Rectangle()
-                                .fill(HeatMapColorMapper.color(for: gridData[date]?[bucket] ?? nil))
-                                .frame(width: 12, height: 12)
-                                .cornerRadius(2)
+            ScrollView(.vertical) {
+                VStack(alignment: .leading, spacing: 6) {
+                    // 縦軸+マス
+                    ForEach(sortedDates, id: \.self) { date in
+                        HStack(spacing: 2) {
+                            Text(HeatMapDateFormatter.day.string(from: date))
+                                .font(.caption2)
+                                .frame(width: 15, alignment: .leading)
+                            
+                            ForEach(0..<24, id: \.self) { bucket in
+                                Rectangle()
+                                    .fill(HeatMapColorMapper.color(for: gridData[date]?[bucket] ?? nil))
+                                    .frame(width: 12, height: 12)
+                                    .cornerRadius(2)
+                            }
                         }
                     }
                 }
             }
+            .frame(height: 204)
         }
-        .frame(height: 204)
     }
 }
 
