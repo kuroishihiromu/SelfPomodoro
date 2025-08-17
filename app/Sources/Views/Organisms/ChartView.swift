@@ -22,7 +22,7 @@ struct ChartView: View {
     }
 
     var body: some View {
-        VStack(spacing: 16) {
+        VStack(spacing: 7) {
             header
             chartBody
             legend
@@ -36,6 +36,7 @@ struct ChartView: View {
         VStack(spacing: 8) {
             Text(L10n.Chart.title)
                 .font(.headline)
+                .padding(.top)
                 .padding(.horizontal)
 
             HStack {

@@ -36,7 +36,7 @@ struct StatisticsScreenView: View {
 
     var body: some View {
         ScrollView {
-            VStack(spacing: 24) {
+            VStack(spacing: 50) {
                 ChartView(store: store.scope(state: \.chart, action: \.chart))
                 
                 HeatMapView(store: store.scope(state: \.heatMap, action: \.heatMap))
