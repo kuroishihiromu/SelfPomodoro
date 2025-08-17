@@ -11,9 +11,9 @@ import (
 	"github.com/aws/aws-sdk-go-v2/service/sqs"
 	"github.com/aws/aws-sdk-go-v2/service/sqs/types"
 	"github.com/tsunakit99/selfpomodoro/internal/config"
-	"github.com/tsunakit99/selfpomodoro/internal/domain/model"
 	appErrors "github.com/tsunakit99/selfpomodoro/internal/errors"
 	"github.com/tsunakit99/selfpomodoro/internal/infrastructure/logger"
+	"github.com/tsunakit99/selfpomodoro/internal/infrastructure/messaging/sqs/message"
 )
 
 // SQSClient はAWS SQSクライアントを管理する高機能クライアント（新エラーハンドリング対応版）
@@ -76,7 +76,7 @@ func NewSQSClient(cfg *config.Config, logger logger.Logger) (*SQSClient, error) 
 }
 
 // SendRoundOptimizationMessage はラウンド最適化メッセージを送信する（新エラーハンドリング対応版）
-func (s *SQSClient) SendRoundOptimizationMessage(ctx context.Context, message *model.RoundOptimizationMessage) error {
+func (s *SQSClient) SendRoundOptimizationMessage(ctx context.Context, message *message.RoundOptimizationMessage) error {
 	// メッセージバリデーション
 	if !message.IsValid() {
 		s.logger.Errorf("無効なラウンド最適化メッセージ: %+v", message)
@@ -108,7 +108,7 @@ func (s *SQSClient) SendRoundOptimizationMessage(ctx context.Context, message *m
 }
 
 // SendSessionOptimizationMessage はセッション最適化メッセージを送信する（新エラーハンドリング対応版）
-func (s *SQSClient) SendSessionOptimizationMessage(ctx context.Context, message *model.SessionOptimizationMessage) error {
+func (s *SQSClient) SendSessionOptimizationMessage(ctx context.Context, message *message.SessionOptimizationMessage) error {
 	// メッセージバリデーション
 	if !message.IsValid() {
 		s.logger.Errorf("無効なセッション最適化メッセージ: AvgFocusScore=%.2f, TotalWorkTime=%d",
