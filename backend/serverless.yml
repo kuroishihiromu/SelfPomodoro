@@ -5,8 +5,23 @@ provider:
   runtime: provided.al2
   region: ap-northeast-1
   stage: ${opt:stage, 'dev'}
-  profile: selfpomodoro-dev
+  profile: ${self:custom.awsProfile.${self:provider.stage}}
   versionFunctions: false
+
+custom:
+  # 環境別AWSプロファイル設定
+  awsProfile:
+    dev: selfpomodoro-dev
+    prod: selfpomodoro-prod
+  
+  # 環境別Cognito設定
+  cognitoUserPoolId:
+    dev: ap-northeast-1_UltsO4poH  # 既存dev環境
+    prod: !Ref CognitoUserPool     # 新規作成（本番環境）
+  
+  cognitoClientId:
+    dev: 2dbjjcvvon3trtt5imonmpnq9g  # 既存dev環境  
+    prod: !Ref CognitoUserPoolClient     # 新規作成（本番環境）
 
 
   # 🎯 IAM権限設定（最適化Lambda用DynamoDB・SQSアクセス）
@@ -25,8 +40,8 @@ provider:
             - dynamodb:Scan
             - dynamodb:DescribeTable
           Resource:
-            - arn:aws:dynamodb:${self:provider.region}:545009834501:table/selfpomodoro_unified_table_dev
-            - arn:aws:dynamodb:${self:provider.region}:545009834501:table/selfpomodoro_unified_table_dev/index/*
+            - arn:aws:dynamodb:${self:provider.region}:545009834501:table/selfpomodoro_unified_table_${self:provider.stage}
+            - arn:aws:dynamodb:${self:provider.region}:545009834501:table/selfpomodoro_unified_table_${self:provider.stage}/index/*
         - Effect: Allow
           Action:
             - sqs:ReceiveMessage
@@ -44,14 +59,14 @@ provider:
           Resource: arn:aws:logs:${self:provider.region}:545009834501:*
 
   environment:
-    COGNITO_USER_POOL_ID: ap-northeast-1_UltsO4poH
-    COGNITO_CLIENT_ID: 2dbjjcvvon3trtt5imonmpnq9g
-    DYNAMO_UNIFIED_TABLE: selfpomodoro_unified_table_dev
-    SQS_ROUND_OPTIMIZATION_URL: https://sqs.ap-northeast-1.amazonaws.com/545009834501/selfpomodoro-round-optimization-dev
-    SQS_SESSION_OPTIMIZATION_URL: https://sqs.ap-northeast-1.amazonaws.com/545009834501/selfpomodoro-session-optimization-dev
+    COGNITO_USER_POOL_ID: ${self:custom.cognitoUserPoolId.${self:provider.stage}}
+    COGNITO_CLIENT_ID: ${self:custom.cognitoClientId.${self:provider.stage}}
+    DYNAMO_UNIFIED_TABLE: selfpomodoro_unified_table_${self:provider.stage}
+    SQS_ROUND_OPTIMIZATION_URL: https://sqs.ap-northeast-1.amazonaws.com/545009834501/selfpomodoro-round-optimization-${self:provider.stage}
+    SQS_SESSION_OPTIMIZATION_URL: https://sqs.ap-northeast-1.amazonaws.com/545009834501/selfpomodoro-session-optimization-${self:provider.stage}
     OPTIMIZATION_SERVER_URL: http://localhost:8000
     LOG_LEVEL: info
-    ENVIRONMENT: development
+    ENVIRONMENT: ${self:provider.stage}
 
 functions:
   api-tasks:
@@ -64,26 +79,41 @@ functions:
           path: /api/v1/tasks
           method: get
           cors: true
+          authorizer:
+            type: COGNITO_USER_POOLS
+            authorizerId: !Ref CognitoAuthorizer
       # タスク作成
       - http:
           path: /api/v1/tasks
           method: post
           cors: true
+          authorizer:
+            type: COGNITO_USER_POOLS
+            authorizerId: !Ref CognitoAuthorizer
       # タスク更新
       - http:
           path: /api/v1/tasks/{task_id}/edit
           method: patch
           cors: true
+          authorizer:
+            type: COGNITO_USER_POOLS
+            authorizerId: !Ref CognitoAuthorizer
       # タスク完了状態切り替え
       - http:
           path: /api/v1/tasks/{task_id}/toggle
           method: patch
           cors: true
+          authorizer:
+            type: COGNITO_USER_POOLS
+            authorizerId: !Ref CognitoAuthorizer
       # タスク削除
       - http:
           path: /api/v1/tasks/{task_id}
           method: delete
           cors: true
+          authorizer:
+            type: COGNITO_USER_POOLS
+            authorizerId: !Ref CognitoAuthorizer
 
   api-sessions:
     handler: bootstrap
@@ -95,11 +125,17 @@ functions:
           path: /api/v1/sessions
           method: post
           cors: true
+          authorizer:
+            type: COGNITO_USER_POOLS
+            authorizerId: !Ref CognitoAuthorizer
       # セッション完了
       - http:
           path: /api/v1/sessions/{session_id}/complete
           method: patch
           cors: true
+          authorizer:
+            type: COGNITO_USER_POOLS
+            authorizerId: !Ref CognitoAuthorizer
 
   api-rounds:
     handler: bootstrap
@@ -111,43 +147,61 @@ functions:
           path: /api/v1/sessions/{session_id}/rounds
           method: post
           cors: true
+          authorizer:
+            type: COGNITO_USER_POOLS
+            authorizerId: !Ref CognitoAuthorizer
       # ラウンド完了
       - http:
           path: /api/v1/rounds/{round_id}/complete
           method: patch
           cors: true
+          authorizer:
+            type: COGNITO_USER_POOLS
+            authorizerId: !Ref CognitoAuthorizer
 
   api-statistics:
     handler: bootstrap
     package:
       artifact: functions/api-statistics/bootstrap.zip
     events:
-      # 集中度トレンド取得
+      # 集中度トレンド取得（開始日指定）
       - http:
-          path: /api/v1/statistics/focus-trend
+          path: /api/v1/statistics/focus-trend/{date}
           method: get
           cors: true
+          authorizer:
+            type: COGNITO_USER_POOLS
+            authorizerId: !Ref CognitoAuthorizer
       # 集中度ヒートマップ取得
       - http:
           path: /api/v1/statistics/focus-heatmap
           method: get
           cors: true
+          authorizer:
+            type: COGNITO_USER_POOLS
+            authorizerId: !Ref CognitoAuthorizer
 
-  api-userconfig:
+  api-optimization-preferences:
     handler: bootstrap
     package:
-      artifact: functions/api-userconfig/bootstrap.zip
+      artifact: functions/api-optimization-preferences/bootstrap.zip
     events:
-      # UserConfig取得
+      # OptimizationPreferences取得
       - http:
-          path: /api/v1/user-config
+          path: /api/v1/optimization-preferences
           method: get
           cors: true
-      # UserConfig更新
+          authorizer:
+            type: COGNITO_USER_POOLS
+            authorizerId: !Ref CognitoAuthorizer
+      # OptimizationPreferences更新
       - http:
-          path: /api/v1/user-config
+          path: /api/v1/optimization-preferences
           method: put
           cors: true
+          authorizer:
+            type: COGNITO_USER_POOLS
+            authorizerId: !Ref CognitoAuthorizer
 
   # 🎯 PostConfirmation Trigger Lambda関数（新規追加）
   post-confirmation:
@@ -168,7 +222,7 @@ functions:
           arn: arn:aws:sqs:${self:provider.region}:545009834501:selfpomodoro-round-optimization-${self:provider.stage}
           batchSize: 1
     environment:
-      DYNAMODB_TABLE_NAME: selfpomodoro_unified_table_dev
+      DYNAMODB_TABLE_NAME: selfpomodoro_unified_table_${self:provider.stage}
 
   optimization-session-v2:
     image: 545009834501.dkr.ecr.ap-northeast-1.amazonaws.com/selfpomodoro-optimization-session:v5
@@ -179,7 +233,7 @@ functions:
           arn: arn:aws:sqs:${self:provider.region}:545009834501:selfpomodoro-session-optimization-${self:provider.stage}
           batchSize: 1
     environment:
-      DYNAMODB_TABLE_NAME: selfpomodoro_unified_table_dev
+      DYNAMODB_TABLE_NAME: selfpomodoro_unified_table_${self:provider.stage}
 
 package:
   individually: true
@@ -191,7 +245,7 @@ resources:
     SelfPomodoroUnifiedTable:
       Type: AWS::DynamoDB::Table
       Properties:
-        TableName: selfpomodoro_unified_table_dev
+        TableName: selfpomodoro_unified_table_${self:provider.stage}
         BillingMode: PAY_PER_REQUEST  # オンデマンドでコスト最適化
         
         # プライマリキー定義
@@ -307,6 +361,17 @@ resources:
         SourceArn: !GetAtt CognitoUserPool.Arn
 
 
+    # 🎯 Cognito Authorizer（API Gateway認証統合）
+    CognitoAuthorizer:
+      Type: AWS::ApiGateway::Authorizer
+      Properties:
+        Name: selfpomodoro-cognito-authorizer-${self:provider.stage}
+        Type: COGNITO_USER_POOLS
+        IdentitySource: method.request.header.Authorization
+        RestApiId: !Ref ApiGatewayRestApi
+        ProviderARNs:
+          - !GetAtt CognitoUserPool.Arn
+
   # CloudFormation Outputs（環境変数やAPI確認用）
   Outputs:
     CognitoUserPoolId:
@@ -316,6 +381,10 @@ resources:
     CognitoUserPoolClientId:
       Description: "Cognito User Pool Client ID"
       Value: !Ref CognitoUserPoolClient
+      
+    CognitoAuthorizerId:
+      Description: "Cognito Authorizer ID"
+      Value: !Ref CognitoAuthorizer
       
     PostConfirmationFunctionArn:
       Description: "PostConfirmation Lambda Function ARN"
