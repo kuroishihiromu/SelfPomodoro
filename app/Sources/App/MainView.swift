@@ -64,6 +64,10 @@ struct MainView: View {
 
                 TabBarView(store: store)
             }
+            .onReceive(NotificationCenter.default.publisher(for: UIApplication.willTerminateNotification)) { _ in
+                // アプリ完全終了時のみ永続化
+                timerStore.send(.timer(.saveTimerState))
+            }
         }
     }
 }
