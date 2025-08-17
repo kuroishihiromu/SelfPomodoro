@@ -125,6 +125,7 @@ struct HourlyHeatMapGridView: View {
                         }
                     }
                 }
+                .padding(.trailing, 16)
             }
             .frame(height: 204)
         }
