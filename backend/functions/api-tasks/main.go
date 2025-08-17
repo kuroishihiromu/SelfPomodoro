@@ -11,8 +11,9 @@ import (
 	"github.com/go-playground/validator/v10"
 	"github.com/google/uuid"
 	"github.com/tsunakit99/selfpomodoro/internal/container"
-	"github.com/tsunakit99/selfpomodoro/internal/domain/entity"
+	"github.com/tsunakit99/selfpomodoro/internal/usecase/dto"
 	httpError "github.com/tsunakit99/selfpomodoro/internal/handler"
+	"github.com/tsunakit99/selfpomodoro/internal/infrastructure/auth"
 	"github.com/tsunakit99/selfpomodoro/internal/infrastructure/logger"
 	"github.com/tsunakit99/selfpomodoro/internal/usecase"
 )
@@ -51,8 +52,8 @@ func handler(ctx context.Context, request events.APIGatewayProxyRequest) (events
 		validator: validator.New(),
 	}
 
-	// 4. 認証・User存在確認（統一処理）
-	userID, err := taskHandler.authenticateAndValidateUser(ctx, request)
+	// 4. 認証済みユーザーID取得（API Gateway Authorizer経由）
+	userID, err := taskHandler.getUserIDFromContext(request)
 	if err != nil {
 		return taskHandler.handleError(err), nil
 	}
@@ -61,10 +62,9 @@ func handler(ctx context.Context, request events.APIGatewayProxyRequest) (events
 	return taskHandler.routeOperation(ctx, request, userID)
 }
 
-// authenticateAndValidateUser は認証・User存在確認の統一処理
-func (h *TaskHandler) authenticateAndValidateUser(ctx context.Context, request events.APIGatewayProxyRequest) (uuid.UUID, error) {
-	// UseCaseに完全委譲（Infrastructure詳細なし）
-	return h.useCases.Auth.AuthenticateAndValidateUser(ctx, request)
+// getUserIDFromContext はAPI Gateway Authorizerから認証済みユーザーIDを取得
+func (h *TaskHandler) getUserIDFromContext(request events.APIGatewayProxyRequest) (uuid.UUID, error) {
+	return auth.GetUserIDFromAPIGatewayContext(request, h.logger)
 }
 
 // routeOperation は操作ルーティング（現在のロジック維持）
@@ -95,7 +95,7 @@ func (h *TaskHandler) handleGetTasks(ctx context.Context, userID uuid.UUID) (eve
 
 // handleCreateTask はタスク作成（UseCaseに委譲）
 func (h *TaskHandler) handleCreateTask(ctx context.Context, request events.APIGatewayProxyRequest, userID uuid.UUID) (events.APIGatewayProxyResponse, error) {
-	var req entity.CreateTaskRequest
+	var req dto.CreateTaskRequest
 	if err := json.Unmarshal([]byte(request.Body), &req); err != nil {
 		return createErrorResponse(http.StatusBadRequest, "INVALID_REQUEST_FORMAT", "無効なリクエスト形式"), nil
 	}
@@ -134,7 +134,7 @@ func (h *TaskHandler) handleUpdateOrToggleTask(ctx context.Context, request even
 		return createSuccessResponse(http.StatusOK, taskResponse), nil
 	} else {
 		// タスク更新
-		var req entity.UpdateTaskRequest
+		var req dto.UpdateTaskRequest
 		if err := json.Unmarshal([]byte(request.Body), &req); err != nil {
 			return createErrorResponse(http.StatusBadRequest, "INVALID_REQUEST_FORMAT", "無効なリクエスト形式"), nil
 		}

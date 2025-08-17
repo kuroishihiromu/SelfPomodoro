@@ -10,8 +10,9 @@ import (
 	"github.com/go-playground/validator/v10"
 	"github.com/google/uuid"
 	"github.com/tsunakit99/selfpomodoro/internal/container"
-	"github.com/tsunakit99/selfpomodoro/internal/domain/entity"
+	"github.com/tsunakit99/selfpomodoro/internal/usecase/dto"
 	httpError "github.com/tsunakit99/selfpomodoro/internal/handler"
+	"github.com/tsunakit99/selfpomodoro/internal/infrastructure/auth"
 	"github.com/tsunakit99/selfpomodoro/internal/infrastructure/logger"
 	"github.com/tsunakit99/selfpomodoro/internal/usecase"
 )
@@ -24,8 +25,8 @@ func init() {
 	globalContainer = container.NewLambdaContainer()
 }
 
-// UserConfigHandler はDI Container使用版のUserConfigハンドラー
-type UserConfigHandler struct {
+// OptimizationPreferencesHandler はDI Container使用版のOptimizationPreferencesハンドラー
+type OptimizationPreferencesHandler struct {
 	useCases  *usecase.UseCases
 	logger    logger.Logger
 	validator *validator.Validate
@@ -43,70 +44,70 @@ func handler(ctx context.Context, request events.APIGatewayProxyRequest) (events
 	logger := globalContainer.GetLogger()
 
 	// 3. Handler初期化
-	userConfigHandler := &UserConfigHandler{
+	optimizationPreferencesHandler := &OptimizationPreferencesHandler{
 		useCases:  useCases,
 		logger:    logger,
 		validator: validator.New(),
 	}
 
-	// 4. 認証・User存在確認
-	userID, err := userConfigHandler.authenticateAndValidateUser(ctx, request)
+	// 4. 認証済みユーザーID取得（API Gateway Authorizer経由）
+	userID, err := optimizationPreferencesHandler.getUserIDFromContext(request)
 	if err != nil {
-		return userConfigHandler.handleError(err), nil
+		return optimizationPreferencesHandler.handleError(err), nil
 	}
 
 	// 5. 操作ルーティング
-	return userConfigHandler.routeOperation(ctx, request, userID)
+	return optimizationPreferencesHandler.routeOperation(ctx, request, userID)
 }
 
-// authenticateAndValidateUser は認証・User存在確認の統一処理
-func (h *UserConfigHandler) authenticateAndValidateUser(ctx context.Context, request events.APIGatewayProxyRequest) (uuid.UUID, error) {
-	return h.useCases.Auth.AuthenticateAndValidateUser(ctx, request)
+// getUserIDFromContext はAPI Gateway Authorizerから認証済みユーザーIDを取得
+func (h *OptimizationPreferencesHandler) getUserIDFromContext(request events.APIGatewayProxyRequest) (uuid.UUID, error) {
+	return auth.GetUserIDFromAPIGatewayContext(request, h.logger)
 }
 
-// routeOperation は操作ルーティング（UserConfig専用）
-func (h *UserConfigHandler) routeOperation(ctx context.Context, request events.APIGatewayProxyRequest, userID uuid.UUID) (events.APIGatewayProxyResponse, error) {
+// routeOperation は操作ルーティング（OptimizationPreferences専用）
+func (h *OptimizationPreferencesHandler) routeOperation(ctx context.Context, request events.APIGatewayProxyRequest, userID uuid.UUID) (events.APIGatewayProxyResponse, error) {
 	switch request.HTTPMethod {
 	case "GET":
-		return h.handleGetUserConfig(ctx, userID)
+		return h.handleGetOptimizationPreferences(ctx, userID)
 	case "PUT":
-		return h.handleUpdateUserConfig(ctx, request, userID)
+		return h.handleUpdateOptimizationPreferences(ctx, request, userID)
 	default:
 		return createErrorResponse(http.StatusMethodNotAllowed, "METHOD_NOT_ALLOWED", "GETまたはPUTメソッドのみ許可されています"), nil
 	}
 }
 
-// handleGetUserConfig はUserConfig取得を処理
-func (h *UserConfigHandler) handleGetUserConfig(ctx context.Context, userID uuid.UUID) (events.APIGatewayProxyResponse, error) {
-	// ユースケースを呼び出してUserConfigを取得
-	response, err := h.useCases.UserConfig.GetUserConfig(ctx, userID)
+// handleGetOptimizationPreferences はOptimizationPreferences取得を処理
+func (h *OptimizationPreferencesHandler) handleGetOptimizationPreferences(ctx context.Context, userID uuid.UUID) (events.APIGatewayProxyResponse, error) {
+	// ユースケースを呼び出してOptimizationPreferencesを取得
+	response, err := h.useCases.OptimizationPreferences.GetOptimizationPreferences(ctx, userID)
 	if err != nil {
-		h.logger.Errorf("UserConfig取得エラー: %v", err)
+		h.logger.Errorf("OptimizationPreferences取得エラー: %v", err)
 		return h.handleError(err), nil
 	}
 
 	return createSuccessResponse(http.StatusOK, response), nil
 }
 
-// handleUpdateUserConfig はUserConfig更新を処理
-func (h *UserConfigHandler) handleUpdateUserConfig(ctx context.Context, request events.APIGatewayProxyRequest, userID uuid.UUID) (events.APIGatewayProxyResponse, error) {
+// handleUpdateOptimizationPreferences はOptimizationPreferences更新を処理
+func (h *OptimizationPreferencesHandler) handleUpdateOptimizationPreferences(ctx context.Context, request events.APIGatewayProxyRequest, userID uuid.UUID) (events.APIGatewayProxyResponse, error) {
 	// リクエストボディをパース
-	var updateRequest entity.UpdateUserConfigRequest
+	var updateRequest dto.UpdateOptimizationPreferencesRequest
 	if err := json.Unmarshal([]byte(request.Body), &updateRequest); err != nil {
-		h.logger.Warnf("UserConfig更新リクエストのパースエラー: %v", err)
+		h.logger.Warnf("OptimizationPreferences更新リクエストのパースエラー: %v", err)
 		return createErrorResponse(http.StatusBadRequest, "INVALID_REQUEST", "無効なリクエストボディ"), nil
 	}
 
 	// バリデーション
 	if err := h.validator.Struct(&updateRequest); err != nil {
-		h.logger.Warnf("UserConfig更新バリデーションエラー: %v", err)
+		h.logger.Warnf("OptimizationPreferences更新バリデーションエラー: %v", err)
 		return createErrorResponse(http.StatusBadRequest, "VALIDATION_ERROR", "リクエストデータが無効です"), nil
 	}
 
-	// ユースケースを呼び出してUserConfigを更新
-	response, err := h.useCases.UserConfig.UpdateUserConfig(ctx, userID, &updateRequest)
+	// ユースケースを呼び出してOptimizationPreferencesを更新
+	response, err := h.useCases.OptimizationPreferences.UpdateOptimizationPreferences(ctx, userID, &updateRequest)
 	if err != nil {
-		h.logger.Errorf("UserConfig更新エラー: %v", err)
+		h.logger.Errorf("OptimizationPreferences更新エラー: %v", err)
 		return h.handleError(err), nil
 	}
 
@@ -114,7 +115,7 @@ func (h *UserConfigHandler) handleUpdateUserConfig(ctx context.Context, request 
 }
 
 // handleError はエラーを統一処理（error_mapper.go使用版）
-func (h *UserConfigHandler) handleError(err error) events.APIGatewayProxyResponse {
+func (h *OptimizationPreferencesHandler) handleError(err error) events.APIGatewayProxyResponse {
 	// error_mapper.goを使用してHTTPエラーにマッピング
 	httpErr := httpError.MapErrorToHTTP(err)
 

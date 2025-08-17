@@ -11,6 +11,7 @@ import (
 	"github.com/google/uuid"
 	"github.com/tsunakit99/selfpomodoro/internal/container"
 	httpError "github.com/tsunakit99/selfpomodoro/internal/handler"
+	"github.com/tsunakit99/selfpomodoro/internal/infrastructure/auth"
 	"github.com/tsunakit99/selfpomodoro/internal/infrastructure/logger"
 	"github.com/tsunakit99/selfpomodoro/internal/usecase"
 )
@@ -46,8 +47,8 @@ func handler(ctx context.Context, request events.APIGatewayProxyRequest) (events
 		logger:   logger,
 	}
 
-	// 4. 認証・User存在確認（統一処理）
-	userID, err := sessionHandler.authenticateAndValidateUser(ctx, request)
+	// 4. 認証済みユーザーID取得（API Gateway Authorizer経由）
+	userID, err := sessionHandler.getUserIDFromContext(request)
 	if err != nil {
 		return sessionHandler.handleError(err), nil
 	}
@@ -56,9 +57,9 @@ func handler(ctx context.Context, request events.APIGatewayProxyRequest) (events
 	return sessionHandler.routeOperation(ctx, request, userID)
 }
 
-// authenticateAndValidateUser は認証・User存在確認の統一処理
-func (h *SessionHandler) authenticateAndValidateUser(ctx context.Context, request events.APIGatewayProxyRequest) (uuid.UUID, error) {
-	return h.useCases.Auth.AuthenticateAndValidateUser(ctx, request)
+// getUserIDFromContext はAPI Gateway Authorizerから認証済みユーザーIDを取得
+func (h *SessionHandler) getUserIDFromContext(request events.APIGatewayProxyRequest) (uuid.UUID, error) {
+	return auth.GetUserIDFromAPIGatewayContext(request, h.logger)
 }
 
 // routeOperation は操作ルーティング
