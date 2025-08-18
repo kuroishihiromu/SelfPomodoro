@@ -13,7 +13,7 @@ struct HeatMapView: View {
 
     var body: some View {
         WithViewStore(store, observe: { $0 }) { viewStore in
-            VStack(spacing: 7) {
+            VStack(spacing: 16) {
                 Text(L10n.HeatMap.title)
                     .font(.headline)
                     .padding(.horizontal)
@@ -127,7 +127,7 @@ struct HourlyHeatMapGridView: View {
                 }
                 .padding(.trailing, 16)
             }
-            .frame(height: 204)
+            .frame(height: 285)
         }
     }
 }
