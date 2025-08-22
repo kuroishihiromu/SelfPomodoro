@@ -73,6 +73,10 @@ struct StatisticsScreenView: View {
                 .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .center)
                 .animation(.easeInOut, value: viewStore.state)
             }
+            .frame(maxWidth: .infinity, maxHeight: .infinity)
+            .safeAreaInset(edge: .top, spacing: 0) {
+                MenuBarView(title: "Statistics")
+            }
         }
     }
 }

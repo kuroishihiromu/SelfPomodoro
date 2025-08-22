@@ -12,7 +12,7 @@ struct MenuBarView: View {
 
     var body: some View {
         Text(title)
-            .font(.system(size: 28, weight: .bold))
+            .font(.system(size: 32, weight: .bold))
             .foregroundColor(ColorTheme.navy)
             .frame(maxWidth: .infinity, alignment: .leading)
             .padding(.horizontal, 16)

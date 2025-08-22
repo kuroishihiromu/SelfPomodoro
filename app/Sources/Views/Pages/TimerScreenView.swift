@@ -27,6 +27,10 @@ struct TimerScreenView: View {
                         .background(Color.black.opacity(0.3).ignoresSafeArea())
                 }
             }
+            .frame(maxWidth: .infinity, maxHeight: .infinity)
+            .safeAreaInset(edge: .top, spacing: 0) {
+                MenuBarView(title: "Pomodoro")
+            }
             // ラウンド設定モーダル
             .fullScreenCover(
                 isPresented: viewStore.binding(

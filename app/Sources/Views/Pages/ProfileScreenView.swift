@@ -9,7 +9,13 @@ import SwiftUI
 
 struct ProfileScreenView: View {
     var body: some View {
-        Text("coming soon...")
+        VStack {
+            Text("coming soon...")
+        }
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .safeAreaInset(edge: .top, spacing: 0) {
+            MenuBarView(title: "Profile")
+        }
     }
 }
 
