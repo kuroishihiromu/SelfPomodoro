@@ -12,7 +12,13 @@ struct TaskManagementScreenView: View {
     let store: StoreOf<ToDoListFeature>
 
     var body: some View {
-        ToDoListView(store: store)
+        VStack {
+            ToDoListView(store: store)
+        }
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .safeAreaInset(edge: .top, spacing: 0) {
+            MenuBarView(title: "Tasks")
+        }
     }
 }
 
