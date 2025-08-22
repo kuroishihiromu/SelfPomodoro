@@ -55,9 +55,6 @@ struct TimerFeature {
         case tick(Int)
         case phaseCompleted
         case updateSettings(task: Int, shortBreak: Int, longBreak: Int, roundsPerSession: Int)
-        case saveTimerState
-        case restoreTimerState
-        case clearPersistedState
     }
 
     enum CancelID { case timer }
@@ -70,20 +67,6 @@ struct TimerFeature {
             state.totalSeconds = state.currentPhaseDuration
             let correctedStart = ContinuousClock().now.advanced(by: .seconds(-state.currentSeconds))
             state.startTime = correctedStart
-            
-            // 永続化
-            let persistenceData = TimerPersistenceData(
-                startTime: Date(),
-                taskDuration: state.taskDuration,
-                shortBreakDuration: state.shortBreakDuration,
-                longBreakDuration: state.longBreakDuration,
-                roundsPerSession: state.roundsPerSession,
-                phase: phaseToString(state.phase),
-                round: state.round,
-                isRunning: true,
-                currentSeconds: state.currentSeconds
-            )
-            TimerPersistence.save(persistenceData)
             return .run { [start = correctedStart] send in
                 var lastElapsed = -1
                 while !Task.isCancelled {
@@ -103,7 +86,6 @@ struct TimerFeature {
 
         case .stop:
             state.isRunning = false
-            TimerPersistence.clear()
             return .cancel(id: CancelID.timer)
 
         case let .tick(elapsed):
@@ -138,7 +120,6 @@ struct TimerFeature {
             }
 
             state.totalSeconds = state.currentPhaseDuration
-            TimerPersistence.clear()
             return .send(.stop)
 
         case let .updateSettings(task, short, long, rps):
@@ -149,74 +130,6 @@ struct TimerFeature {
             state.totalSeconds = state.currentPhaseDuration
             state.currentSeconds = 0
             return .none
-            
-        case .saveTimerState:
-            guard state.isRunning else { return .none }
-            let persistenceData = TimerPersistenceData(
-                startTime: Date(),
-                taskDuration: state.taskDuration,
-                shortBreakDuration: state.shortBreakDuration,
-                longBreakDuration: state.longBreakDuration,
-                roundsPerSession: state.roundsPerSession,
-                phase: phaseToString(state.phase),
-                round: state.round,
-                isRunning: state.isRunning,
-                currentSeconds: state.currentSeconds
-            )
-            TimerPersistence.save(persistenceData)
-            return .none
-            
-        case .restoreTimerState:
-            guard let persistedData = TimerPersistence.load() else {
-                return .none
-            }
-            
-            state.taskDuration = persistedData.taskDuration
-            state.shortBreakDuration = persistedData.shortBreakDuration
-            state.longBreakDuration = persistedData.longBreakDuration
-            state.roundsPerSession = persistedData.roundsPerSession
-            state.phase = stringToPhase(persistedData.phase)
-            state.round = persistedData.round
-            state.totalSeconds = state.currentPhaseDuration
-            
-            if persistedData.isRunning {
-                let elapsed = Int(Date().timeIntervalSince(persistedData.startTime))
-                let adjustedElapsed = elapsed + persistedData.currentSeconds
-                
-                if adjustedElapsed < state.totalSeconds {
-                    state.currentSeconds = adjustedElapsed
-                    state.isRunning = true
-                    let correctedStart = ContinuousClock().now.advanced(by: .seconds(-adjustedElapsed))
-                    state.startTime = correctedStart
-                    return .send(.start)
-                } else {
-                    TimerPersistence.clear()
-                    return .send(.phaseCompleted)
-                }
-            }
-            
-            return .none
-            
-        case .clearPersistedState:
-            TimerPersistence.clear()
-            return .none
-        }
-    }
-    
-    private func phaseToString(_ phase: Phase) -> String {
-        switch phase {
-        case .task: return "task"
-        case .shortBreak: return "shortBreak"
-        case .longBreak: return "longBreak"
-        }
-    }
-    
-    private func stringToPhase(_ string: String) -> Phase {
-        switch string {
-        case "task": return .task
-        case "shortBreak": return .shortBreak
-        case "longBreak": return .longBreak
-        default: return .task
         }
     }
 }

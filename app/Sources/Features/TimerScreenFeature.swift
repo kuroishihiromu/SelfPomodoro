@@ -19,7 +19,6 @@ struct TimerScreenFeature {
         var sessionCompleteModal: Bool = false
         var isFirstSession: Bool = true
         var userConfig: UserConfigResult = .init(id: UUID(), roundWorkTime: 25*60, roundBreakTime: 5*60, sessionRounds: 5, sessionBreakTime: 15*60)
-        var hasPersistedTimer: Bool = false
     }
 
     enum Action {
@@ -42,7 +41,6 @@ struct TimerScreenFeature {
         case userConfigResponse(Result<UserConfigResult, Error>)
         case toggleConfigModal(Bool)
         case toggleSessionCompleteModal(Bool)
-        case restoreTimerIfNeeded
         
     }
 
@@ -132,30 +130,20 @@ struct TimerScreenFeature {
                 return .none
 
             case .onAppear:
-                // 永続化されたタイマーデータをチェック
-                state.hasPersistedTimer = TimerPersistence.load() != nil
-                
-                if state.hasPersistedTimer {
-                    // 永続化データがある場合は復元
-                    return .send(.restoreTimerIfNeeded)
-                } else if state.isFirstSession {
-                    // 永続化データがなく、初回セッションの場合は設定を取得
-                    return .run { send in
-                        let config = try await userConfigAPIClient.getUserConfig()
-                        await send(.userConfigResponse(.success(config)))
-                    } catch: { error, send in
-                        await send(.userConfigResponse(.failure(error)))
-                    }
+                guard state.isFirstSession else {
+                    return .none
                 }
                 
-                return .none
+                return .run { send in
+                    let config = try await userConfigAPIClient.getUserConfig()
+                    await send(.userConfigResponse(.success(config)))
+                } catch: { error, send in
+                    await send(.userConfigResponse(.failure(error)))
+                }
 
             case let .userConfigResponse(.success(config)):
                 state.userConfig = config
-                // 永続化データがない場合のみモーダルを表示
-                if !state.hasPersistedTimer {
-                    state.roundConfigModalIsPresented = true
-                }
+                state.roundConfigModalIsPresented = true
                 
                 return .send(.timer(.updateSettings(
                     task: config.roundWorkTime * 60,
@@ -178,18 +166,6 @@ struct TimerScreenFeature {
             case .sessionCompleteModalTapped:
                 state.isFirstSession = true
                 return .none
-                
-            case .restoreTimerIfNeeded:
-                let effect = Effect<Action>.send(.timer(.restoreTimerState))
-                
-                // 復元が成功した場合、永続化フラグを更新
-                if TimerPersistence.load() != nil {
-                    state.hasPersistedTimer = true
-                    // 既に設定が存在する場合はモーダルを表示しない
-                    state.roundConfigModalIsPresented = false
-                }
-                
-                return effect
                 
             default:
                 return .none
