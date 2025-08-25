@@ -22,6 +22,11 @@ custom:
   cognitoClientId:
     dev: 2dbjjcvvon3trtt5imonmpnq9g  # 既存dev環境  
     prod: !Ref CognitoUserPoolClient     # 新規作成（本番環境）
+    
+  # 環境別Cognito Authorizer ARN設定
+  cognitoAuthorizerArn:
+    dev: arn:aws:cognito-idp:ap-northeast-1:545009834501:userpool/ap-northeast-1_UltsO4poH
+    prod: !GetAtt CognitoUserPool.Arn
 
 
   # 🎯 IAM権限設定（最適化Lambda用DynamoDB・SQSアクセス）
@@ -212,34 +217,37 @@ functions:
     memorySize: 256
     # Cognito Triggerの場合、eventsセクションは不要（resourcesで設定）
 
-# 🎯 最適化Lambda関数（Container Image with Bayesian Optimization）
-  optimization-round-v2:
-    image: 545009834501.dkr.ecr.ap-northeast-1.amazonaws.com/selfpomodoro-optimization-round:v5
-    timeout: 30
-    memorySize: 1024
-    events:
-      - sqs:
-          arn: arn:aws:sqs:${self:provider.region}:545009834501:selfpomodoro-round-optimization-${self:provider.stage}
-          batchSize: 1
-    environment:
-      DYNAMODB_TABLE_NAME: selfpomodoro_unified_table_${self:provider.stage}
+# 🎯 最適化Lambda関数（Container Image with Bayesian Optimization） - 一時コメントアウト
+#  optimization-round-v2:
+#    image: 545009834501.dkr.ecr.ap-northeast-1.amazonaws.com/selfpomodoro-optimization-round:v5
+#    timeout: 30
+#    memorySize: 1024
+#    events:
+#      - sqs:
+#          arn: arn:aws:sqs:${self:provider.region}:545009834501:selfpomodoro-round-optimization-${self:provider.stage}
+#          batchSize: 1
+#    environment:
+#      DYNAMODB_TABLE_NAME: selfpomodoro_unified_table_${self:provider.stage}
 
-  optimization-session-v2:
-    image: 545009834501.dkr.ecr.ap-northeast-1.amazonaws.com/selfpomodoro-optimization-session:v5
-    timeout: 30
-    memorySize: 1024
-    events:
-      - sqs:
-          arn: arn:aws:sqs:${self:provider.region}:545009834501:selfpomodoro-session-optimization-${self:provider.stage}
-          batchSize: 1
-    environment:
-      DYNAMODB_TABLE_NAME: selfpomodoro_unified_table_${self:provider.stage}
+#  optimization-session-v2:
+#    image: 545009834501.dkr.ecr.ap-northeast-1.amazonaws.com/selfpomodoro-optimization-session:v5
+#    timeout: 30
+#    memorySize: 1024
+#    events:
+#      - sqs:
+#          arn: arn:aws:sqs:${self:provider.region}:545009834501:selfpomodoro-session-optimization-${self:provider.stage}
+#          batchSize: 1
+#    environment:
+#      DYNAMODB_TABLE_NAME: selfpomodoro_unified_table_${self:provider.stage}
 
 package:
   individually: true
 
 # 🎯 AWS Resources定義（DynamoDB + Cognito + PostConfirmation統合）
 resources:
+  Conditions:
+    IsProdStage: !Equals ["${self:provider.stage}", "prod"]
+    
   Resources:
     # 🎯 DynamoDB統合テーブル（GSI付き）
     SelfPomodoroUnifiedTable:
@@ -295,9 +303,10 @@ resources:
           AttributeName: ttl
           Enabled: true
           
-    # Cognito User Pool（既存のものを参照・更新）
+    # Cognito User Pool（prod環境のみ作成、dev環境は既存使用）
     CognitoUserPool:
       Type: AWS::Cognito::UserPool
+      Condition: IsProdStage
       Properties:
         UserPoolName: selfpomodoro-users-${self:provider.stage}
         # PostConfirmation Trigger設定
@@ -333,9 +342,10 @@ resources:
         UsernameAttributes:
           - email
         
-    # Cognito User Pool Client（既存のものを参照・更新）
+    # Cognito User Pool Client（prod環境のみ作成、dev環境は既存使用）
     CognitoUserPoolClient:
       Type: AWS::Cognito::UserPoolClient
+      Condition: IsProdStage
       Properties:
         ClientName: selfpomodoro-client-${self:provider.stage}
         UserPoolId: !Ref CognitoUserPool
@@ -351,9 +361,10 @@ resources:
         IdTokenValidity: 24
         RefreshTokenValidity: 30
 
-    # PostConfirmation Lambda実行権限
+    # PostConfirmation Lambda実行権限（prod環境のみ、dev環境は手動設定）
     PostConfirmationLambdaPermission:
       Type: AWS::Lambda::Permission
+      Condition: IsProdStage
       Properties:
         Action: lambda:invokeFunction
         FunctionName: !GetAtt PostDashconfirmationLambdaFunction.Arn
@@ -370,17 +381,25 @@ resources:
         IdentitySource: method.request.header.Authorization
         RestApiId: !Ref ApiGatewayRestApi
         ProviderARNs:
-          - !GetAtt CognitoUserPool.Arn
+          - ${self:custom.cognitoAuthorizerArn.${self:provider.stage}}
 
   # CloudFormation Outputs（環境変数やAPI確認用）
   Outputs:
     CognitoUserPoolId:
       Description: "Cognito User Pool ID"
-      Value: !Ref CognitoUserPool
+      Value:
+        Fn::If:
+          - IsProdStage
+          - !Ref CognitoUserPool
+          - ap-northeast-1_UltsO4poH
       
     CognitoUserPoolClientId:
       Description: "Cognito User Pool Client ID"
-      Value: !Ref CognitoUserPoolClient
+      Value:
+        Fn::If:
+          - IsProdStage
+          - !Ref CognitoUserPoolClient
+          - 2dbjjcvvon3trtt5imonmpnq9g
       
     CognitoAuthorizerId:
       Description: "Cognito Authorizer ID"
