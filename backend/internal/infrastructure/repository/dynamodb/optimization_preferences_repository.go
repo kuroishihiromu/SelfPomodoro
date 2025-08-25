@@ -13,9 +13,9 @@ import (
 	"github.com/tsunakit99/selfpomodoro/internal/config"
 	"github.com/tsunakit99/selfpomodoro/internal/domain/entity"
 	"github.com/tsunakit99/selfpomodoro/internal/domain/repository"
-	userVO "github.com/tsunakit99/selfpomodoro/internal/domain/valueobject/user"
 	roundVO "github.com/tsunakit99/selfpomodoro/internal/domain/valueobject/round"
 	sessionVO "github.com/tsunakit99/selfpomodoro/internal/domain/valueobject/session"
+	userVO "github.com/tsunakit99/selfpomodoro/internal/domain/valueobject/user"
 	appErrors "github.com/tsunakit99/selfpomodoro/internal/errors"
 	"github.com/tsunakit99/selfpomodoro/internal/infrastructure/logger"
 )
@@ -39,7 +39,7 @@ func NewOptimizationPreferencesRepository(client *dynamodb.Client, cfg *config.C
 // Get は最適化設定を取得する
 func (r *OptimizationPreferencesRepositoryImpl) Get(ctx context.Context, userID userVO.UserID) (*entity.OptimizationPreferences, error) {
 	pk := UserPartitionKey(userID.String())
-	sk := UserConfigSortKey()
+	sk := OptimizationPreferencesSortKey()
 
 	input := &dynamodb.GetItemInput{
 		TableName: aws.String(r.tableName),
@@ -73,18 +73,19 @@ func (r *OptimizationPreferencesRepositoryImpl) Get(ctx context.Context, userID 
 // Create は新しい最適化設定を作成する
 func (r *OptimizationPreferencesRepositoryImpl) Create(ctx context.Context, preferences *entity.OptimizationPreferences) error {
 	pk := UserPartitionKey(preferences.UserID.String())
-	sk := UserConfigSortKey()
+	sk := OptimizationPreferencesSortKey()
 
 	item := map[string]types.AttributeValue{
-		"PK":                &types.AttributeValueMemberS{Value: pk},
-		"SK":                &types.AttributeValueMemberS{Value: sk},
-		"user_id":           &types.AttributeValueMemberS{Value: preferences.UserID.String()},
-		"round_work_time":   &types.AttributeValueMemberN{Value: fmt.Sprintf("%d", preferences.RoundWorkTime.Minutes())},
-		"round_break_time":  &types.AttributeValueMemberN{Value: fmt.Sprintf("%d", preferences.RoundBreakTime.Minutes())},
-		"session_rounds":    &types.AttributeValueMemberN{Value: fmt.Sprintf("%d", preferences.SessionRounds.Count())},
+		"PK":                 &types.AttributeValueMemberS{Value: pk},
+		"SK":                 &types.AttributeValueMemberS{Value: sk},
+		"user_id":            &types.AttributeValueMemberS{Value: preferences.UserID.String()},
+		"round_work_time":    &types.AttributeValueMemberN{Value: fmt.Sprintf("%d", preferences.RoundWorkTime.Minutes())},
+		"round_break_time":   &types.AttributeValueMemberN{Value: fmt.Sprintf("%d", preferences.RoundBreakTime.Minutes())},
+		"session_rounds":     &types.AttributeValueMemberN{Value: fmt.Sprintf("%d", preferences.SessionRounds.Count())},
 		"session_break_time": &types.AttributeValueMemberN{Value: fmt.Sprintf("%d", preferences.SessionBreakTime.Minutes())},
-		"created_at":        &types.AttributeValueMemberS{Value: preferences.CreatedAt.Format(time.RFC3339)},
-		"updated_at":        &types.AttributeValueMemberS{Value: preferences.UpdatedAt.Format(time.RFC3339)},
+		"entity_type":        &types.AttributeValueMemberS{Value: "optimization_preferences"},
+		"created_at":         &types.AttributeValueMemberS{Value: preferences.CreatedAt.Format(time.RFC3339)},
+		"updated_at":         &types.AttributeValueMemberS{Value: preferences.UpdatedAt.Format(time.RFC3339)},
 	}
 
 	input := &dynamodb.PutItemInput{
@@ -112,20 +113,21 @@ func (r *OptimizationPreferencesRepositoryImpl) Create(ctx context.Context, pref
 // Update は最適化設定を更新する
 func (r *OptimizationPreferencesRepositoryImpl) Update(ctx context.Context, preferences *entity.OptimizationPreferences) error {
 	pk := UserPartitionKey(preferences.UserID.String())
-	sk := UserConfigSortKey()
+	sk := OptimizationPreferencesSortKey()
 
 	preferences.UpdatedAt = time.Now()
 
 	item := map[string]types.AttributeValue{
-		"PK":                &types.AttributeValueMemberS{Value: pk},
-		"SK":                &types.AttributeValueMemberS{Value: sk},
-		"user_id":           &types.AttributeValueMemberS{Value: preferences.UserID.String()},
-		"round_work_time":   &types.AttributeValueMemberN{Value: fmt.Sprintf("%d", preferences.RoundWorkTime.Minutes())},
-		"round_break_time":  &types.AttributeValueMemberN{Value: fmt.Sprintf("%d", preferences.RoundBreakTime.Minutes())},
-		"session_rounds":    &types.AttributeValueMemberN{Value: fmt.Sprintf("%d", preferences.SessionRounds.Count())},
+		"PK":                 &types.AttributeValueMemberS{Value: pk},
+		"SK":                 &types.AttributeValueMemberS{Value: sk},
+		"user_id":            &types.AttributeValueMemberS{Value: preferences.UserID.String()},
+		"round_work_time":    &types.AttributeValueMemberN{Value: fmt.Sprintf("%d", preferences.RoundWorkTime.Minutes())},
+		"round_break_time":   &types.AttributeValueMemberN{Value: fmt.Sprintf("%d", preferences.RoundBreakTime.Minutes())},
+		"session_rounds":     &types.AttributeValueMemberN{Value: fmt.Sprintf("%d", preferences.SessionRounds.Count())},
 		"session_break_time": &types.AttributeValueMemberN{Value: fmt.Sprintf("%d", preferences.SessionBreakTime.Minutes())},
-		"created_at":        &types.AttributeValueMemberS{Value: preferences.CreatedAt.Format(time.RFC3339)},
-		"updated_at":        &types.AttributeValueMemberS{Value: preferences.UpdatedAt.Format(time.RFC3339)},
+		"entity_type":        &types.AttributeValueMemberS{Value: "optimization_preferences"},
+		"created_at":         &types.AttributeValueMemberS{Value: preferences.CreatedAt.Format(time.RFC3339)},
+		"updated_at":         &types.AttributeValueMemberS{Value: preferences.UpdatedAt.Format(time.RFC3339)},
 	}
 
 	input := &dynamodb.PutItemInput{
@@ -153,7 +155,7 @@ func (r *OptimizationPreferencesRepositoryImpl) Update(ctx context.Context, pref
 // Delete は最適化設定を削除する
 func (r *OptimizationPreferencesRepositoryImpl) Delete(ctx context.Context, userID userVO.UserID) error {
 	pk := UserPartitionKey(userID.String())
-	sk := UserConfigSortKey()
+	sk := OptimizationPreferencesSortKey()
 
 	input := &dynamodb.DeleteItemInput{
 		TableName: aws.String(r.tableName),
@@ -191,13 +193,13 @@ func (r *OptimizationPreferencesRepositoryImpl) GetOrCreateDefault(ctx context.C
 	// 設定が存在しない場合、デフォルト設定を作成
 	if errors.Is(err, appErrors.ErrRecordNotFound) {
 		r.logger.Infof("最適化設定が見つからないため、デフォルト設定を作成します: UserID=%s", userID.String())
-		
+
 		// デフォルト設定を作成
 		defaultPreferences, err := entity.NewOptimizationPreferences(userID)
 		if err != nil {
 			return nil, fmt.Errorf("デフォルト最適化設定の作成に失敗: %w", err)
 		}
-		
+
 		// データベースに保存
 		createErr := r.Create(ctx, defaultPreferences)
 		if createErr != nil {
@@ -208,7 +210,7 @@ func (r *OptimizationPreferencesRepositoryImpl) GetOrCreateDefault(ctx context.C
 			}
 			return nil, createErr
 		}
-		
+
 		return defaultPreferences, nil
 	}
 

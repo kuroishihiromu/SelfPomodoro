@@ -16,7 +16,6 @@ type UseCases struct {
 	Statistics   StatisticsUsecase
 	OptimizationPreferences OptimizationPreferencesUseCase
 	Onboarding   OnboardingUseCase
-	Optimization OptimizationUseCase
 }
 
 // NewUseCases はすべてのユースケースを初期化する（API Gateway Authorizer対応版）
@@ -42,6 +41,5 @@ func NewUseCases(
 		Statistics:   NewStatisticsUsecase(statisticsRepo, logger),
 		OptimizationPreferences: NewOptimizationPreferencesUseCase(optimizationPreferencesRepo, logger),
 		Onboarding:   NewOnboardingUseCase(userRepo, optimizationPreferencesRepo, logger),
-		Optimization: NewOptimizationUseCase(optimizationPreferencesRepo, logger),
 	}
 }
