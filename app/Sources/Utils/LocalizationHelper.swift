@@ -2,7 +2,7 @@
 //  LocalizationHelper.swift
 //  SelfPomodoro
 //
-//  Created by Claude on 2025/01/16.
+//  Created by kuroishi hiromu on 2025/01/16.
 //
 
 import Foundation
@@ -26,15 +26,22 @@ enum L10n {
     enum Auth {
         static let createAccount = "auth.create_account".localized
         static let description = "auth.description".localized
+        static let signupDescription = "auth.signup_description".localized
+        static let signupTitle = "auth.signup_title".localized
         static let emailPlaceholder = "auth.email_placeholder".localized
         static let passwordPlaceholder = "auth.password_placeholder".localized
         static let confirmPasswordPlaceholder = "auth.confirm_password_placeholder".localized
         static let termsAgreement = "auth.terms_agreement".localized
+        static let agreeTerms = "auth.agree_terms".localized
         static let loginButton = "auth.login_button".localized
         static let signupButton = "auth.signup_button".localized
         static let signupLink = "auth.signup_link".localized
         static let passwordMismatch = "auth.password_mismatch".localized
         static let termsRequired = "auth.terms_required".localized
+        static let confirmTitle = "auth.confirm_title".localized
+        static let confirmDescription = "auth.confirm_description".localized
+        static let confirmButton = "auth.confirm_button".localized
+        static let otpPlaceholder = "auth.otp_placeholder".localized
     }
     
     // MARK: - タイマー画面

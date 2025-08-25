@@ -71,22 +71,35 @@ extension AuthAPIClient {
         },
         signUp: { username, password in
             do {
+                print("🔵 DEBUG: AuthAPIClient.signUp called with username: \(username)")
+                
                 // 既存のサインイン状態をチェックしてサインアウト
                 let currentSession = try await Amplify.Auth.fetchAuthSession()
+                print("🔵 DEBUG: Current session isSignedIn: \(currentSession.isSignedIn)")
+                
                 if currentSession.isSignedIn {
+                    print("🔵 DEBUG: Signing out existing session")
                     _ = try await Amplify.Auth.signOut()
                 }
                 
+                print("🔵 DEBUG: Calling Amplify.Auth.signUp")
                 let signUpResult = try await Amplify.Auth.signUp(
                     username: username,
                     password: password
                 )
                 
+                print("🔵 DEBUG: SignUp result - isSignUpComplete: \(signUpResult.isSignUpComplete)")
+                print("🔵 DEBUG: SignUp result - nextStep: \(signUpResult.nextStep)")
+                
                 if !signUpResult.isSignUpComplete {
+                    print("🟢 DEBUG: Confirmation required - email should be sent")
                     // 確認が必要な場合は正常終了（UIで確認コード入力画面を表示）
                     return
                 }
+                
+                print("🟢 DEBUG: SignUp completed without confirmation")
             } catch {
+                print("🔴 DEBUG: AuthAPIClient.signUp error: \(error)")
                 throw error
             }
         },

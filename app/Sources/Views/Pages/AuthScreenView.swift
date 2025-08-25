@@ -15,7 +15,7 @@ struct AuthScreenView: View {
         if store.isLoggedIn {
             MainView(token: store.tokens!, authStore: store)
         } else {
-            NavigationStack {
+            NavigationStack(path: $store.scope(state: \.path, action: \.path)) {
                 VStack(spacing: 20) {
                     Text(L10n.Auth.createAccount)
                         .font(.system(size: 30, weight: .bold))
@@ -37,6 +37,7 @@ struct AuthScreenView: View {
                         height: 44,
                         text: $store.password
                     )
+                    
                     // エラーメッセージ（統一表示）
                     if let message = store.errorMessage {
                         Text(message)
@@ -47,7 +48,7 @@ struct AuthScreenView: View {
                     
                     NormalButton(text: L10n.Auth.loginButton, bgColor: ColorTheme.navy, fontColor: ColorTheme.white, width: 350, height: 50, action: {store.send(.tappedLogin)})
                                         
-                    NavigationLink(destination: SignUpScreenView(store: store)) {
+                    Button(action: { store.send(.navigateToSignUp) }) {
                         Text(L10n.Auth.signupLink)
                             .foregroundColor(ColorTheme.black)
                             .underline()
@@ -56,6 +57,11 @@ struct AuthScreenView: View {
 
                 }
                 .frame(width: 350)
+            } destination: { pathStore in
+                switch pathStore.state {
+                case .signUp:
+                    SignUpScreenView(store: store)
+                }
             }
         }
     }
