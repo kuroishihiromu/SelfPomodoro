@@ -6,12 +6,29 @@
 //
 
 import SwiftUI
+import ComposableArchitecture
 
 struct ProfileScreenView: View {
+    let authStore: StoreOf<AuthFeature>
+    
     var body: some View {
-        VStack {
+        VStack(spacing: 30) {
             Text("coming soon...")
+            
+            Spacer()
+            
+            NormalButton(
+                text: L10n.Profile.logout,
+                bgColor: .red,
+                fontColor: .white,
+                width: 250,
+                height: 50,
+                action: {
+                    authStore.send(.tappedSignOut)
+                }
+            )
         }
+        .padding()
         .frame(maxWidth: .infinity, maxHeight: .infinity)
         .safeAreaInset(edge: .top, spacing: 0) {
             MenuBarView(title: "Profile")
@@ -20,5 +37,10 @@ struct ProfileScreenView: View {
 }
 
 #Preview {
-    ProfileScreenView()
+    ProfileScreenView(
+        authStore: Store(
+            initialState: AuthFeature.State(),
+            reducer: { AuthFeature() }
+        )
+    )
 }

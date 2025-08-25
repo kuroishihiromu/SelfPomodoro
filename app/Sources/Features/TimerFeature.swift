@@ -89,7 +89,14 @@ struct TimerFeature {
                 while !Task.isCancelled {
                     let now = ContinuousClock().now
                     let realElapsed = start.duration(to: now).components.seconds
-                    let acceleratedElapsed = Int(Double(realElapsed)) 
+                    
+                    #if DEBUG
+                    let accelerationFactor = 200.0 // デバッグ時は10倍速
+                    #else
+                    let accelerationFactor = 1.0  // リリース時は通常速度
+                    #endif
+                    
+                    let acceleratedElapsed = Int(Double(realElapsed) * accelerationFactor)
 
                     if acceleratedElapsed != lastElapsed {
                         await send(.tick(acceleratedElapsed))
@@ -181,7 +188,15 @@ struct TimerFeature {
             
             if persistedData.isRunning {
                 let elapsed = Int(Date().timeIntervalSince(persistedData.startTime))
-                let adjustedElapsed = elapsed + persistedData.currentSeconds
+                
+                #if DEBUG
+                let accelerationFactor = 10.0 // デバッグ時は10倍速
+                #else
+                let accelerationFactor = 1.0  // リリース時は通常速度
+                #endif
+                
+                let acceleratedElapsed = Int(Double(elapsed) * accelerationFactor)
+                let adjustedElapsed = acceleratedElapsed + persistedData.currentSeconds
                 
                 if adjustedElapsed < state.totalSeconds {
                     state.currentSeconds = adjustedElapsed

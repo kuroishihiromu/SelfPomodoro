@@ -13,6 +13,9 @@
 "auth.terms_agreement" = "利用規約に同意する";
 "auth.login_button" = "ログイン";
 "auth.signup_button" = "サインアップ";
+"auth.signup_link" = "アカウントをお持ちでない方はこちら。";
+"auth.confirm_password_placeholder" = "パスワードを再入力";
+"auth.password_mismatch" = "パスワードが一致しません";
 "auth.terms_required" = "利用規約に同意してください。";
 
 // MARK: - タイマー画面

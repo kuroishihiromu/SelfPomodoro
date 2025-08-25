@@ -13,6 +13,9 @@
 "auth.terms_agreement" = "I agree with Terms & Conditions";
 "auth.login_button" = "Log in";
 "auth.signup_button" = "Sign Up";
+"auth.signup_link" = "Don't have an account? Sign up here.";
+"auth.confirm_password_placeholder" = "Confirm your password";
+"auth.password_mismatch" = "Passwords do not match";
 "auth.terms_required" = "Please agree to the Terms & Conditions.";
 
 // MARK: - Timer Screen

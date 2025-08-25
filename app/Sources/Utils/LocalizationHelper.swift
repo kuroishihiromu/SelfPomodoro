@@ -28,9 +28,12 @@ enum L10n {
         static let description = "auth.description".localized
         static let emailPlaceholder = "auth.email_placeholder".localized
         static let passwordPlaceholder = "auth.password_placeholder".localized
+        static let confirmPasswordPlaceholder = "auth.confirm_password_placeholder".localized
         static let termsAgreement = "auth.terms_agreement".localized
         static let loginButton = "auth.login_button".localized
         static let signupButton = "auth.signup_button".localized
+        static let signupLink = "auth.signup_link".localized
+        static let passwordMismatch = "auth.password_mismatch".localized
         static let termsRequired = "auth.terms_required".localized
     }
     

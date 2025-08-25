@@ -19,6 +19,8 @@ struct AuthTokens: Equatable {
 
 struct AuthAPIClient {
     var signIn: (_ username: String, _ password: String) async throws -> AuthTokens
+    var signUp: (_ username: String, _ password: String) async throws -> Void
+    var confirmSignUp: (_ username: String, _ confirmationCode: String) async throws -> AuthTokens
     var signOut: () async throws -> Void
 }
 
@@ -62,6 +64,49 @@ extension AuthAPIClient {
                     idToken: tokens.idToken,
                     accessToken: tokens.accessToken,
                     refreshToken: tokens.refreshToken
+                )
+            } catch {
+                throw error
+            }
+        },
+        signUp: { username, password in
+            do {
+                // 既存のサインイン状態をチェックしてサインアウト
+                let currentSession = try await Amplify.Auth.fetchAuthSession()
+                if currentSession.isSignedIn {
+                    _ = try await Amplify.Auth.signOut()
+                }
+                
+                let signUpResult = try await Amplify.Auth.signUp(
+                    username: username,
+                    password: password
+                )
+                
+                if !signUpResult.isSignUpComplete {
+                    // 確認が必要な場合は正常終了（UIで確認コード入力画面を表示）
+                    return
+                }
+            } catch {
+                throw error
+            }
+        },
+        confirmSignUp: { username, confirmationCode in
+            do {
+                let confirmResult = try await Amplify.Auth.confirmSignUp(
+                    for: username,
+                    confirmationCode: confirmationCode
+                )
+                
+                guard confirmResult.isSignUpComplete else {
+                    throw NSError(domain: "Auth", code: 400, userInfo: [NSLocalizedDescriptionKey: "確認が完了しませんでした"])
+                }
+                
+                // 確認完了のみ返す（サインインは別途実行）
+                // ダミーのAuthTokensを返す（実際のサインインは確認後に別途実行）
+                return AuthTokens(
+                    idToken: "confirmed",
+                    accessToken: "confirmed", 
+                    refreshToken: "confirmed"
                 )
             } catch {
                 throw error
