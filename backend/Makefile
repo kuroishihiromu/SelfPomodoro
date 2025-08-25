@@ -6,7 +6,7 @@ GOARCH := amd64
 CGO_ENABLED := 0
 
 # Lambda関数一覧
-FUNCTIONS := api-tasks api-sessions api-rounds api-statistics api-userconfig post-confirmation optimization-round optimization-session
+FUNCTIONS := api-tasks api-sessions api-rounds api-statistics api-optimization-preferences post-confirmation optimization-round optimization-session
 
 # デフォルトのターゲット
 .PHONY: help
@@ -81,15 +81,15 @@ build-api-statistics:
 	rm bootstrap
 	@echo "✅ api-statistics ビルド完了"
 
-.PHONY: build-api-userconfig
-build-api-userconfig:
-	@echo "🔨 api-userconfig をビルド中..."
-	@cd functions/api-userconfig && \
+.PHONY: build-api-optimization-preferences
+build-api-optimization-preferences:
+	@echo "🔨 api-optimization-preferences をビルド中..."
+	@cd functions/api-optimization-preferences && \
 	GOOS=$(GOOS) GOARCH=$(GOARCH) CGO_ENABLED=$(CGO_ENABLED) \
 	go build -ldflags="-s -w" -o bootstrap main.go && \
 	zip bootstrap.zip bootstrap && \
 	rm bootstrap
-	@echo "✅ api-userconfig ビルド完了"
+	@echo "✅ api-optimization-preferences ビルド完了"
 
 # PostConfirmation Lambda関数ビルド
 .PHONY: build-post-confirmation
