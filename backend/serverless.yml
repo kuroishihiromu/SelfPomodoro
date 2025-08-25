@@ -16,16 +16,16 @@ custom:
   
   # 環境別Cognito設定
   cognitoUserPoolId:
-    dev: ap-northeast-1_UltsO4poH  # 既存dev環境
+    dev: !Ref CognitoUserPool      # 新規作成（dev環境）
     prod: !Ref CognitoUserPool     # 新規作成（本番環境）
   
   cognitoClientId:
-    dev: 2dbjjcvvon3trtt5imonmpnq9g  # 既存dev環境  
-    prod: !Ref CognitoUserPoolClient     # 新規作成（本番環境）
+    dev: !Ref CognitoUserPoolClient   # 新規作成（dev環境）
+    prod: !Ref CognitoUserPoolClient  # 新規作成（本番環境）
     
   # 環境別Cognito Authorizer ARN設定
   cognitoAuthorizerArn:
-    dev: arn:aws:cognito-idp:ap-northeast-1:545009834501:userpool/ap-northeast-1_UltsO4poH
+    dev: !GetAtt CognitoUserPool.Arn
     prod: !GetAtt CognitoUserPool.Arn
 
 
@@ -247,6 +247,8 @@ package:
 resources:
   Conditions:
     IsProdStage: !Equals ["${self:provider.stage}", "prod"]
+    IsDevStage: !Equals ["${self:provider.stage}", "dev"]
+    IsDevOrProd: !Or [!Condition IsProdStage, !Condition IsDevStage]
     
   Resources:
     # 🎯 DynamoDB統合テーブル（GSI付き）
@@ -303,10 +305,10 @@ resources:
           AttributeName: ttl
           Enabled: true
           
-    # Cognito User Pool（prod環境のみ作成、dev環境は既存使用）
+    # Cognito User Pool（prod・dev環境で作成）
     CognitoUserPool:
       Type: AWS::Cognito::UserPool
-      Condition: IsProdStage
+      Condition: IsDevOrProd
       Properties:
         UserPoolName: selfpomodoro-users-${self:provider.stage}
         # PostConfirmation Trigger設定
@@ -342,10 +344,10 @@ resources:
         UsernameAttributes:
           - email
         
-    # Cognito User Pool Client（prod環境のみ作成、dev環境は既存使用）
+    # Cognito User Pool Client（prod・dev環境で作成）
     CognitoUserPoolClient:
       Type: AWS::Cognito::UserPoolClient
-      Condition: IsProdStage
+      Condition: IsDevOrProd
       Properties:
         ClientName: selfpomodoro-client-${self:provider.stage}
         UserPoolId: !Ref CognitoUserPool
@@ -361,10 +363,10 @@ resources:
         IdTokenValidity: 24
         RefreshTokenValidity: 30
 
-    # PostConfirmation Lambda実行権限（prod環境のみ、dev環境は手動設定）
+    # PostConfirmation Lambda実行権限（prod・dev環境で作成）
     PostConfirmationLambdaPermission:
       Type: AWS::Lambda::Permission
-      Condition: IsProdStage
+      Condition: IsDevOrProd
       Properties:
         Action: lambda:invokeFunction
         FunctionName: !GetAtt PostDashconfirmationLambdaFunction.Arn
@@ -387,19 +389,11 @@ resources:
   Outputs:
     CognitoUserPoolId:
       Description: "Cognito User Pool ID"
-      Value:
-        Fn::If:
-          - IsProdStage
-          - !Ref CognitoUserPool
-          - ap-northeast-1_UltsO4poH
+      Value: !Ref CognitoUserPool
       
     CognitoUserPoolClientId:
       Description: "Cognito User Pool Client ID"
-      Value:
-        Fn::If:
-          - IsProdStage
-          - !Ref CognitoUserPoolClient
-          - 2dbjjcvvon3trtt5imonmpnq9g
+      Value: !Ref CognitoUserPoolClient
       
     CognitoAuthorizerId:
       Description: "Cognito Authorizer ID"
