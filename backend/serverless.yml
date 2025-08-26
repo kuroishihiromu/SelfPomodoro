@@ -7,29 +7,6 @@ provider:
   stage: ${opt:stage, 'dev'}
   profile: ${self:custom.awsProfile.${self:provider.stage}}
   versionFunctions: false
-
-custom:
-  # 環境別AWSプロファイル設定
-  awsProfile:
-    dev: selfpomodoro-dev
-    prod: selfpomodoro-prod
-  
-  # 環境別Cognito設定
-  cognitoUserPoolId:
-    dev: !Ref CognitoUserPool      # 新規作成（dev環境）
-    prod: !Ref CognitoUserPool     # 新規作成（本番環境）
-  
-  cognitoClientId:
-    dev: !Ref CognitoUserPoolClient   # 新規作成（dev環境）
-    prod: !Ref CognitoUserPoolClient  # 新規作成（本番環境）
-    
-  # 環境別Cognito Authorizer ARN設定
-  cognitoAuthorizerArn:
-    dev: !GetAtt CognitoUserPool.Arn
-    prod: !GetAtt CognitoUserPool.Arn
-
-
-  # 🎯 IAM権限設定（最適化Lambda用DynamoDB・SQSアクセス）
   iam:
     role:
       statements:
@@ -62,6 +39,28 @@ custom:
             - logs:CreateLogStream
             - logs:PutLogEvents
           Resource: arn:aws:logs:${self:provider.region}:545009834501:*
+
+custom:
+  # 環境別AWSプロファイル設定
+  awsProfile:
+    dev: selfpomodoro-dev
+    prod: selfpomodoro-prod
+  
+  # 環境別Cognito設定
+  cognitoUserPoolId:
+    dev: !Ref CognitoUserPool      # 新規作成（dev環境）
+    prod: !Ref CognitoUserPool     # 新規作成（本番環境）
+  
+  cognitoClientId:
+    dev: !Ref CognitoUserPoolClient   # 新規作成（dev環境）
+    prod: !Ref CognitoUserPoolClient  # 新規作成（本番環境）
+    
+  # 環境別Cognito Authorizer ARN設定
+  cognitoAuthorizerArn:
+    dev: !GetAtt CognitoUserPool.Arn
+    prod: !GetAtt CognitoUserPool.Arn
+
+
 
   environment:
     COGNITO_USER_POOL_ID: ${self:custom.cognitoUserPoolId.${self:provider.stage}}
