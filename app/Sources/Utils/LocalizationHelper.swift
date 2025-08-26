@@ -150,10 +150,31 @@ enum L10n {
         static let unknown = "error.unknown".localized
     }
     
+    // MARK: - バリデーションエラー
+    enum Validation {
+        static let displayNameRequired = "validation.displayname.required".localized
+        static let displayNameTooShort = "validation.displayname.too_short".localized
+        static let displayNameTooLong = "validation.displayname.too_long".localized
+        static let displayNameInvalidChars = "validation.displayname.invalid_characters".localized
+        
+        static let emailRequired = "validation.email.required".localized
+        static let emailInvalid = "validation.email.invalid_format".localized
+        
+        static let passwordRequired = "validation.password.required".localized
+        static let passwordTooShort = "validation.password.too_short".localized
+        static let passwordWeak = "validation.password.insufficient_complexity".localized
+        
+        static let confirmPasswordRequired = "validation.password_confirmation.required".localized
+        static let passwordMismatch = "validation.password_confirmation.mismatch".localized
+        
+        static let otpRequired = "validation.otp.required".localized
+    }
+    
     // MARK: - 成功メッセージ
     enum Success {
         static let login = "success.login".localized
         static let signup = "success.signup".localized
+        static let confirmationCompleted = "success.confirmation_completed".localized
         static let taskAdded = "success.task_added".localized
         static let taskCompleted = "success.task_completed".localized
         static let settingsSaved = "success.settings_saved".localized

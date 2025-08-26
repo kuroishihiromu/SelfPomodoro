@@ -9,7 +9,7 @@
 "auth.create_account" = "アカウント作成";
 "auth.description" = "効率的な時間管理を始めるためにアカウントを作成してください";
 "auth.email_placeholder" = "メールアドレスを入力";
-"auth.name_placeholder" = "お名前を入力";
+"auth.name_placeholder" = "表示名を入力";
 "auth.password_placeholder" = "パスワードを入力";
 "auth.terms_agreement" = "利用規約に同意する";
 "auth.login_button" = "ログイン";
@@ -103,9 +103,28 @@
 "error.invalid_password" = "パスワードは8文字以上で入力してください";
 "error.unknown" = "予期しないエラーが発生しました";
 
+// MARK: - バリデーションエラー
+"validation.displayname.required" = "表示名は必須です";
+"validation.displayname.too_short" = "表示名は2文字以上で入力してください";
+"validation.displayname.too_long" = "表示名は50文字以内で入力してください";
+"validation.displayname.invalid_characters" = "表示名に使用できない文字が含まれています";
+
+"validation.email.required" = "メールアドレスは必須です";
+"validation.email.invalid_format" = "正しいメールアドレスの形式で入力してください";
+
+"validation.password.required" = "パスワードは必須です";
+"validation.password.too_short" = "パスワードは8文字以上で入力してください";
+"validation.password.insufficient_complexity" = "パスワードは英大文字・英小文字・数字を少なくとも1つ含めてください";
+
+"validation.password_confirmation.required" = "パスワード（確認用）は必須です";
+"validation.password_confirmation.mismatch" = "パスワードが一致しません";
+
+"validation.otp.required" = "確認コードを入力してください";
+
 // MARK: - 成功メッセージ
 "success.login" = "ログインしました";
 "success.signup" = "アカウントが作成されました";
+"success.confirmation_completed" = "確認が完了しました。サインインしてください";
 "success.task_added" = "タスクが追加されました";
 "success.task_completed" = "タスクが完了しました";
 "success.settings_saved" = "設定が保存されました";
