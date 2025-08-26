@@ -9,6 +9,7 @@
 "auth.create_account" = "アカウント作成";
 "auth.description" = "効率的な時間管理を始めるためにアカウントを作成してください";
 "auth.email_placeholder" = "メールアドレスを入力";
+"auth.name_placeholder" = "お名前を入力";
 "auth.password_placeholder" = "パスワードを入力";
 "auth.terms_agreement" = "利用規約に同意する";
 "auth.login_button" = "ログイン";
@@ -17,6 +18,13 @@
 "auth.confirm_password_placeholder" = "パスワードを再入力";
 "auth.password_mismatch" = "パスワードが一致しません";
 "auth.terms_required" = "利用規約に同意してください。";
+"auth.signup_title" = "サインアップ";
+"auth.signup_description" = "効率的な時間管理を始めるためにアカウントを作成してください";
+"auth.agree_terms" = "利用規約に同意する";
+"auth.confirm_title" = "アカウント確認";
+"auth.confirm_description" = "メールに送信された確認コードを入力してください";
+"auth.confirm_button" = "確認";
+"auth.otp_placeholder" = "確認コード";
 
 // MARK: - タイマー画面
 "timer.pomodoro" = "ポモドーロ";

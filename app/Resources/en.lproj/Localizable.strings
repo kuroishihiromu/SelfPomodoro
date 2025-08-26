@@ -9,6 +9,7 @@
 "auth.create_account" = "Create Account";
 "auth.description" = "Create your account to start managing your time effectively";
 "auth.email_placeholder" = "Your email address";
+"auth.name_placeholder" = "Your full name";
 "auth.password_placeholder" = "Enter your password";
 "auth.terms_agreement" = "I agree with Terms & Conditions";
 "auth.login_button" = "Log in";
@@ -17,6 +18,13 @@
 "auth.confirm_password_placeholder" = "Confirm your password";
 "auth.password_mismatch" = "Passwords do not match";
 "auth.terms_required" = "Please agree to the Terms & Conditions.";
+"auth.signup_title" = "Sign Up";
+"auth.signup_description" = "Create your account to start managing your time effectively";
+"auth.agree_terms" = "I agree with Terms & Conditions";
+"auth.confirm_title" = "Confirm Account";
+"auth.confirm_description" = "Please enter the confirmation code sent to your email";
+"auth.confirm_button" = "Confirm";
+"auth.otp_placeholder" = "Confirmation code";
 
 // MARK: - Timer Screen
 "timer.pomodoro" = "Pomodoro";
