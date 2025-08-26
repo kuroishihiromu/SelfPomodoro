@@ -13,7 +13,7 @@ struct SignUpFeature: Reducer {
     @ObservableState
     struct State: Equatable {
         var email = ""
-        var name = ""
+        var displayname = ""
         var password = ""
         var confirmPassword = ""
         var otpCode = ""
@@ -62,10 +62,10 @@ struct SignUpFeature: Reducer {
                 }
 
                 print("🔵 DEBUG: Starting signUp API call")
-                return .run { [email = state.email, name = state.name, password = state.password] send in
+                return .run { [email = state.email, displayname = state.displayname, password = state.password] send in
                     do {
-                        print("🔵 DEBUG: Calling authAPIClient.signUp with email: \(email), name: \(name)")
-                        try await authAPIClient.signUp(email, password, name)
+                        print("🔵 DEBUG: Calling authAPIClient.signUp with email: \(email), displayname: \(displayname)")
+                        try await authAPIClient.signUp(email, password, displayname)
                         print("🟢 DEBUG: signUp API call successful")
                         await send(.signUpResponse(.success(())))
                     } catch {

@@ -67,7 +67,7 @@ struct SignUpScreenView: View {
                     icon: Image(systemName: "person"),
                     width: 350,
                     height: 44,
-                    text: $store.name
+                    text: $store.displayname
                 )
                 
                 NormalTextField(
