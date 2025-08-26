@@ -29,6 +29,7 @@ enum L10n {
         static let signupDescription = "auth.signup_description".localized
         static let signupTitle = "auth.signup_title".localized
         static let emailPlaceholder = "auth.email_placeholder".localized
+        static let namePlaceholder = "auth.name_placeholder".localized
         static let passwordPlaceholder = "auth.password_placeholder".localized
         static let confirmPasswordPlaceholder = "auth.confirm_password_placeholder".localized
         static let termsAgreement = "auth.terms_agreement".localized
