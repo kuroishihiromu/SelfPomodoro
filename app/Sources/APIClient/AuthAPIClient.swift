@@ -18,9 +18,9 @@ struct AuthTokens: Equatable {
 }
 
 struct AuthAPIClient {
-    var signIn: (_ username: String, _ password: String) async throws -> AuthTokens
-    var signUp: (_ username: String, _ password: String, _ name: String) async throws -> Void
-    var confirmSignUp: (_ username: String, _ confirmationCode: String) async throws -> AuthTokens
+    var signIn: (_ email: String, _ password: String) async throws -> AuthTokens
+    var signUp: (_ email: String, _ password: String, _ name: String) async throws -> Void
+    var confirmSignUp: (_ email: String, _ confirmationCode: String) async throws -> AuthTokens
     var signOut: () async throws -> Void
 }
 
@@ -37,7 +37,7 @@ extension DependencyValues {
 
 extension AuthAPIClient {
     static let live = AuthAPIClient(
-        signIn: { username, password in
+        signIn: { email, password in
             do {
                 // 既存のサインイン状態をチェックしてサインアウト
                 let currentSession = try await Amplify.Auth.fetchAuthSession()
@@ -45,7 +45,7 @@ extension AuthAPIClient {
                     _ = try await Amplify.Auth.signOut()
                 }
                 
-                let signInResult = try await Amplify.Auth.signIn(username: username, password: password)
+                let signInResult = try await Amplify.Auth.signIn(username: email, password: password)
 
                 guard signInResult.isSignedIn else {
                     throw NSError(domain: "Auth", code: 401, userInfo: [NSLocalizedDescriptionKey: "Sign-in failed"])
@@ -69,9 +69,9 @@ extension AuthAPIClient {
                 throw error
             }
         },
-        signUp: { username, password, name in
+        signUp: { email, password, name in
             do {
-                print("🔵 DEBUG: AuthAPIClient.signUp called with username: \(username), name: \(name)")
+                print("🔵 DEBUG: AuthAPIClient.signUp called with email: \(email), name: \(name)")
                 
                 // 既存のサインイン状態をチェックしてサインアウト
                 let currentSession = try await Amplify.Auth.fetchAuthSession()
@@ -85,11 +85,11 @@ extension AuthAPIClient {
                 print("🔵 DEBUG: Calling Amplify.Auth.signUp with user attributes")
                 let userAttributes = [
                     AuthUserAttribute(.name, value: name),
-                    AuthUserAttribute(.email, value: username)
+                    AuthUserAttribute(.email, value: email)
                 ]
                 
                 let signUpResult = try await Amplify.Auth.signUp(
-                    username: username,
+                    username: email,
                     password: password,
                     options: AuthSignUpRequest.Options(
                         userAttributes: userAttributes
@@ -111,10 +111,10 @@ extension AuthAPIClient {
                 throw error
             }
         },
-        confirmSignUp: { username, confirmationCode in
+        confirmSignUp: { email, confirmationCode in
             do {
                 let confirmResult = try await Amplify.Auth.confirmSignUp(
-                    for: username,
+                    for: email,
                     confirmationCode: confirmationCode
                 )
                 
