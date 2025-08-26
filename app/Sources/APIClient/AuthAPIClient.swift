@@ -19,7 +19,7 @@ struct AuthTokens: Equatable {
 
 struct AuthAPIClient {
     var signIn: (_ username: String, _ password: String) async throws -> AuthTokens
-    var signUp: (_ username: String, _ password: String) async throws -> Void
+    var signUp: (_ username: String, _ password: String, _ name: String) async throws -> Void
     var confirmSignUp: (_ username: String, _ confirmationCode: String) async throws -> AuthTokens
     var signOut: () async throws -> Void
 }
@@ -69,9 +69,9 @@ extension AuthAPIClient {
                 throw error
             }
         },
-        signUp: { username, password in
+        signUp: { username, password, name in
             do {
-                print("🔵 DEBUG: AuthAPIClient.signUp called with username: \(username)")
+                print("🔵 DEBUG: AuthAPIClient.signUp called with username: \(username), name: \(name)")
                 
                 // 既存のサインイン状態をチェックしてサインアウト
                 let currentSession = try await Amplify.Auth.fetchAuthSession()
@@ -82,10 +82,18 @@ extension AuthAPIClient {
                     _ = try await Amplify.Auth.signOut()
                 }
                 
-                print("🔵 DEBUG: Calling Amplify.Auth.signUp")
+                print("🔵 DEBUG: Calling Amplify.Auth.signUp with user attributes")
+                let userAttributes = [
+                    AuthUserAttribute(.name, value: name),
+                    AuthUserAttribute(.email, value: username)
+                ]
+                
                 let signUpResult = try await Amplify.Auth.signUp(
                     username: username,
-                    password: password
+                    password: password,
+                    options: AuthSignUpRequest.Options(
+                        userAttributes: userAttributes
+                    )
                 )
                 
                 print("🔵 DEBUG: SignUp result - isSignUpComplete: \(signUpResult.isSignUpComplete)")

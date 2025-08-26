@@ -63,6 +63,14 @@ struct SignUpScreenView: View {
                     .padding(.bottom, 50)
                 
                 NormalTextField(
+                    placeholder: L10n.Auth.namePlaceholder,
+                    icon: Image(systemName: "person"),
+                    width: 350,
+                    height: 44,
+                    text: $store.name
+                )
+                
+                NormalTextField(
                     placeholder: L10n.Auth.emailPlaceholder,
                     icon: Image(.mail),
                     width: 350,
