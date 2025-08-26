@@ -7,6 +7,7 @@ import (
 	"github.com/google/uuid"
 	"github.com/tsunakit99/selfpomodoro/internal/domain/entity"
 	"github.com/tsunakit99/selfpomodoro/internal/domain/repository"
+	"github.com/tsunakit99/selfpomodoro/internal/domain/service/optimization"
 	userVO "github.com/tsunakit99/selfpomodoro/internal/domain/valueobject/user"
 	appErrors "github.com/tsunakit99/selfpomodoro/internal/errors"
 	"github.com/tsunakit99/selfpomodoro/internal/infrastructure/logger"
@@ -32,6 +33,7 @@ type OnboardingUseCase interface {
 type onboardingUseCase struct {
 	userRepo                    repository.UserRepository                       // User作成用
 	optimizationPreferencesRepo repository.OptimizationPreferencesRepository // OptimizationPreferences作成用
+	sampleDataService           *optimization.SampleOptimizationDataGenerationDomainService
 	logger                      logger.Logger
 }
 
@@ -39,11 +41,14 @@ type onboardingUseCase struct {
 func NewOnboardingUseCase(
 	userRepo repository.UserRepository,
 	optimizationPreferencesRepo repository.OptimizationPreferencesRepository,
+	sessionRepo repository.SessionRepository,
 	logger logger.Logger,
 ) OnboardingUseCase {
+	sampleDataService := optimization.NewSampleOptimizationDataGenerationDomainService(sessionRepo, logger)
 	return &onboardingUseCase{
 		userRepo:                    userRepo,
 		optimizationPreferencesRepo: optimizationPreferencesRepo,
+		sampleDataService:           sampleDataService,
 		logger:                      logger,
 	}
 }
@@ -210,11 +215,17 @@ func (uc *onboardingUseCase) createUserConfigWithDomainLogic(ctx context.Context
 func (uc *onboardingUseCase) createSampleOptimizationData(ctx context.Context, userID userVO.UserID) error {
 	uc.logger.Infof("サンプル最適化データ作成開始: UserID=%s", userID.String()[:8]+"...")
 
-	// TODO: SampleOptimizationDataGenerationDomainService を使用してサンプルデータを生成
-	// Value Objectに変換が必要だが、現在は一時的に無効化
-	// userVO := userVO.NewUserIDFromUUID(userID)
-	// err := sampleDataService.GenerateAndStoreSampleData(ctx, userVO)
+	if uc.sampleDataService == nil {
+		uc.logger.Warn("SampleDataService が利用できません")
+		return nil
+	}
 
-	uc.logger.Infof("サンプル最適化データ作成完了: UserID=%s (ドメインサービス実装中)", userID.String()[:8]+"...")
+	err := uc.sampleDataService.GenerateAndStoreSampleData(ctx, userID)
+	if err != nil {
+		uc.logger.Errorf("サンプルデータ生成エラー: %v", err)
+		return err
+	}
+
+	uc.logger.Infof("サンプル最適化データ作成完了: UserID=%s", userID.String()[:8]+"...")
 	return nil
 }

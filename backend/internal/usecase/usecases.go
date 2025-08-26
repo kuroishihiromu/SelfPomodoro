@@ -40,6 +40,6 @@ func NewUseCases(
 		Round:        NewRoundUseCase(sessionRepo, optimizationPreferencesRepo, messagingService, statisticsRepo, logger),
 		Statistics:   NewStatisticsUsecase(statisticsRepo, logger),
 		OptimizationPreferences: NewOptimizationPreferencesUseCase(optimizationPreferencesRepo, logger),
-		Onboarding:   NewOnboardingUseCase(userRepo, optimizationPreferencesRepo, logger),
+		Onboarding:   NewOnboardingUseCase(userRepo, optimizationPreferencesRepo, sessionRepo, logger),
 	}
 }
