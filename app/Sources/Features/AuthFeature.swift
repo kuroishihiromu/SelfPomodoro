@@ -57,6 +57,28 @@ struct AuthFeature: Reducer {
                 state.path.append(.signUp)
                 return .none
             case .tappedLogin:
+                // バリデーション
+                guard !state.email.isEmpty else {
+                    state.errorMessage = L10n.Validation.emailRequired
+                    return .none
+                }
+                
+                guard state.email.contains("@") && state.email.contains(".") else {
+                    state.errorMessage = L10n.Validation.emailInvalid
+                    return .none
+                }
+                
+                guard !state.password.isEmpty else {
+                    state.errorMessage = L10n.Validation.passwordRequired
+                    return .none
+                }
+                
+                guard state.password.count >= 8 else {
+                    state.errorMessage = L10n.Validation.passwordTooShort
+                    return .none
+                }
+                
+                state.errorMessage = nil
                 return .run { [email = state.email, password = state.password] send in
                     do {
                         let tokens = try await authAPIClient.signIn(email, password)
@@ -71,15 +93,65 @@ struct AuthFeature: Reducer {
                 print("🔵 DEBUG: email=\(state.email), password length=\(state.password.count)")
                 print("🔵 DEBUG: isAgreed=\(state.isAgreed)")
                 
-                guard state.isAgreed else {
-                    print("🔴 DEBUG: Terms not agreed")
-                    state.errorMessage = L10n.Auth.termsRequired
+                // バリデーション
+                guard !state.displayname.isEmpty else {
+                    state.errorMessage = L10n.Validation.displayNameRequired
+                    return .none
+                }
+                
+                guard state.displayname.count >= 2 else {
+                    state.errorMessage = L10n.Validation.displayNameTooShort
+                    return .none
+                }
+                
+                guard state.displayname.count <= 50 else {
+                    state.errorMessage = L10n.Validation.displayNameTooLong
+                    return .none
+                }
+                
+                guard !state.email.isEmpty else {
+                    state.errorMessage = L10n.Validation.emailRequired
+                    return .none
+                }
+                
+                guard state.email.contains("@") && state.email.contains(".") else {
+                    state.errorMessage = L10n.Validation.emailInvalid
+                    return .none
+                }
+                
+                guard !state.password.isEmpty else {
+                    state.errorMessage = L10n.Validation.passwordRequired
+                    return .none
+                }
+                
+                guard state.password.count >= 8 else {
+                    state.errorMessage = L10n.Validation.passwordTooShort
+                    return .none
+                }
+                
+                // パスワード複雑性チェック（英大文字・英小文字・数字を少なくとも1つ含む）
+                let hasLowercase = state.password.contains { $0.isLowercase }
+                let hasUppercase = state.password.contains { $0.isUppercase }
+                let hasDigit = state.password.contains { $0.isNumber }
+                
+                guard hasLowercase && hasUppercase && hasDigit else {
+                    state.errorMessage = L10n.Validation.passwordWeak
+                    return .none
+                }
+                
+                guard !state.confirmPassword.isEmpty else {
+                    state.errorMessage = L10n.Validation.confirmPasswordRequired
                     return .none
                 }
                 
                 guard state.password == state.confirmPassword else {
-                    print("🔴 DEBUG: Password mismatch")
-                    state.errorMessage = L10n.Auth.passwordMismatch
+                    state.errorMessage = L10n.Validation.passwordMismatch
+                    return .none
+                }
+                
+                guard state.isAgreed else {
+                    print("🔴 DEBUG: Terms not agreed")
+                    state.errorMessage = L10n.Auth.termsRequired
                     return .none
                 }
 
@@ -104,7 +176,7 @@ struct AuthFeature: Reducer {
                 return .none
 
             case let .loginResponse(.failure(error)):
-                state.errorMessage = error.localizedDescription
+                state.errorMessage = ErrorMessageHelper.localizedAuthError(error)
                 return .none
 
             case .signUpResponse(.success):
@@ -117,12 +189,12 @@ struct AuthFeature: Reducer {
 
             case let .signUpResponse(.failure(error)):
                 print("🔴 DEBUG: signUpResponse failure: \(error.localizedDescription)")
-                state.errorMessage = error.localizedDescription
+                state.errorMessage = ErrorMessageHelper.localizedAuthError(error)
                 return .none
 
             case .tappedConfirmOTP:
                 guard !state.otpCode.isEmpty else {
-                    state.errorMessage = "確認コードを入力してください"
+                    state.errorMessage = L10n.Validation.otpRequired
                     return .none
                 }
 
@@ -141,7 +213,7 @@ struct AuthFeature: Reducer {
                     state.showOTPInput = false
                     state.otpSent = false
                     state.otpCode = ""
-                    state.errorMessage = "確認が完了しました。サインインしてください。"
+                    state.errorMessage = L10n.Success.confirmationCompleted
                 } else {
                     // 直接ログイン
                     state.tokens = tokens
@@ -151,7 +223,7 @@ struct AuthFeature: Reducer {
                 return .none
 
             case let .confirmOTPResponse(.failure(error)):
-                state.errorMessage = error.localizedDescription
+                state.errorMessage = ErrorMessageHelper.localizedAuthError(error)
                 return .none
 
             case .tappedSignOut:
@@ -175,7 +247,7 @@ struct AuthFeature: Reducer {
                 return .none
 
             case let .signOutResponse(.failure(error)):
-                state.errorMessage = error.localizedDescription
+                state.errorMessage = ErrorMessageHelper.localizedAuthError(error)
                 return .none
 
             case .binding:
