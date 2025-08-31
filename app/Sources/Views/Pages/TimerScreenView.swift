@@ -13,19 +13,11 @@ struct TimerScreenView: View {
     
     var body: some View {
         WithViewStore(store, observe: \.self) { viewStore in
-            ZStack {
-                VStack(spacing: 20) {
-                    TimerView(store: store.scope(state: \.timer, action: \.timer))
-                }
-                .onAppear {
-                    viewStore.send(.onAppear)
-                }
-                
-                // 評価モーダル
-                IfLetStore(store.scope(state: \.evalModal, action: \.evalModal)) { modalStore in
-                    EvalModalView(store: modalStore)
-                        .background(Color.black.opacity(0.3).ignoresSafeArea())
-                }
+            VStack(spacing: 20) {
+                TimerView(store: store.scope(state: \.timer, action: \.timer))
+            }
+            .onAppear {
+                viewStore.send(.onAppear)
             }
             .frame(maxWidth: .infinity, maxHeight: .infinity)
             .safeAreaInset(edge: .top, spacing: 0) {
@@ -54,7 +46,26 @@ struct TimerScreenView: View {
                     viewStore.send(.toggleSessionCompleteModal(false))
                 }
             }
+            // 評価モーダル
+            .overlay {
+                if let _ = viewStore.evalModal {
+                    ZStack {
+                        Color.black.opacity(0.3)
+                            .ignoresSafeArea()
+                            .onTapGesture {
+                                viewStore.send(.evalModal(.cancel))
+                            }
 
+                        IfLetStore(
+                            store.scope(state: \.evalModal, action: \.evalModal)
+                        ) { modalStore in
+                            EvalModalView(store: modalStore)
+                                .transition(.scale)
+                        }
+                    }
+                }
+            }
+            .animation(.easeInOut, value: viewStore.evalModal != nil)
         }
     }
 }
