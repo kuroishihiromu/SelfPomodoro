@@ -55,8 +55,6 @@ struct SignUpScreenView: View {
         } else {
             // サインアップ画面
             VStack(spacing: 20) {
-                Text(L10n.Auth.createAccount)
-                    .font(.system(size: 30, weight: .bold))
                 Text(L10n.Auth.signupDescription)
                     .multilineTextAlignment(.center)
                     .frame(maxWidth: .infinity, alignment: .center)
@@ -123,7 +121,7 @@ struct SignUpScreenView: View {
                 Spacer()
             }
             .frame(width: 350)
-            .navigationTitle(L10n.Auth.signupTitle)
+            .navigationTitle(L10n.Auth.createAccount)
             .navigationBarTitleDisplayMode(.inline)
         }
     }

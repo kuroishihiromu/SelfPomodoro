@@ -17,7 +17,7 @@ struct AuthScreenView: View {
         } else {
             NavigationStack(path: $store.scope(state: \.path, action: \.path)) {
                 VStack(spacing: 20) {
-                    Text(L10n.Auth.createAccount)
+                    Text("SelfPomodoro")
                         .font(.system(size: 30, weight: .bold))
                     Text(L10n.Auth.description)
                         .multilineTextAlignment(.center)
