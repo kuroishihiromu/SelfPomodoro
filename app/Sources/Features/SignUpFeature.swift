@@ -1,16 +1,15 @@
 //
-//  AuthFeature.swift
+//  SignUpFeature.swift
 //  SelfPomodoro
 //
-
-//  Created by 黒石陽夢 on 2025/06/16.
+//  Created by kuroishi hiromu on 2025/08/25.
 //
 
 import ComposableArchitecture
 import Foundation
 
 @Reducer
-struct AuthFeature: Reducer {
+struct SignUpFeature: Reducer {
     @ObservableState
     struct State: Equatable {
         var email = ""
@@ -20,30 +19,22 @@ struct AuthFeature: Reducer {
         var otpCode = ""
         var isAgreed = false
         var errorMessage: String?
-        var tokens: AuthTokens?
-        var isLoggedIn = false
         var showOTPInput = false
         var otpSent = false
-        var path = StackState<Path.State>()
-    }
-    
-    @Reducer(state: .equatable)
-    enum Path {
-        case signUp
     }
 
     enum Action: BindableAction {
         case binding(BindingAction<State>)
-        case path(StackAction<Path.State, Path.Action>)
-        case tappedLogin
         case tappedSignUp
-        case tappedSignOut
         case tappedConfirmOTP
-        case navigateToSignUp
-        case loginResponse(Result<AuthTokens, Error>)
         case signUpResponse(Result<Void, Error>)
         case confirmOTPResponse(Result<AuthTokens, Error>)
-        case signOutResponse(Result<Void, Error>)
+        case delegate(Delegate)
+        
+        enum Delegate {
+            case signUpCompleted
+            case userSignedIn(AuthTokens)
+        }
     }
 
     @Dependency(\.authAPIClient) var authAPIClient
@@ -53,41 +44,6 @@ struct AuthFeature: Reducer {
 
         Reduce { state, action in
             switch action {
-            case .navigateToSignUp:
-                state.path.append(.signUp)
-                return .none
-            case .tappedLogin:
-                // バリデーション
-                guard !state.email.isEmpty else {
-                    state.errorMessage = L10n.Validation.emailRequired
-                    return .none
-                }
-                
-                guard state.email.contains("@") && state.email.contains(".") else {
-                    state.errorMessage = L10n.Validation.emailInvalid
-                    return .none
-                }
-                
-                guard !state.password.isEmpty else {
-                    state.errorMessage = L10n.Validation.passwordRequired
-                    return .none
-                }
-                
-                guard state.password.count >= 8 else {
-                    state.errorMessage = L10n.Validation.passwordTooShort
-                    return .none
-                }
-                
-                state.errorMessage = nil
-                return .run { [email = state.email, password = state.password] send in
-                    do {
-                        let tokens = try await authAPIClient.signIn(email, password)
-                        await send(.loginResponse(.success(tokens)))
-                    } catch {
-                        await send(.loginResponse(.failure(error)))
-                    }
-                }
-
             case .tappedSignUp:
                 print("🔵 DEBUG: tappedSignUp action called")
                 print("🔵 DEBUG: email=\(state.email), password length=\(state.password.count)")
@@ -168,17 +124,6 @@ struct AuthFeature: Reducer {
                     }
                 }
 
-            case let .loginResponse(.success(tokens)):
-                state.tokens = tokens
-                state.isLoggedIn = true
-                state.errorMessage = nil
-                
-                return .none
-
-            case let .loginResponse(.failure(error)):
-                state.errorMessage = ErrorMessageHelper.localizedAuthError(error)
-                return .none
-
             case .signUpResponse(.success):
                 print("🟢 DEBUG: signUpResponse success - showing OTP input")
                 state.showOTPInput = true
@@ -209,65 +154,27 @@ struct AuthFeature: Reducer {
 
             case let .confirmOTPResponse(.success(tokens)):
                 if tokens.idToken == "confirmed" {
-                    // OTP認証完了後、自動でログイン処理を実行
+                    // 確認完了、サインイン画面に戻る
                     state.showOTPInput = false
                     state.otpSent = false
                     state.otpCode = ""
-                    state.errorMessage = nil
-                    
-                    return .run { [email = state.email, password = state.password] send in
-                        do {
-                            let loginTokens = try await authAPIClient.signIn(email, password)
-                            await send(.loginResponse(.success(loginTokens)))
-                        } catch {
-                            await send(.loginResponse(.failure(error)))
-                        }
-                    }
+                    state.errorMessage = L10n.Success.confirmationCompleted
+                    return .send(.delegate(.signUpCompleted))
                 } else {
                     // 直接ログイン
-                    state.tokens = tokens
-                    state.isLoggedIn = true
-                    state.errorMessage = nil
-                    return .none
+                    return .send(.delegate(.userSignedIn(tokens)))
                 }
-                
-                return .none
 
             case let .confirmOTPResponse(.failure(error)):
-                state.errorMessage = ErrorMessageHelper.localizedAuthError(error)
-                return .none
-
-            case .tappedSignOut:
-                return .run { send in
-                    do {
-                        try await authAPIClient.signOut()
-                        await send(.signOutResponse(.success(())))
-                    } catch {
-                        await send(.signOutResponse(.failure(error)))
-                    }
-                }
-
-            case .signOutResponse(.success):
-                state.tokens = nil
-                state.isLoggedIn = false
-                state.errorMessage = nil
-                state.email = ""
-                state.password = ""
-                state.confirmPassword = ""
-                state.isAgreed = false
-                return .none
-
-            case let .signOutResponse(.failure(error)):
                 state.errorMessage = ErrorMessageHelper.localizedAuthError(error)
                 return .none
 
             case .binding:
                 return .none
                 
-            case .path:
+            case .delegate:
                 return .none
             }
         }
-        .forEach(\.path, action: \.path)
     }
 }

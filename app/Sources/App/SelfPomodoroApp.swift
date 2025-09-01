@@ -21,11 +21,19 @@ struct SelfPomodoroApp: App {
 
     var body: some Scene {
         WindowGroup {
-            Group {
+            ZStack {
                 if !isConfigured {
                     ProgressView("Initializing...")
                 } else if isSignedIn == true, let tokens {
-                    MainView(token: tokens)
+                    AuthScreenView(
+                        store: Store(
+                            initialState: AuthFeature.State(
+                                tokens: tokens,
+                                isLoggedIn: true
+                            ),
+                            reducer: { AuthFeature() }
+                        )
+                    )
                 } else {
                     AuthScreenView(
                         store: Store(

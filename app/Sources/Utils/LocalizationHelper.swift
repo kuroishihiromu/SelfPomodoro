@@ -2,7 +2,7 @@
 //  LocalizationHelper.swift
 //  SelfPomodoro
 //
-//  Created by Claude on 2025/01/16.
+//  Created by kuroishi hiromu on 2025/01/16.
 //
 
 import Foundation
@@ -26,12 +26,23 @@ enum L10n {
     enum Auth {
         static let createAccount = "auth.create_account".localized
         static let description = "auth.description".localized
+        static let signupDescription = "auth.signup_description".localized
+        static let signupTitle = "auth.signup_title".localized
         static let emailPlaceholder = "auth.email_placeholder".localized
+        static let namePlaceholder = "auth.name_placeholder".localized
         static let passwordPlaceholder = "auth.password_placeholder".localized
+        static let confirmPasswordPlaceholder = "auth.confirm_password_placeholder".localized
         static let termsAgreement = "auth.terms_agreement".localized
+        static let agreeTerms = "auth.agree_terms".localized
         static let loginButton = "auth.login_button".localized
         static let signupButton = "auth.signup_button".localized
+        static let signupLink = "auth.signup_link".localized
+        static let passwordMismatch = "auth.password_mismatch".localized
         static let termsRequired = "auth.terms_required".localized
+        static let confirmTitle = "auth.confirm_title".localized
+        static let confirmDescription = "auth.confirm_description".localized
+        static let confirmButton = "auth.confirm_button".localized
+        static let otpPlaceholder = "auth.otp_placeholder".localized
     }
     
     // MARK: - タイマー画面
@@ -139,10 +150,31 @@ enum L10n {
         static let unknown = "error.unknown".localized
     }
     
+    // MARK: - バリデーションエラー
+    enum Validation {
+        static let displayNameRequired = "validation.displayname.required".localized
+        static let displayNameTooShort = "validation.displayname.too_short".localized
+        static let displayNameTooLong = "validation.displayname.too_long".localized
+        static let displayNameInvalidChars = "validation.displayname.invalid_characters".localized
+        
+        static let emailRequired = "validation.email.required".localized
+        static let emailInvalid = "validation.email.invalid_format".localized
+        
+        static let passwordRequired = "validation.password.required".localized
+        static let passwordTooShort = "validation.password.too_short".localized
+        static let passwordWeak = "validation.password.insufficient_complexity".localized
+        
+        static let confirmPasswordRequired = "validation.password_confirmation.required".localized
+        static let passwordMismatch = "validation.password_confirmation.mismatch".localized
+        
+        static let otpRequired = "validation.otp.required".localized
+    }
+    
     // MARK: - 成功メッセージ
     enum Success {
         static let login = "success.login".localized
         static let signup = "success.signup".localized
+        static let confirmationCompleted = "success.confirmation_completed".localized
         static let taskAdded = "success.task_added".localized
         static let taskCompleted = "success.task_completed".localized
         static let settingsSaved = "success.settings_saved".localized
