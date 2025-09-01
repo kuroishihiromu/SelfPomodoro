@@ -209,17 +209,28 @@ struct AuthFeature: Reducer {
 
             case let .confirmOTPResponse(.success(tokens)):
                 if tokens.idToken == "confirmed" {
-                    // 確認完了、サインイン画面に戻る
+                    // OTP認証完了後、自動でログイン処理を実行
                     state.showOTPInput = false
                     state.otpSent = false
                     state.otpCode = ""
-                    state.errorMessage = L10n.Success.confirmationCompleted
+                    state.errorMessage = nil
+                    
+                    return .run { [email = state.email, password = state.password] send in
+                        do {
+                            let loginTokens = try await authAPIClient.signIn(email, password)
+                            await send(.loginResponse(.success(loginTokens)))
+                        } catch {
+                            await send(.loginResponse(.failure(error)))
+                        }
+                    }
                 } else {
                     // 直接ログイン
                     state.tokens = tokens
                     state.isLoggedIn = true
                     state.errorMessage = nil
+                    return .none
                 }
+                
                 return .none
 
             case let .confirmOTPResponse(.failure(error)):
