@@ -17,6 +17,8 @@ struct TimerPersistenceData: Codable {
     let round: Int
     let isRunning: Bool
     let currentSeconds: Int
+    let sessionId: UUID?
+    let currentRoundId: UUID?
 }
 
 class TimerPersistence {
