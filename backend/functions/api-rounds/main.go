@@ -12,10 +12,11 @@ import (
 	"github.com/go-playground/validator/v10"
 	"github.com/google/uuid"
 	"github.com/tsunakit99/selfpomodoro/internal/container"
-	"github.com/tsunakit99/selfpomodoro/internal/domain/model"
 	httpError "github.com/tsunakit99/selfpomodoro/internal/handler"
+	"github.com/tsunakit99/selfpomodoro/internal/infrastructure/auth"
 	"github.com/tsunakit99/selfpomodoro/internal/infrastructure/logger"
 	"github.com/tsunakit99/selfpomodoro/internal/usecase"
+	"github.com/tsunakit99/selfpomodoro/internal/usecase/dto"
 )
 
 // Global container (Lambda再利用最適化)
@@ -51,8 +52,8 @@ func handler(ctx context.Context, request events.APIGatewayProxyRequest) (events
 		validator: validator.New(),
 	}
 
-	// 4. 認証・User存在確認（統一処理）
-	userID, err := roundHandler.authenticateAndValidateUser(ctx, request)
+	// 4. 認証済みユーザーID取得（API Gateway Authorizer経由）
+	userID, err := roundHandler.getUserIDFromContext(request)
 	if err != nil {
 		return roundHandler.handleError(err), nil
 	}
@@ -61,9 +62,9 @@ func handler(ctx context.Context, request events.APIGatewayProxyRequest) (events
 	return roundHandler.routeOperation(ctx, request, userID)
 }
 
-// authenticateAndValidateUser は認証・User存在確認の統一処理
-func (h *RoundHandler) authenticateAndValidateUser(ctx context.Context, request events.APIGatewayProxyRequest) (uuid.UUID, error) {
-	return h.useCases.Auth.AuthenticateAndValidateUser(ctx, request)
+// getUserIDFromContext はAPI Gateway Authorizerから認証済みユーザーIDを取得
+func (h *RoundHandler) getUserIDFromContext(request events.APIGatewayProxyRequest) (uuid.UUID, error) {
+	return auth.GetUserIDFromAPIGatewayContext(request, h.logger)
 }
 
 // routeOperation は操作ルーティング
@@ -111,12 +112,11 @@ func (h *RoundHandler) routeOperation(ctx context.Context, request events.APIGat
 	return createErrorResponse(http.StatusNotFound, "NOT_FOUND", "無効なパス"), nil
 }
 
-
 // handleStartRound はラウンド開始を処理
 func (h *RoundHandler) handleStartRound(ctx context.Context, sessionID uuid.UUID, userID uuid.UUID) (events.APIGatewayProxyResponse, error) {
 	h.logger.Infof("ラウンド開始要求: セッションID=%s, ユーザーID=%s", sessionID.String(), userID.String())
 
-	var req model.RoundCreateRequest
+	var req dto.RoundCreateRequest
 	roundResponse, err := h.useCases.Round.StartRound(ctx, sessionID, userID, &req)
 	if err != nil {
 		h.logger.Errorf("ラウンド開始エラー: %v", err)
@@ -127,10 +127,9 @@ func (h *RoundHandler) handleStartRound(ctx context.Context, sessionID uuid.UUID
 	return createSuccessResponse(http.StatusCreated, roundResponse), nil
 }
 
-
 // handleCompleteRound はラウンド完了を処理
 func (h *RoundHandler) handleCompleteRound(ctx context.Context, request events.APIGatewayProxyRequest, roundID uuid.UUID, userID uuid.UUID) (events.APIGatewayProxyResponse, error) {
-	var req model.RoundCompleteRequest
+	var req dto.RoundCompleteRequest
 	if err := json.Unmarshal([]byte(request.Body), &req); err != nil {
 		return createErrorResponse(http.StatusBadRequest, "INVALID_REQUEST_FORMAT", "無効なリクエスト形式"), nil
 	}
@@ -167,7 +166,6 @@ func (h *RoundHandler) handleCompleteRound(ctx context.Context, request events.A
 
 	return createSuccessResponse(http.StatusOK, roundResponse), nil
 }
-
 
 // handleError はエラーを統一処理（error_mapper.go使用版）
 func (h *RoundHandler) handleError(err error) events.APIGatewayProxyResponse {

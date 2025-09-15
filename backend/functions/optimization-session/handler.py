@@ -113,40 +113,40 @@ def get_optimization_data(user_id: str) -> tuple:
 
 
 def update_user_config(user_id: str, session_break_time: float, session_rounds: int) -> None:
-    """Update UserConfig with session optimization results"""
+    """Update OptimizationPreferences with session optimization results"""
     try:
         timestamp = datetime.now().isoformat()
         
-        # Update UserConfig with new optimized values
+        # Update OptimizationPreferences with new optimized values
         dynamodb.put_item(
             TableName=DYNAMODB_TABLE_NAME,
             Item={
                 'PK': {'S': f'USER#{user_id}'},
-                'SK': {'S': 'CONFIG'},
+                'SK': {'S': 'OPTIMIZATION_PREFERENCES'},
                 'user_id': {'S': user_id},
                 'round_work_time': {'N': '25'},  # Default value
                 'round_break_time': {'N': '5'},  # Default value
                 'session_rounds': {'N': str(session_rounds)},
                 'session_break_time': {'N': str(int(session_break_time))},
                 'updated_at': {'S': timestamp},
-                'entity_type': {'S': 'USER_CONFIG'}
+                'entity_type': {'S': 'optimization_preferences'}
             },
             # Update existing config or create if not exists
             ConditionExpression='attribute_exists(PK) AND attribute_exists(SK)'
         )
         
-        logger.info(f"Updated UserConfig for user {user_id[:8]}... - session_break_time: {session_break_time:.1f}, session_rounds: {session_rounds}")
+        logger.info(f"Updated OptimizationPreferences for user {user_id[:8]}... - session_break_time: {session_break_time:.1f}, session_rounds: {session_rounds}")
         
     except Exception as e:
-        # If config doesn't exist, create it
+        # If preferences doesn't exist, create it
         if 'ConditionalCheckFailedException' in str(e):
-            logger.info(f"UserConfig not found for user {user_id[:8]}..., creating new one")
+            logger.info(f"OptimizationPreferences not found for user {user_id[:8]}..., creating new one")
             try:
                 dynamodb.put_item(
                     TableName=DYNAMODB_TABLE_NAME,
                     Item={
                         'PK': {'S': f'USER#{user_id}'},
-                        'SK': {'S': 'CONFIG'},
+                        'SK': {'S': 'OPTIMIZATION_PREFERENCES'},
                         'user_id': {'S': user_id},
                         'round_work_time': {'N': '25'},  # Default value
                         'round_break_time': {'N': '5'},  # Default value
@@ -154,15 +154,15 @@ def update_user_config(user_id: str, session_break_time: float, session_rounds: 
                         'session_break_time': {'N': str(int(session_break_time))},
                         'created_at': {'S': timestamp},
                         'updated_at': {'S': timestamp},
-                        'entity_type': {'S': 'USER_CONFIG'}
+                        'entity_type': {'S': 'optimization_preferences'}
                     }
                 )
-                logger.info(f"Created new UserConfig for user {user_id[:8]}...")
+                logger.info(f"Created new OptimizationPreferences for user {user_id[:8]}...")
             except Exception as create_error:
-                logger.error(f"Failed to create UserConfig: {str(create_error)}")
+                logger.error(f"Failed to create OptimizationPreferences: {str(create_error)}")
                 raise
         else:
-            logger.error(f"Failed to update UserConfig: {str(e)}")
+            logger.error(f"Failed to update OptimizationPreferences: {str(e)}")
             raise
 
 
@@ -238,7 +238,7 @@ def lambda_handler(event: Dict[str, Any], context) -> Dict[str, Any]:
                 # 結果をDynamoDBに保存
                 save_optimization_result(user_id, session_id, total_work_time, break_time, round_count, avg_focus_score)
                 
-                # UserConfigをセッション最適化結果で更新
+                # OptimizationPreferencesをセッション最適化結果で更新
                 update_user_config(user_id, break_time, round_count)
                 
                 optimization_result = {

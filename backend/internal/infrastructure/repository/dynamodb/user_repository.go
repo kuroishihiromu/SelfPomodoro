@@ -10,8 +10,9 @@ import (
 	"github.com/aws/aws-sdk-go-v2/service/dynamodb/types"
 	"github.com/google/uuid"
 	"github.com/tsunakit99/selfpomodoro/internal/config"
-	"github.com/tsunakit99/selfpomodoro/internal/domain/model"
+	"github.com/tsunakit99/selfpomodoro/internal/domain/entity"
 	"github.com/tsunakit99/selfpomodoro/internal/domain/repository"
+	userVO "github.com/tsunakit99/selfpomodoro/internal/domain/valueobject/user"
 	appErrors "github.com/tsunakit99/selfpomodoro/internal/errors"
 	"github.com/tsunakit99/selfpomodoro/internal/infrastructure/logger"
 )
@@ -33,7 +34,7 @@ func NewUserRepository(client *dynamodb.Client, cfg *config.Config, logger logge
 }
 
 // GetByID はIDによってユーザーを取得する
-func (r *UserRepositoryImpl) GetByID(ctx context.Context, id uuid.UUID) (*model.User, error) {
+func (r *UserRepositoryImpl) GetByID(ctx context.Context, id userVO.UserID) (*entity.User, error) {
 	pk := UserPartitionKey(id.String())
 	sk := "PROFILE"
 
@@ -67,14 +68,14 @@ func (r *UserRepositoryImpl) GetByID(ctx context.Context, id uuid.UUID) (*model.
 }
 
 // GetByEmail はメールアドレスによってユーザーを取得する
-func (r *UserRepositoryImpl) GetByEmail(ctx context.Context, email string) (*model.User, error) {
+func (r *UserRepositoryImpl) GetByEmail(ctx context.Context, email userVO.EmailAddress) (*entity.User, error) {
 	// GSI1を使用してメールアドレス検索
 	input := &dynamodb.QueryInput{
 		TableName:              aws.String(r.tableName),
 		IndexName:              aws.String("GSI1"),
 		KeyConditionExpression: aws.String("email = :email"),
 		ExpressionAttributeValues: map[string]types.AttributeValue{
-			":email": &types.AttributeValueMemberS{Value: email},
+			":email": &types.AttributeValueMemberS{Value: email.Value()},
 		},
 		Limit: aws.Int32(1),
 	}
@@ -86,7 +87,7 @@ func (r *UserRepositoryImpl) GetByEmail(ctx context.Context, email string) (*mod
 	}
 
 	if len(result.Items) == 0 {
-		r.logger.Debugf("メールアドレスでユーザーが見つかりません: %s", email)
+		r.logger.Debugf("メールアドレスでユーザーが見つかりません: %s", email.Value())
 		return nil, appErrors.ErrRecordNotFound
 	}
 
@@ -96,12 +97,12 @@ func (r *UserRepositoryImpl) GetByEmail(ctx context.Context, email string) (*mod
 		return nil, appErrors.NewDynamoDBOperationError("conversion", err)
 	}
 
-	r.logger.Debugf("メールアドレスでユーザー取得成功: %s", email)
+	r.logger.Debugf("メールアドレスでユーザー取得成功: %s", email.Value())
 	return user, nil
 }
 
 // Create は新しいユーザーを作成する
-func (r *UserRepositoryImpl) Create(ctx context.Context, user *model.User) error {
+func (r *UserRepositoryImpl) Create(ctx context.Context, user *entity.User) error {
 	if !user.IsValidForCreation() {
 		return appErrors.NewBadRequestError("ユーザー作成に必要な情報が不足しています")
 	}
@@ -113,9 +114,9 @@ func (r *UserRepositoryImpl) Create(ctx context.Context, user *model.User) error
 		"PK":         &types.AttributeValueMemberS{Value: pk},
 		"SK":         &types.AttributeValueMemberS{Value: sk},
 		"user_id":    &types.AttributeValueMemberS{Value: user.ID.String()},
-		"name":       &types.AttributeValueMemberS{Value: user.Name},
-		"email":      &types.AttributeValueMemberS{Value: user.Email},
-		"provider":   &types.AttributeValueMemberS{Value: user.Provider},
+		"name":       &types.AttributeValueMemberS{Value: user.Name.Value()},
+		"email":      &types.AttributeValueMemberS{Value: user.Email.Value()},
+		"provider":   &types.AttributeValueMemberS{Value: user.Provider.Value()},
 		"created_at": &types.AttributeValueMemberS{Value: user.CreatedAt.Format(time.RFC3339)},
 		"updated_at": &types.AttributeValueMemberS{Value: user.UpdatedAt.Format(time.RFC3339)},
 	}
@@ -143,12 +144,12 @@ func (r *UserRepositoryImpl) Create(ctx context.Context, user *model.User) error
 		return appErrors.NewDynamoDBOperationError("create_user", err)
 	}
 
-	r.logger.Infof("ユーザー作成成功: ID=%s, Name=%s", user.ID.String(), user.Name)
+	r.logger.Infof("ユーザー作成成功: ID=%s, Name=%s", user.ID.String(), user.Name.Value())
 	return nil
 }
 
 // Update はユーザー情報を更新する
-func (r *UserRepositoryImpl) Update(ctx context.Context, user *model.User) error {
+func (r *UserRepositoryImpl) Update(ctx context.Context, user *entity.User) error {
 	pk := UserPartitionKey(user.ID.String())
 	sk := "PROFILE"
 
@@ -158,9 +159,9 @@ func (r *UserRepositoryImpl) Update(ctx context.Context, user *model.User) error
 		"PK":         &types.AttributeValueMemberS{Value: pk},
 		"SK":         &types.AttributeValueMemberS{Value: sk},
 		"user_id":    &types.AttributeValueMemberS{Value: user.ID.String()},
-		"name":       &types.AttributeValueMemberS{Value: user.Name},
-		"email":      &types.AttributeValueMemberS{Value: user.Email},
-		"provider":   &types.AttributeValueMemberS{Value: user.Provider},
+		"name":       &types.AttributeValueMemberS{Value: user.Name.Value()},
+		"email":      &types.AttributeValueMemberS{Value: user.Email.Value()},
+		"provider":   &types.AttributeValueMemberS{Value: user.Provider.Value()},
 		"created_at": &types.AttributeValueMemberS{Value: user.CreatedAt.Format(time.RFC3339)},
 		"updated_at": &types.AttributeValueMemberS{Value: user.UpdatedAt.Format(time.RFC3339)},
 	}
@@ -192,7 +193,7 @@ func (r *UserRepositoryImpl) Update(ctx context.Context, user *model.User) error
 }
 
 // Delete はユーザーを削除する
-func (r *UserRepositoryImpl) Delete(ctx context.Context, id uuid.UUID) error {
+func (r *UserRepositoryImpl) Delete(ctx context.Context, id userVO.UserID) error {
 	pk := UserPartitionKey(id.String())
 	sk := "PROFILE"
 
@@ -222,7 +223,7 @@ func (r *UserRepositoryImpl) Delete(ctx context.Context, id uuid.UUID) error {
 }
 
 // UpdateProfile はユーザープロフィールを更新する
-func (r *UserRepositoryImpl) UpdateProfile(ctx context.Context, id uuid.UUID, name, email string) (*model.User, error) {
+func (r *UserRepositoryImpl) UpdateProfile(ctx context.Context, id userVO.UserID, name, email string) (*entity.User, error) {
 	// 現在のユーザー情報を取得
 	user, err := r.GetByID(ctx, id)
 	if err != nil {
@@ -230,7 +231,10 @@ func (r *UserRepositoryImpl) UpdateProfile(ctx context.Context, id uuid.UUID, na
 	}
 
 	// プロフィール更新
-	user.UpdateProfile(name, email)
+	err = user.UpdateProfile(name, email)
+	if err != nil {
+		return nil, err
+	}
 
 	// データベースに保存
 	err = r.Update(ctx, user)
@@ -243,7 +247,7 @@ func (r *UserRepositoryImpl) UpdateProfile(ctx context.Context, id uuid.UUID, na
 }
 
 // ExistsByID はユーザーの存在確認を行う
-func (r *UserRepositoryImpl) ExistsByID(ctx context.Context, id uuid.UUID) (bool, error) {
+func (r *UserRepositoryImpl) ExistsByID(ctx context.Context, id userVO.UserID) (bool, error) {
 	pk := UserPartitionKey(id.String())
 	sk := "PROFILE"
 
@@ -268,7 +272,7 @@ func (r *UserRepositoryImpl) ExistsByID(ctx context.Context, id uuid.UUID) (bool
 }
 
 // GetUsersByProvider はプロバイダー別にユーザーを取得する
-func (r *UserRepositoryImpl) GetUsersByProvider(ctx context.Context, provider string, limit, offset int) ([]*model.User, error) {
+func (r *UserRepositoryImpl) GetUsersByProvider(ctx context.Context, provider string, limit, offset int) ([]*entity.User, error) {
 	// GSI2を使用してプロバイダー検索
 	input := &dynamodb.QueryInput{
 		TableName:              aws.String(r.tableName),
@@ -293,7 +297,7 @@ func (r *UserRepositoryImpl) GetUsersByProvider(ctx context.Context, provider st
 		return nil, appErrors.NewDynamoDBOperationError("get_users_by_provider", err)
 	}
 
-	users := make([]*model.User, 0, len(result.Items))
+	users := make([]*entity.User, 0, len(result.Items))
 	startIndex := offset
 	if startIndex > len(result.Items) {
 		startIndex = len(result.Items)
@@ -315,14 +319,14 @@ func (r *UserRepositoryImpl) GetUsersByProvider(ctx context.Context, provider st
 // Helper methods
 
 // itemToUser はDynamoDBアイテムをUserモデルに変換する
-func (r *UserRepositoryImpl) itemToUser(item map[string]types.AttributeValue) (*model.User, error) {
-	user := &model.User{}
+func (r *UserRepositoryImpl) itemToUser(item map[string]types.AttributeValue) (*entity.User, error) {
+	user := &entity.User{}
 
 	// user_id
 	if userIDAttr, exists := item["user_id"]; exists {
 		if s, ok := userIDAttr.(*types.AttributeValueMemberS); ok {
 			if id, err := uuid.Parse(s.Value); err == nil {
-				user.ID = id
+				user.ID = userVO.NewUserIDFromUUID(id)
 			}
 		}
 	}
@@ -330,21 +334,27 @@ func (r *UserRepositoryImpl) itemToUser(item map[string]types.AttributeValue) (*
 	// name
 	if nameAttr, exists := item["name"]; exists {
 		if s, ok := nameAttr.(*types.AttributeValueMemberS); ok {
-			user.Name = s.Value
+			if name, err := userVO.NewUserName(s.Value); err == nil {
+				user.Name = name
+			}
 		}
 	}
 
 	// email
 	if emailAttr, exists := item["email"]; exists {
 		if s, ok := emailAttr.(*types.AttributeValueMemberS); ok {
-			user.Email = s.Value
+			if email, err := userVO.NewEmailAddress(s.Value); err == nil {
+				user.Email = email
+			}
 		}
 	}
 
 	// provider
 	if providerAttr, exists := item["provider"]; exists {
 		if s, ok := providerAttr.(*types.AttributeValueMemberS); ok {
-			user.Provider = s.Value
+			if provider, err := userVO.NewProvider(s.Value); err == nil {
+				user.Provider = provider
+			}
 		}
 	}
 
@@ -377,9 +387,9 @@ func (r *UserRepositoryImpl) itemToUser(item map[string]types.AttributeValue) (*
 }
 
 // DeleteAllUserData はユーザーに関連するすべてのデータを削除する（統合テーブル対応）
-func (r *UserRepositoryImpl) DeleteAllUserData(ctx context.Context, userID uuid.UUID) error {
+func (r *UserRepositoryImpl) DeleteAllUserData(ctx context.Context, userID userVO.UserID) error {
 	pk := UserPartitionKey(userID.String())
-	
+
 	r.logger.Infof("ユーザーデータ包括削除開始: UserID=%s", userID.String()[:8]+"...")
 
 	// 1. 該当PKのすべてのアイテムを取得
@@ -401,9 +411,9 @@ func (r *UserRepositoryImpl) DeleteAllUserData(ctx context.Context, userID uuid.
 		return appErrors.NewDynamoDBOperationError("batch_delete_user_data", err)
 	}
 
-	r.logger.Infof("ユーザーデータ包括削除完了: UserID=%s, 削除件数=%d", 
+	r.logger.Infof("ユーザーデータ包括削除完了: UserID=%s, 削除件数=%d",
 		userID.String()[:8]+"...", len(items))
-	
+
 	return nil
 }
 
@@ -496,14 +506,14 @@ func (r *UserRepositoryImpl) batchDeleteBatch(ctx context.Context, items []map[s
 }
 
 // CountUserItems はユーザーに関連するアイテム数を取得する（テスト用）
-func (r *UserRepositoryImpl) CountUserItems(ctx context.Context, userID uuid.UUID) (int, error) {
+func (r *UserRepositoryImpl) CountUserItems(ctx context.Context, userID userVO.UserID) (int, error) {
 	pk := UserPartitionKey(userID.String())
-	
+
 	items, err := r.queryAllUserItems(ctx, pk)
 	if err != nil {
 		r.logger.Errorf("ユーザーアイテム数取得エラー: %v", err)
 		return 0, appErrors.NewDynamoDBOperationError("count_user_items", err)
 	}
-	
+
 	return len(items), nil
 }

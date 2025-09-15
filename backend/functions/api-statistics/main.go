@@ -12,6 +12,7 @@ import (
 	"github.com/google/uuid"
 	"github.com/tsunakit99/selfpomodoro/internal/container"
 	httpError "github.com/tsunakit99/selfpomodoro/internal/handler"
+	"github.com/tsunakit99/selfpomodoro/internal/infrastructure/auth"
 	"github.com/tsunakit99/selfpomodoro/internal/infrastructure/logger"
 	"github.com/tsunakit99/selfpomodoro/internal/usecase"
 )
@@ -47,8 +48,8 @@ func handler(ctx context.Context, request events.APIGatewayProxyRequest) (events
 		logger:   logger,
 	}
 
-	// 4. 認証・User存在確認（統一処理）
-	userID, err := statsHandler.authenticateAndValidateUser(ctx, request)
+	// 4. 認証済みユーザーID取得（API Gateway Authorizer経由）
+	userID, err := statsHandler.getUserIDFromContext(request)
 	if err != nil {
 		return statsHandler.handleError(err), nil
 	}
@@ -57,9 +58,9 @@ func handler(ctx context.Context, request events.APIGatewayProxyRequest) (events
 	return statsHandler.routeOperation(ctx, request, userID)
 }
 
-// authenticateAndValidateUser は認証・User存在確認の統一処理
-func (h *StatisticsHandler) authenticateAndValidateUser(ctx context.Context, request events.APIGatewayProxyRequest) (uuid.UUID, error) {
-	return h.useCases.Auth.AuthenticateAndValidateUser(ctx, request)
+// getUserIDFromContext はAPI Gateway Authorizerから認証済みユーザーIDを取得
+func (h *StatisticsHandler) getUserIDFromContext(request events.APIGatewayProxyRequest) (uuid.UUID, error) {
+	return auth.GetUserIDFromAPIGatewayContext(request, h.logger)
 }
 
 // routeOperation は操作ルーティング
@@ -69,8 +70,8 @@ func (h *StatisticsHandler) routeOperation(ctx context.Context, request events.A
 		return createErrorResponse(http.StatusMethodNotAllowed, "METHOD_NOT_ALLOWED", "GETメソッドのみ許可されています"), nil
 	}
 
-	// パスによるルーティング
-	if strings.Contains(request.Path, "/focus-trend") {
+	// focus-trendのパスパラメータ処理
+	if strings.Contains(request.Path, "/focus-trend/") {
 		return h.handleGetFocusTrend(ctx, request, userID)
 	} else if strings.Contains(request.Path, "/focus-heatmap") {
 		return h.handleGetFocusHeatmap(ctx, request, userID)
@@ -79,39 +80,33 @@ func (h *StatisticsHandler) routeOperation(ctx context.Context, request events.A
 	return createErrorResponse(http.StatusNotFound, "NOT_FOUND", "無効なパス"), nil
 }
 
-// handleGetFocusTrend は集中度トレンド取得を処理
+// handleGetFocusTrend は集中度トレンド取得を処理（パスパラメータ形式）
 func (h *StatisticsHandler) handleGetFocusTrend(ctx context.Context, request events.APIGatewayProxyRequest, userID uuid.UUID) (events.APIGatewayProxyResponse, error) {
-	// クエリパラメータから期間を取得
-	period := request.QueryStringParameters["period"] // "week", "month", "custom"
+	// パスから日付を抽出 (/focus-trend/{date} 形式)
+	pathParts := strings.Split(request.Path, "/")
+	if len(pathParts) < 2 {
+		return createErrorResponse(http.StatusBadRequest, "MISSING_DATE", "日付が指定されていません"), nil
+	}
 
-	var startDate, endDate *time.Time
+	// 最後の部分が日付（開始日）
+	startDate := pathParts[len(pathParts)-1]
+	
+	// 日付フォーマットの基本検証（8桁の数字かチェック）
+	if len(startDate) != 8 {
+		return createErrorResponse(http.StatusBadRequest, "INVALID_DATE_FORMAT", "日付はYYYY-MMDD形式で指定してください"), nil
+	}
 
-	// カスタム期間が指定されている場合は、開始日と終了日を取得
-	if period == "custom" {
-		startDateStr := request.QueryStringParameters["start_date"]
-		endDateStr := request.QueryStringParameters["end_date"]
-
-		if startDateStr != "" {
-			parsedStartDate, err := time.Parse("2006-01-02", startDateStr)
-			if err == nil {
-				startDate = &parsedStartDate
-			} else {
-				h.logger.Warnf("無効な開始日: %s", startDateStr)
-			}
-		}
-
-		if endDateStr != "" {
-			parsedEndDate, err := time.Parse("2006-01-02", endDateStr)
-			if err == nil {
-				endDate = &parsedEndDate
-			} else {
-				h.logger.Warnf("無効な終了日: %s", endDateStr)
-			}
+	// 数字のみかチェック
+	for _, char := range startDate {
+		if char < '0' || char > '9' {
+			return createErrorResponse(http.StatusBadRequest, "INVALID_DATE_FORMAT", "日付はYYYY-MMDD形式（数字のみ）で指定してください"), nil
 		}
 	}
 
+	h.logger.Infof("集中度トレンド取得リクエスト: userID=%s, startDate=%s", userID.String()[:8]+"...", startDate)
+
 	// ユースケースを呼び出して集中度トレンドを取得
-	response, err := h.useCases.Statistics.GetFocusTrend(ctx, userID, period, startDate, endDate)
+	response, err := h.useCases.Statistics.GetFocusTrend(ctx, userID, startDate)
 	if err != nil {
 		h.logger.Errorf("集中度トレンド取得エラー: %v", err)
 		return h.handleError(err), nil

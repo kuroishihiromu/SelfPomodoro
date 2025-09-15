@@ -111,40 +111,40 @@ def get_optimization_data(user_id: str) -> tuple:
 
 
 def update_user_config(user_id: str, work_time: float, break_time: float) -> None:
-    """Update UserConfig with optimization results"""
+    """Update OptimizationPreferences with optimization results"""
     try:
         timestamp = datetime.now().isoformat()
         
-        # Update UserConfig with new optimized values
+        # Update OptimizationPreferences with new optimized values
         dynamodb.put_item(
             TableName=DYNAMODB_TABLE_NAME,
             Item={
                 'PK': {'S': f'USER#{user_id}'},
-                'SK': {'S': 'CONFIG'},
+                'SK': {'S': 'OPTIMIZATION_PREFERENCES'},
                 'user_id': {'S': user_id},
                 'round_work_time': {'N': str(int(work_time))},
                 'round_break_time': {'N': str(int(break_time))},
                 'session_rounds': {'N': '4'},  # Default value
                 'session_break_time': {'N': '15'},  # Default value
                 'updated_at': {'S': timestamp},
-                'entity_type': {'S': 'USER_CONFIG'}
+                'entity_type': {'S': 'optimization_preferences'}
             },
             # Update existing config or create if not exists
             ConditionExpression='attribute_exists(PK) AND attribute_exists(SK)'
         )
         
-        logger.info(f"Updated UserConfig for user {user_id[:8]}... - work_time: {work_time:.1f}, break_time: {break_time:.1f}")
+        logger.info(f"Updated OptimizationPreferences for user {user_id[:8]}... - work_time: {work_time:.1f}, break_time: {break_time:.1f}")
         
     except Exception as e:
-        # If config doesn't exist, create it
+        # If preferences doesn't exist, create it
         if 'ConditionalCheckFailedException' in str(e):
-            logger.info(f"UserConfig not found for user {user_id[:8]}..., creating new one")
+            logger.info(f"OptimizationPreferences not found for user {user_id[:8]}..., creating new one")
             try:
                 dynamodb.put_item(
                     TableName=DYNAMODB_TABLE_NAME,
                     Item={
                         'PK': {'S': f'USER#{user_id}'},
-                        'SK': {'S': 'CONFIG'},
+                        'SK': {'S': 'OPTIMIZATION_PREFERENCES'},
                         'user_id': {'S': user_id},
                         'round_work_time': {'N': str(int(work_time))},
                         'round_break_time': {'N': str(int(break_time))},
@@ -152,15 +152,15 @@ def update_user_config(user_id: str, work_time: float, break_time: float) -> Non
                         'session_break_time': {'N': '15'},  # Default value
                         'created_at': {'S': timestamp},
                         'updated_at': {'S': timestamp},
-                        'entity_type': {'S': 'USER_CONFIG'}
+                        'entity_type': {'S': 'optimization_preferences'}
                     }
                 )
-                logger.info(f"Created new UserConfig for user {user_id[:8]}...")
+                logger.info(f"Created new OptimizationPreferences for user {user_id[:8]}...")
             except Exception as create_error:
-                logger.error(f"Failed to create UserConfig: {str(create_error)}")
+                logger.error(f"Failed to create OptimizationPreferences: {str(create_error)}")
                 raise
         else:
-            logger.error(f"Failed to update UserConfig: {str(e)}")
+            logger.error(f"Failed to update OptimizationPreferences: {str(e)}")
             raise
 
 
@@ -235,7 +235,7 @@ def lambda_handler(event: Dict[str, Any], context) -> Dict[str, Any]:
                 # 結果をDynamoDBに保存
                 save_optimization_result(user_id, round_id, work_time, break_time, focus_score)
                 
-                # UserConfigを最適化結果で更新
+                # OptimizationPreferencesを最適化結果で更新
                 update_user_config(user_id, work_time, break_time)
                 
                 optimization_result = {

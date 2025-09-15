@@ -13,9 +13,9 @@ func UserPartitionKey(userID string) string {
 	return "USER#" + userID
 }
 
-// UserConfigSortKey はユーザー設定のソートキーを生成する
-func UserConfigSortKey() string {
-	return "CONFIG"
+// OptimizationPreferencesSortKey はユーザー設定のソートキーを生成する
+func OptimizationPreferencesSortKey() string {
+	return "OPTIMIZATION_PREFERENCES"
 }
 
 // TaskSortKey はタスクのソートキーを生成する
@@ -57,7 +57,6 @@ func OptimizationRoundSortKey(timestamp string) string {
 func OptimizationSessionSortKey(timestamp string) string {
 	return "OPTIMIZATION_LOG#SESSION#" + timestamp
 }
-
 
 // DateFromTime は時刻から日付文字列(YYYY-MM-DD)を生成する
 func DateFromTime(t time.Time) string {

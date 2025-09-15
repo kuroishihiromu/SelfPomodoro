@@ -4,24 +4,31 @@ import (
 	"context"
 	"time"
 
-	"github.com/google/uuid"
-	"github.com/tsunakit99/selfpomodoro/internal/domain/model"
+	"github.com/tsunakit99/selfpomodoro/internal/domain/entity"
+	statisticsVO "github.com/tsunakit99/selfpomodoro/internal/domain/valueobject/statistics"
+	userVO "github.com/tsunakit99/selfpomodoro/internal/domain/valueobject/user"
 )
 
-// StatisticsRepository は統計情報を取得するためのリポジトリインターフェース
+// StatisticsRepository は統計情報集約の永続化を担当するリポジトリ
+// DDD原則: Statistics集約（Daily/Hourly/Weekly）に対するリポジトリ
 type StatisticsRepository interface {
-	// GetFocusTrend は指定期間内の日別集中度統計を取得する
-	GetFocusTrend(ctx context.Context, userID uuid.UUID, period *model.StatisticsPeriod) ([]*model.FocusTrendItem, error)
+	// 日別統計
+	GetDailyStatistics(ctx context.Context, userID userVO.UserID, date string) (*entity.DailyStatistics, error)
+	SaveDailyStatistics(ctx context.Context, stats *entity.DailyStatistics) error
+	GetDailyStatisticsByPeriod(ctx context.Context, userID userVO.UserID, period statisticsVO.StatisticsPeriod) ([]*entity.DailyStatistics, error)
 
-	// GetFocusHeatmap は指定期間内の時間帯別集中度統計を取得する
-	GetFocusHeatmap(ctx context.Context, userID uuid.UUID, period *model.StatisticsPeriod) ([]*model.FocusHeatmapItem, error)
+	// 時間別統計
+	GetHourlyStatistics(ctx context.Context, userID userVO.UserID, date string, hour int) (*entity.HourlyStatistics, error)
+	SaveHourlyStatistics(ctx context.Context, stats *entity.HourlyStatistics) error
+	GetHourlyStatisticsByPeriod(ctx context.Context, userID userVO.UserID, period statisticsVO.StatisticsPeriod) ([]*entity.HourlyStatistics, error)
 
-	// GetWeeklyStats は指定期間内の週別統計を取得する
-	GetWeeklyStats(ctx context.Context, userID uuid.UUID, period *model.StatisticsPeriod) ([]*model.FocusTrendItem, error)
+	// 週別統計
+	GetWeeklyStatistics(ctx context.Context, userID userVO.UserID, weekStart, weekEnd string) (*entity.WeeklyStatistics, error)
+	SaveWeeklyStatistics(ctx context.Context, stats *entity.WeeklyStatistics) error
+	GetWeeklyStatisticsByPeriod(ctx context.Context, userID userVO.UserID, period statisticsVO.StatisticsPeriod) ([]*entity.WeeklyStatistics, error)
 
-	// GetAvgFocusScoreByDate は指定日の平均集中度を取得する
-	GetAvgFocusScoreByDate(ctx context.Context, userID uuid.UUID, date time.Time) (float64, error)
+	// 集約用クエリは削除済み - UseCase層でMapper使用に変更
 
-	// GetAvgFocusScoreByHour は指定日時の平均集中度を取得する
-	GetAvgFocusScoreByHour(ctx context.Context, userID uuid.UUID, date time.Time, hour int) (float64, error)
+	// 統計更新処理（Round完了時の集約更新）
+	UpdateStatisticsWithRound(ctx context.Context, userID userVO.UserID, round *entity.Round, timestamp time.Time) error
 }
