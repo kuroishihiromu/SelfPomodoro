@@ -81,7 +81,9 @@ struct TimerFeature {
                 phase: phaseToString(state.phase),
                 round: state.round,
                 isRunning: true,
-                currentSeconds: state.currentSeconds
+                currentSeconds: state.currentSeconds,
+                sessionId: state.sessionId,
+                currentRoundId: state.currentRoundId
             )
             TimerPersistence.save(persistenceData)
             return .run { [start = correctedStart] send in
@@ -149,6 +151,7 @@ struct TimerFeature {
             return .send(.stop)
 
         case let .updateSettings(task, short, long, rps):
+            print("🛠️ Timer updateSettings: from task=\(state.taskDuration), short=\(state.shortBreakDuration), long=\(state.longBreakDuration), rps=\(state.roundsPerSession) -> to task=\(task), short=\(short), long=\(long), rps=\(rps)")
             state.taskDuration = task
             state.shortBreakDuration = short
             state.longBreakDuration = long
@@ -168,7 +171,9 @@ struct TimerFeature {
                 phase: phaseToString(state.phase),
                 round: state.round,
                 isRunning: state.isRunning,
-                currentSeconds: state.currentSeconds
+                currentSeconds: state.currentSeconds,
+                sessionId: state.sessionId,
+                currentRoundId: state.currentRoundId
             )
             TimerPersistence.save(persistenceData)
             return .none
@@ -184,7 +189,11 @@ struct TimerFeature {
             state.roundsPerSession = persistedData.roundsPerSession
             state.phase = stringToPhase(persistedData.phase)
             state.round = persistedData.round
+            state.sessionId = persistedData.sessionId
+            state.currentRoundId = persistedData.currentRoundId
             state.totalSeconds = state.currentPhaseDuration
+            
+            print("🔄 Timer state restored - sessionId: \(persistedData.sessionId?.uuidString ?? "nil"), currentRoundId: \(persistedData.currentRoundId?.uuidString ?? "nil")")
             
             if persistedData.isRunning {
                 let elapsed = Int(Date().timeIntervalSince(persistedData.startTime))
