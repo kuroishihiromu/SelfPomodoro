@@ -44,15 +44,18 @@ struct ChartFeature {
             switch action {
             case .fetchFocusTrend:
                 return .run { send in
+                    print("📈 ChartFeature: fetchFocusTrend start")
                     do {
                         let data = try await apiClient.fetchConcentrationData()
+                        print("📈 ChartFeature: fetchFocusTrend success count=\(data.count)")
                         await send(.dataLoaded(data))
                     } catch {
-                        // Error handling
+                        print("📉 ChartFeature: fetchFocusTrend failed: \(error)")
                     }
                 }
 
             case let .dataLoaded(data):
+                print("🧮 ChartFeature: dataLoaded count=\(data.count)")
                 state.data = data
                 state.currentWeekStart = .startOfCurrentWeek()
                 return .none

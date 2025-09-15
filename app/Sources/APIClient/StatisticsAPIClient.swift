@@ -23,6 +23,13 @@ struct StatisticsAPIClient {
 extension StatisticsAPIClient {
     static let live = StatisticsAPIClient(
         fetchConcentrationData: {
+            do {
+                let session = try await Amplify.Auth.fetchAuthSession()
+                print("👤 Auth session (statistics.fetchConcentrationData) isSignedIn=\(session.isSignedIn)")
+            } catch {
+                print("👤 Auth session (statistics.fetchConcentrationData) fetch failed: \(error)")
+            }
+            print("➡️ GET /dev/api/v1/statistics/focus-trend")
             let request = RESTRequest(
                 apiName: "selfpomodoro",
                 path: "/dev/api/v1/statistics/focus-trend"
@@ -30,8 +37,10 @@ extension StatisticsAPIClient {
 
             do {
                 let data = try await Amplify.API.get(request: request)
+                print("📦 statistics.fetchConcentrationData bytes=\(data.count)")
 
                 let focusResults = try AppDecoder.default.decode(FocusTrendResponse.self, from: data)
+                print("✅ statistics.fetchConcentrationData items=\(focusResults.items.count)")
 
                 // 移動平均と標準偏差の計算（直近7日）
                 let windowSize = 7
@@ -56,8 +65,10 @@ extension StatisticsAPIClient {
 
                 return concentrationDataList
             } catch let decodingError as DecodingError {
+                print("❌ statistics.fetchConcentrationData decode failed: \(decodingError)")
                 throw StatisticsAPIError.decodingError
             } catch {
+                print("❌ statistics.fetchConcentrationData failed: \(error)")
                 throw StatisticsAPIError.networkError
             }
         }
