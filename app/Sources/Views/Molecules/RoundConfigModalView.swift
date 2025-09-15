@@ -31,5 +31,8 @@ struct RoundConfigModalView: View {
         .background(Color.white)
         .cornerRadius(20)
         .shadow(radius: 10)
+        .onAppear {
+            print("🪟 RoundConfigModalView show: work=\(config.roundWorkTime), break=\(config.roundBreakTime), currentRound=\(currentRound)/\(config.sessionRounds)")
+        }
     }
 }

@@ -34,22 +34,40 @@ struct TaskAPIClient {
 extension TaskAPIClient {
     static let live = TaskAPIClient(
         fetchTasks: {
+            do {
+                let session = try await Amplify.Auth.fetchAuthSession()
+                print("👤 Auth session (fetchTasks) isSignedIn=\(session.isSignedIn)")
+            } catch {
+                print("👤 Auth session (fetchTasks) fetch failed: \(error)")
+            }
+            print("➡️ GET /dev/api/v1/tasks")
             let request = RESTRequest(
                 apiName: "selfpomodoro",
                 path: "/dev/api/v1/tasks"
             )
 
-            let data = try await Amplify.API.get(request: request)
-
-            struct TaskListResponse: Decodable {
-                let tasks: [TaskResult]
+            do {
+                let data = try await Amplify.API.get(request: request)
+                print("📦 fetchTasks bytes=\(data.count)")
+                struct TaskListResponse: Decodable { let tasks: [TaskResult] }
+                let tasks = try AppDecoder.default.decode(TaskListResponse.self, from: data).tasks
+                print("✅ fetchTasks count=\(tasks.count)")
+                return tasks
+            } catch {
+                print("❌ fetchTasks failed: \(error)")
+                throw error
             }
-
-            return try AppDecoder.default.decode(TaskListResponse.self, from: data).tasks
 
         },
         
         addTask: { detail in
+            do {
+                let session = try await Amplify.Auth.fetchAuthSession()
+                print("👤 Auth session (addTask) isSignedIn=\(session.isSignedIn)")
+            } catch {
+                print("👤 Auth session (addTask) fetch failed: \(error)")
+            }
+            print("➡️ POST /dev/api/v1/tasks")
             let body = try JSONEncoder().encode(["detail": detail])
             let request = RESTRequest(
                 apiName: "selfpomodoro",
@@ -57,30 +75,63 @@ extension TaskAPIClient {
                 body: body
             )
 
-            let data = try await Amplify.API.post(request: request)
-            
-            // ✅ AppDecoder.default に統一する！
-            return try AppDecoder.default.decode(TaskResult.self, from: data)
+            do {
+                let data = try await Amplify.API.post(request: request)
+                print("📦 addTask bytes=\(data.count)")
+                let task = try AppDecoder.default.decode(TaskResult.self, from: data)
+                print("✅ addTask id=\(task.id)")
+                return task
+            } catch {
+                print("❌ addTask failed: \(error)")
+                throw error
+            }
         },
 
         deleteTask: { id in
+            do {
+                let session = try await Amplify.Auth.fetchAuthSession()
+                print("👤 Auth session (deleteTask) isSignedIn=\(session.isSignedIn)")
+            } catch {
+                print("👤 Auth session (deleteTask) fetch failed: \(error)")
+            }
+            print("➡️ DELETE /dev/api/v1/tasks/\(id.uuidString)")
             let request = RESTRequest(
                 apiName: "selfpomodoro",
                 path: "/dev/api/v1/tasks/\(id.uuidString)"
             )
 
-            _ = try await Amplify.API.delete(request: request)
+            do {
+                _ = try await Amplify.API.delete(request: request)
+                print("✅ deleteTask id=\(id)")
+            } catch {
+                print("❌ deleteTask failed: \(error)")
+                throw error
+            }
         },
 
         toggleCompletion: { id in
+            do {
+                let session = try await Amplify.Auth.fetchAuthSession()
+                print("👤 Auth session (toggleCompletion) isSignedIn=\(session.isSignedIn)")
+            } catch {
+                print("👤 Auth session (toggleCompletion) fetch failed: \(error)")
+            }
+            print("➡️ PATCH /dev/api/v1/tasks/\(id)/toggle")
             let request = RESTRequest(
                 apiName: "selfpomodoro",
                 path: "/dev/api/v1/tasks/\(id)/toggle"
             )
 
-            let data = try await Amplify.API.patch(request: request)
-
-            return try AppDecoder.default.decode(TaskResult.self, from: data) // ← ここを変更！
+            do {
+                let data = try await Amplify.API.patch(request: request)
+                print("📦 toggleCompletion bytes=\(data.count)")
+                let task = try AppDecoder.default.decode(TaskResult.self, from: data)
+                print("✅ toggleCompletion id=\(task.id) completed=\(task.isCompleted)")
+                return task
+            } catch {
+                print("❌ toggleCompletion failed: \(error)")
+                throw error
+            }
         }
     )
 }
