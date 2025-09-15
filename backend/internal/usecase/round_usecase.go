@@ -5,48 +5,64 @@ import (
 	"errors"
 
 	"github.com/google/uuid"
-	"github.com/tsunakit99/selfpomodoro/internal/domain/model"
+	"github.com/tsunakit99/selfpomodoro/internal/domain/entity"
 	"github.com/tsunakit99/selfpomodoro/internal/domain/repository"
+	"github.com/tsunakit99/selfpomodoro/internal/domain/service"
+	roundVO "github.com/tsunakit99/selfpomodoro/internal/domain/valueobject/round"
+	sessionVO "github.com/tsunakit99/selfpomodoro/internal/domain/valueobject/session"
+	statisticsVO "github.com/tsunakit99/selfpomodoro/internal/domain/valueobject/statistics"
+	userVO "github.com/tsunakit99/selfpomodoro/internal/domain/valueobject/user"
 	appErrors "github.com/tsunakit99/selfpomodoro/internal/errors"
 	"github.com/tsunakit99/selfpomodoro/internal/infrastructure/logger"
-	"github.com/tsunakit99/selfpomodoro/internal/infrastructure/sqs"
+	"github.com/tsunakit99/selfpomodoro/internal/usecase/dto"
+	"github.com/tsunakit99/selfpomodoro/internal/usecase/mapper"
 )
 
 // RoundUseCase はラウンドに関するユースケースを定義するインターフェース
 type RoundUseCase interface {
 	// StartRound は新しいラウンドを開始する
-	StartRound(ctx context.Context, sessionID uuid.UUID, userID uuid.UUID, req *model.RoundCreateRequest) (*model.RoundResponse, error)
+	StartRound(ctx context.Context, sessionID uuid.UUID, userID uuid.UUID, req *dto.RoundCreateRequest) (*dto.RoundResponse, error)
 
 	// CompleteRound はラウンドを完了する(SQSメッセージ送信付き)
-	CompleteRound(ctx context.Context, id uuid.UUID, userID uuid.UUID, req *model.RoundCompleteRequest) (*model.RoundResponse, error)
+	CompleteRound(ctx context.Context, id uuid.UUID, userID uuid.UUID, req *dto.RoundCompleteRequest) (*dto.RoundResponse, error)
 }
 
 // roundUseCase はラウンドに関するユースケースの実装（新エラーハンドリング完全対応版）
 type roundUseCase struct {
-	roundRepo      repository.RoundRepository
-	sessionRepo    repository.SessionRepository
-	userConfigRepo repository.UserConfigRepository
-	sqsClient      *sqs.SQSClient
-	statsAggregator StatisticsAggregationService
-	logger         logger.Logger
+	sessionRepo                 repository.SessionRepository
+	optimizationPreferencesRepo repository.OptimizationPreferencesRepository
+	messagingService            service.MessagingService
+	statisticsRepo              repository.StatisticsRepository
+	roundMapper                 *mapper.RoundMapper
+	logger                      logger.Logger
 }
 
 // NewRoundUseCase は新しいラウンドユースケースを作成する
-func NewRoundUseCase(roundrepo repository.RoundRepository, sessionRepo repository.SessionRepository, userConfigRepo repository.UserConfigRepository, sqsClient *sqs.SQSClient, statsAggregator StatisticsAggregationService, logger logger.Logger) RoundUseCase {
+func NewRoundUseCase(sessionRepo repository.SessionRepository, optimizationPreferencesRepo repository.OptimizationPreferencesRepository, messagingService service.MessagingService, statisticsRepo repository.StatisticsRepository, logger logger.Logger) RoundUseCase {
 	return &roundUseCase{
-		roundRepo:      roundrepo,
-		sessionRepo:    sessionRepo,
-		userConfigRepo: userConfigRepo,
-		sqsClient:      sqsClient,
-		statsAggregator: statsAggregator,
-		logger:         logger,
+		sessionRepo:                 sessionRepo,
+		optimizationPreferencesRepo: optimizationPreferencesRepo,
+		messagingService:            messagingService,
+		statisticsRepo:              statisticsRepo,
+		roundMapper:                 mapper.NewRoundMapper(),
+		logger:                      logger,
 	}
 }
 
 // StartRound は新しいラウンドを開始する（元の設計に戻す：開始時DB作成）
-func (uc *roundUseCase) StartRound(ctx context.Context, sessionID uuid.UUID, userID uuid.UUID, req *model.RoundCreateRequest) (*model.RoundResponse, error) {
+func (uc *roundUseCase) StartRound(ctx context.Context, sessionID uuid.UUID, userID uuid.UUID, req *dto.RoundCreateRequest) (*dto.RoundResponse, error) {
+	// UUIDをValue Objectに変換
+	sessionIDVO, err := sessionVO.NewSessionIDFromString(sessionID.String())
+	if err != nil {
+		return nil, appErrors.NewInternalError(err)
+	}
+	userIDVO, err := userVO.NewUserIDFromString(userID.String())
+	if err != nil {
+		return nil, appErrors.NewInternalError(err)
+	}
+
 	// セッションが存在するか確認
-	session, err := uc.sessionRepo.GetByID(ctx, sessionID, userID)
+	session, err := uc.sessionRepo.GetSession(ctx, sessionIDVO, userIDVO)
 	if err != nil {
 		uc.logger.Errorf("セッション取得エラー: %v", err)
 
@@ -61,8 +77,8 @@ func (uc *roundUseCase) StartRound(ctx context.Context, sessionID uuid.UUID, use
 		return nil, appErrors.NewInternalError(err)
 	}
 
-	// 既存ラウンド数を取得して上限チェック
-	rounds, err := uc.roundRepo.GetBySessionIDWithUserID(ctx, session.ID, userID)
+	// ✅ DDD Aggregate: 既存ラウンドをSessionに読み込み
+	rounds, err := uc.sessionRepo.GetRoundsBySession(ctx, session.ID, userIDVO)
 	if err != nil && !errors.Is(err, appErrors.ErrRecordNotFound) {
 		uc.logger.Errorf("ラウンド一覧取得エラー: %v", err)
 
@@ -74,25 +90,22 @@ func (uc *roundUseCase) StartRound(ctx context.Context, sessionID uuid.UUID, use
 		return nil, appErrors.NewInternalError(err)
 	}
 
-	// UserConfigから直接session_roundsを取得
-	userConfig := uc.getUserConfigWithFallback(ctx, userID)
-	maxRounds := userConfig.GetSessionRoundsOrDefault()
-	
-	// session_rounds上限チェック
-	existingRoundCount := len(rounds)
-	if existingRoundCount >= maxRounds {
-		uc.logger.Errorf("ラウンド上限到達: 既存=%d, 上限=%d（UserConfig）", existingRoundCount, maxRounds)
-		return nil, appErrors.NewBadRequestError("セッションの最大ラウンド数に達しています")
-	}
-	
-	// 新しいラウンド順序を計算
-	newRoundOrder := existingRoundCount + 1
+	// ✅ DDD Aggregate: SessionにRoundsを読み込み
+	session.LoadRounds(rounds)
 
-	// ✅ ドメインファクトリー使用
-	round := model.NewRound(session.ID, newRoundOrder)
+	// OptimizationPreferencesから直接session_roundsを取得
+	optimizationPreferences := uc.getOptimizationPreferencesWithFallback(ctx, userIDVO)
+	maxRounds := optimizationPreferences.GetSessionRoundsOrDefault()
+
+	// ✅ DDD Aggregate: Sessionドメインロジックでラウンド追加
+	round, err := session.AddRound(maxRounds.Count())
+	if err != nil {
+		uc.logger.Errorf("ラウンド追加エラー: %v", err)
+		return nil, appErrors.NewBadRequestError(err.Error())
+	}
 
 	// データベースにラウンドを保存（開始時作成）
-	if err = uc.roundRepo.Create(ctx, round, userID); err != nil {
+	if err = uc.sessionRepo.AddRoundToSession(ctx, session.ID, userIDVO, round); err != nil {
 		uc.logger.Errorf("ラウンド作成エラー: %v", err)
 
 		// Infrastructure Error → Domain Error 変換
@@ -107,16 +120,41 @@ func (uc *roundUseCase) StartRound(ctx context.Context, sessionID uuid.UUID, use
 	}
 
 	uc.logger.Infof("ラウンド開始成功: ID=%s, SessionID=%s, Order=%d",
-		round.ID.String(), sessionID.String(), newRoundOrder)
+		round.ID.String(), sessionID.String(), round.RoundOrder.Order())
 
-	return round.ToResponse(), nil
+	return uc.roundMapper.ToRoundResponse(round), nil
 }
 
-
 // CompleteRound はラウンドを完了する（元の設計に戻す：既存ラウンドの更新）
-func (uc *roundUseCase) CompleteRound(ctx context.Context, id uuid.UUID, userID uuid.UUID, req *model.RoundCompleteRequest) (*model.RoundResponse, error) {
-	// ラウンドの存在確認
-	round, err := uc.roundRepo.GetByID(ctx, id)
+func (uc *roundUseCase) CompleteRound(ctx context.Context, id uuid.UUID, userID uuid.UUID, req *dto.RoundCompleteRequest) (*dto.RoundResponse, error) {
+	// 入力値検証
+	if id == uuid.Nil {
+		uc.logger.Error("CompleteRound: 無効なRoundIDが指定されました")
+		return nil, appErrors.NewValidationError("ラウンドIDが無効です")
+	}
+	if userID == uuid.Nil {
+		uc.logger.Error("CompleteRound: 無効なUserIDが指定されました")
+		return nil, appErrors.NewValidationError("ユーザーIDが無効です")
+	}
+	if req == nil {
+		uc.logger.Error("CompleteRound: リクエストが無効です")
+		return nil, appErrors.NewValidationError("リクエストが無効です")
+	}
+
+	// UUIDをValue Objectに変換
+	roundIDVO, err := roundVO.NewRoundIDFromString(id.String())
+	if err != nil {
+		uc.logger.Errorf("CompleteRound: RoundID Value Object変換エラー: %v", err)
+		return nil, appErrors.NewInternalError(err)
+	}
+	userIDVO, err := userVO.NewUserIDFromString(userID.String())
+	if err != nil {
+		uc.logger.Errorf("CompleteRound: UserID Value Object変換エラー: %v", err)
+		return nil, appErrors.NewInternalError(err)
+	}
+
+	// SessionRepository経由でラウンドを取得
+	round, err := uc.sessionRepo.GetRoundByID(ctx, roundIDVO, userIDVO)
 	if err != nil {
 		uc.logger.Errorf("ラウンド取得エラー: %v", err)
 
@@ -137,19 +175,19 @@ func (uc *roundUseCase) CompleteRound(ctx context.Context, id uuid.UUID, userID 
 		return nil, appErrors.NewRoundAlreadyEndedError()
 	}
 
-	// ✅ ドメインロジック活用：UserConfig統合（デフォルト値フォールバック）
-	userConfig := uc.getUserConfigWithFallback(ctx, userID)
-	workTime := userConfig.GetWorkTimeOrDefault()
-	breakTime := userConfig.GetBreakTimeOrDefault()
+	// ✅ ドメインロジック活用：OptimizationPreferences統合（デフォルト値フォールバック）
+	optimizationPreferences := uc.getOptimizationPreferencesWithFallback(ctx, userIDVO)
+	workTime := optimizationPreferences.GetWorkTimeOrDefault()
+	breakTime := optimizationPreferences.GetBreakTimeOrDefault()
 
 	// ✅ ドメインロジック活用：ラウンド完了処理
-	if err := round.CompleteWith(req.FocusScore, workTime, breakTime); err != nil {
+	if err := round.CompleteWith(req.FocusScore, workTime.Minutes(), breakTime.Minutes()); err != nil {
 		uc.logger.Errorf("ラウンド完了ドメインエラー: %v", err)
 		return nil, appErrors.NewBadRequestError(err.Error())
 	}
 
-	// データベース更新（ドメインオブジェクトの状態をそのまま永続化）
-	err = uc.roundRepo.Complete(ctx, id, req.FocusScore, workTime, breakTime)
+	// SessionRepository経由でラウンドを完了
+	err = uc.sessionRepo.CompleteRound(ctx, round.SessionID, userIDVO, roundIDVO, req.FocusScore, workTime.Minutes(), breakTime.Minutes())
 	if err != nil {
 		uc.logger.Errorf("ラウンド完了永続化エラー: %v", err)
 
@@ -170,13 +208,32 @@ func (uc *roundUseCase) CompleteRound(ctx context.Context, id uuid.UUID, userID 
 		uc.logger.Infof("ラウンド完了 - SQS最適化メッセージ送信開始: RoundID=%s, FocusScore=%d",
 			id.String(), focusScore)
 
-		uc.sendRoundOptimizationMessage(ctx, userID, id, focusScore)
+		// SessionIDをUUIDに変換
+		sessionUUID, err := uuid.Parse(round.SessionID.String())
+		if err != nil {
+			uc.logger.Errorf("SessionID変換エラー: %v", err)
+		} else {
+			uc.sendRoundOptimizationMessage(ctx, userID, id, focusScore, sessionUUID, workTime.Minutes())
+		}
 	} else {
 		uc.logger.Info("集中度スコア未設定または最小値未満のため、SQS最適化メッセージは送信しません")
 	}
 
+	// 統計データの更新（StatisticsRepository経由）
+	if uc.statisticsRepo != nil {
+		// EndTimeが*time.Timeの場合の処理
+		endTime := round.EndTime
+		if endTime == nil {
+			endTime = &round.StartTime // フォールバック
+		}
+		if err := uc.statisticsRepo.UpdateStatisticsWithRound(ctx, userIDVO, round, *endTime); err != nil {
+			// 統計更新エラーはログ出力のみで、ラウンド完了処理は継続
+			uc.logger.Warnf("統計データ更新エラー（処理続行）: %v", err)
+		}
+	}
+
 	// 完了したラウンドを取得して返す
-	completedRound, err := uc.roundRepo.GetByID(ctx, id)
+	completedRound, err := uc.sessionRepo.GetRoundByID(ctx, roundIDVO, userIDVO)
 	if err != nil {
 		uc.logger.Errorf("完了ラウンド取得エラー: %v", err)
 
@@ -191,56 +248,81 @@ func (uc *roundUseCase) CompleteRound(ctx context.Context, id uuid.UUID, userID 
 		return nil, appErrors.NewInternalError(err)
 	}
 
-	// 統計データの事前集約処理
-	if uc.statsAggregator != nil {
-		if err := uc.statsAggregator.UpdateStatisticsOnRoundComplete(ctx, userID, completedRound); err != nil {
-			// 統計更新エラーはログ出力のみで、ラウンド完了処理は継続
-			uc.logger.Warnf("統計データ更新エラー（処理続行）: %v", err)
-		}
-	}
-
 	uc.logger.Infof("ラウンド完了成功: ID=%s, FocusScore=%v, WorkTime=%d分, BreakTime=%d分",
-		id.String(), req.FocusScore, workTime, breakTime)
+		id.String(), req.FocusScore, workTime.Minutes(), breakTime.Minutes())
 
-	return completedRound.ToResponse(), nil
+	return uc.roundMapper.ToRoundResponse(completedRound), nil
 }
 
-
-// ✅ ドメインロジック活用：UserConfig安全取得（フォールバック）
-func (uc *roundUseCase) getUserConfigWithFallback(ctx context.Context, userID uuid.UUID) *model.UserConfig {
-	if uc.userConfigRepo == nil {
-		uc.logger.Warn("UserConfigRepository が nil です - デフォルト設定使用")
-		return model.NewDefaultUserConfig(userID)
+// ✅ ドメインロジック活用：OptimizationPreferences安全取得（フォールバック）
+func (uc *roundUseCase) getOptimizationPreferencesWithFallback(ctx context.Context, userID userVO.UserID) *entity.OptimizationPreferences {
+	if uc.optimizationPreferencesRepo == nil {
+		uc.logger.Warn("OptimizationPreferencesRepository が nil です - デフォルト設定使用")
+		defaultPrefs, _ := entity.NewOptimizationPreferences(userID)
+		return defaultPrefs
 	}
 
-	userConfig, err := uc.userConfigRepo.GetUserConfig(ctx, userID)
+	optimizationPreferences, err := uc.optimizationPreferencesRepo.GetOrCreateDefault(ctx, userID)
 	if err != nil {
-		uc.logger.Warnf("UserConfig取得エラー、デフォルト設定を使用: %v", err)
-		return model.NewDefaultUserConfig(userID)
+		uc.logger.Warnf("OptimizationPreferences取得エラー、デフォルト設定を使用: %v", err)
+		defaultPrefs, _ := entity.NewOptimizationPreferences(userID)
+		return defaultPrefs
 	}
 
-	uc.logger.Infof("UserConfig取得成功: workTime=%d, breakTime=%d, sessionRounds=%d",
-		userConfig.GetWorkTimeOrDefault(), userConfig.GetBreakTimeOrDefault(), userConfig.GetSessionRoundsOrDefault())
-	return userConfig
+	uc.logger.Infof("OptimizationPreferences取得成功: workTime=%d, breakTime=%d, sessionRounds=%d",
+		optimizationPreferences.GetWorkTimeOrDefault().Minutes(), optimizationPreferences.GetBreakTimeOrDefault().Minutes(), optimizationPreferences.GetSessionRoundsOrDefault().Count())
+	return optimizationPreferences
 }
 
-
-// sendRoundOptimizationMessage はラウンド最適化メッセージをSQSに送信する（同期）
-func (uc *roundUseCase) sendRoundOptimizationMessage(ctx context.Context, userID, roundID uuid.UUID, focusScore int) {
-	if uc.sqsClient == nil {
-		uc.logger.Warn("SQSクライアントが初期化されていません。最適化メッセージは送信されません。")
+// sendRoundOptimizationMessage はラウンド最適化メッセージを送信する（MessagingService統合版）
+func (uc *roundUseCase) sendRoundOptimizationMessage(ctx context.Context, userID, roundID uuid.UUID, focusScore int, sessionID uuid.UUID, workTime int) {
+	if uc.messagingService == nil {
+		uc.logger.Warn("MessagingServiceが初期化されていません。最適化メッセージは送信されません。")
 		return
 	}
 
-	// 最小限のメッセージを作成
-	message := model.NewRoundOptimizationMessage(userID, roundID, focusScore)
-
-	// SQS送信実行
-	err := uc.sqsClient.SendRoundOptimizationMessage(ctx, message)
+	// UUIDをValue Objectに変換
+	userIDVO, err := userVO.NewUserIDFromString(userID.String())
 	if err != nil {
+		uc.logger.Errorf("UserID変換エラー: %v", err)
+		return
+	}
+
+	sessionIDVO, err := sessionVO.NewSessionIDFromString(sessionID.String())
+	if err != nil {
+		uc.logger.Errorf("SessionID変換エラー: %v", err)
+		return
+	}
+
+	roundIDVO, err := roundVO.NewRoundIDFromString(roundID.String())
+	if err != nil {
+		uc.logger.Errorf("RoundID変換エラー: %v", err)
+		return
+	}
+
+	// Value Objectsに変換
+	focusScoreVO, err := statisticsVO.NewFocusScore(float64(focusScore))
+	if err != nil {
+		uc.logger.Errorf("FocusScore変換エラー: %v", err)
+		return
+	}
+
+	workTimeVO, err := statisticsVO.NewWorkTime(workTime)
+	if err != nil {
+		uc.logger.Errorf("WorkTime変換エラー: %v", err)
+		return
+	}
+
+	// ドメインサービス経由でメッセージ送信
+	roundData := service.RoundOptimizationData{
+		UserID:     userIDVO,
+		SessionID:  sessionIDVO,
+		RoundID:    roundIDVO,
+		FocusScore: focusScoreVO,
+		WorkTime:   workTimeVO,
+	}
+
+	if err := uc.messagingService.SendRoundOptimizationMessage(ctx, roundData); err != nil {
 		uc.logger.Errorf("ラウンド最適化メッセージ送信エラー: %v", err)
-		return
 	}
-
-	uc.logger.Infof("ラウンド最適化メッセージ送信成功: %s", message.ToLogString())
 }

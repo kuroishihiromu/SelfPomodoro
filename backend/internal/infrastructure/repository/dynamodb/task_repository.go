@@ -9,8 +9,10 @@ import (
 	"github.com/aws/aws-sdk-go-v2/service/dynamodb/types"
 	"github.com/google/uuid"
 	"github.com/tsunakit99/selfpomodoro/internal/config"
-	"github.com/tsunakit99/selfpomodoro/internal/domain/model"
+	"github.com/tsunakit99/selfpomodoro/internal/domain/entity"
 	"github.com/tsunakit99/selfpomodoro/internal/domain/repository"
+	userVO "github.com/tsunakit99/selfpomodoro/internal/domain/valueobject/user"
+	taskVO "github.com/tsunakit99/selfpomodoro/internal/domain/valueobject/task"
 	appErrors "github.com/tsunakit99/selfpomodoro/internal/errors"
 	"github.com/tsunakit99/selfpomodoro/internal/infrastructure/logger"
 )
@@ -32,7 +34,7 @@ func NewTaskRepository(client *dynamodb.Client, cfg *config.Config, logger logge
 }
 
 // Create はタスクを作成する
-func (r *TaskRepositoryImpl) Create(ctx context.Context, task *model.Task) error {
+func (r *TaskRepositoryImpl) Create(ctx context.Context, task *entity.Task) error {
 	pk := UserPartitionKey(task.UserID.String())
 	sk := TaskSortKey(task.ID.String())
 
@@ -41,8 +43,8 @@ func (r *TaskRepositoryImpl) Create(ctx context.Context, task *model.Task) error
 		"SK":           &types.AttributeValueMemberS{Value: sk},
 		"user_id":      &types.AttributeValueMemberS{Value: task.UserID.String()},
 		"task_id":      &types.AttributeValueMemberS{Value: task.ID.String()},
-		"detail":       &types.AttributeValueMemberS{Value: task.Detail},
-		"is_completed": &types.AttributeValueMemberBOOL{Value: task.IsCompleted},
+		"detail":       &types.AttributeValueMemberS{Value: task.Detail.Value()},
+		"is_completed": &types.AttributeValueMemberBOOL{Value: task.Status.IsCompleted()},
 		"created_at":   &types.AttributeValueMemberS{Value: task.CreatedAt.Format(time.RFC3339)},
 		"updated_at":   &types.AttributeValueMemberS{Value: task.UpdatedAt.Format(time.RFC3339)},
 	}
@@ -59,12 +61,12 @@ func (r *TaskRepositoryImpl) Create(ctx context.Context, task *model.Task) error
 		return appErrors.NewDynamoDBOperationError("create_task", err)
 	}
 
-	r.logger.Infof("タスク作成成功: ID=%s, Detail=%s", task.ID.String(), task.Detail)
+	r.logger.Infof("タスク作成成功: ID=%s, Detail=%s", task.ID.String(), task.Detail.Value())
 	return nil
 }
 
 // GetByID はIDによってタスクを取得する
-func (r *TaskRepositoryImpl) GetByID(ctx context.Context, id, userID uuid.UUID) (*model.Task, error) {
+func (r *TaskRepositoryImpl) GetByID(ctx context.Context, id uuid.UUID, userID userVO.UserID) (*entity.Task, error) {
 	pk := UserPartitionKey(userID.String())
 	sk := TaskSortKey(id.String())
 
@@ -98,7 +100,7 @@ func (r *TaskRepositoryImpl) GetByID(ctx context.Context, id, userID uuid.UUID) 
 }
 
 // GetAllByUserID はユーザーIDに紐づくすべてのタスクを取得する
-func (r *TaskRepositoryImpl) GetAllByUserID(ctx context.Context, userID uuid.UUID) ([]*model.Task, error) {
+func (r *TaskRepositoryImpl) GetAllByUserID(ctx context.Context, userID userVO.UserID) ([]*entity.Task, error) {
 	pk := UserPartitionKey(userID.String())
 
 	input := &dynamodb.QueryInput{
@@ -116,7 +118,7 @@ func (r *TaskRepositoryImpl) GetAllByUserID(ctx context.Context, userID uuid.UUI
 		return nil, appErrors.NewDynamoDBOperationError("get_tasks_by_user_id", err)
 	}
 
-	tasks := make([]*model.Task, 0, len(result.Items))
+	tasks := make([]*entity.Task, 0, len(result.Items))
 	for _, item := range result.Items {
 		task, err := r.itemToTask(item)
 		if err != nil {
@@ -131,7 +133,7 @@ func (r *TaskRepositoryImpl) GetAllByUserID(ctx context.Context, userID uuid.UUI
 }
 
 // Update はタスクの詳細を更新する
-func (r *TaskRepositoryImpl) Update(ctx context.Context, task *model.Task) error {
+func (r *TaskRepositoryImpl) Update(ctx context.Context, task *entity.Task) error {
 	pk := UserPartitionKey(task.UserID.String())
 	sk := TaskSortKey(task.ID.String())
 
@@ -142,8 +144,8 @@ func (r *TaskRepositoryImpl) Update(ctx context.Context, task *model.Task) error
 		"SK":           &types.AttributeValueMemberS{Value: sk},
 		"user_id":      &types.AttributeValueMemberS{Value: task.UserID.String()},
 		"task_id":      &types.AttributeValueMemberS{Value: task.ID.String()},
-		"detail":       &types.AttributeValueMemberS{Value: task.Detail},
-		"is_completed": &types.AttributeValueMemberBOOL{Value: task.IsCompleted},
+		"detail":       &types.AttributeValueMemberS{Value: task.Detail.Value()},
+		"is_completed": &types.AttributeValueMemberBOOL{Value: task.Status.IsCompleted()},
 		"created_at":   &types.AttributeValueMemberS{Value: task.CreatedAt.Format(time.RFC3339)},
 		"updated_at":   &types.AttributeValueMemberS{Value: task.UpdatedAt.Format(time.RFC3339)},
 	}
@@ -165,7 +167,7 @@ func (r *TaskRepositoryImpl) Update(ctx context.Context, task *model.Task) error
 }
 
 // ToggleCompletion はタスクの完了状態を切り替える
-func (r *TaskRepositoryImpl) ToggleCompletion(ctx context.Context, id, userID uuid.UUID) error {
+func (r *TaskRepositoryImpl) ToggleCompletion(ctx context.Context, id uuid.UUID, userID userVO.UserID) error {
 	// 現在のタスクを取得
 	task, err := r.GetByID(ctx, id, userID)
 	if err != nil {
@@ -181,12 +183,12 @@ func (r *TaskRepositoryImpl) ToggleCompletion(ctx context.Context, id, userID uu
 		return err
 	}
 
-	r.logger.Infof("タスク完了状態切り替え成功: ID=%s, IsCompleted=%v", id.String(), task.IsCompleted)
+	r.logger.Infof("タスク完了状態切り替え成功: ID=%s, IsCompleted=%v", id.String(), task.Status.IsCompleted())
 	return nil
 }
 
 // Delete はタスクを削除する
-func (r *TaskRepositoryImpl) Delete(ctx context.Context, id, userID uuid.UUID) error {
+func (r *TaskRepositoryImpl) Delete(ctx context.Context, id uuid.UUID, userID userVO.UserID) error {
 	pk := UserPartitionKey(userID.String())
 	sk := TaskSortKey(id.String())
 
@@ -212,14 +214,14 @@ func (r *TaskRepositoryImpl) Delete(ctx context.Context, id, userID uuid.UUID) e
 // Helper methods
 
 // itemToTask はDynamoDBアイテムをTaskモデルに変換する
-func (r *TaskRepositoryImpl) itemToTask(item map[string]types.AttributeValue) (*model.Task, error) {
-	task := &model.Task{}
+func (r *TaskRepositoryImpl) itemToTask(item map[string]types.AttributeValue) (*entity.Task, error) {
+	task := &entity.Task{}
 
 	// user_id
 	if userIDAttr, exists := item["user_id"]; exists {
 		if s, ok := userIDAttr.(*types.AttributeValueMemberS); ok {
-			if id, err := uuid.Parse(s.Value); err == nil {
-				task.UserID = id
+			if userID, err := userVO.NewUserIDFromString(s.Value); err == nil {
+				task.UserID = userID
 			}
 		}
 	}
@@ -227,8 +229,8 @@ func (r *TaskRepositoryImpl) itemToTask(item map[string]types.AttributeValue) (*
 	// task_id
 	if taskIDAttr, exists := item["task_id"]; exists {
 		if s, ok := taskIDAttr.(*types.AttributeValueMemberS); ok {
-			if id, err := uuid.Parse(s.Value); err == nil {
-				task.ID = id
+			if taskID, err := taskVO.NewTaskIDFromString(s.Value); err == nil {
+				task.ID = taskID
 			}
 		}
 	}
@@ -236,14 +238,16 @@ func (r *TaskRepositoryImpl) itemToTask(item map[string]types.AttributeValue) (*
 	// detail
 	if detailAttr, exists := item["detail"]; exists {
 		if s, ok := detailAttr.(*types.AttributeValueMemberS); ok {
-			task.Detail = s.Value
+			if detail, err := taskVO.NewTaskDetail(s.Value); err == nil {
+				task.Detail = detail
+			}
 		}
 	}
 
 	// is_completed
 	if isCompletedAttr, exists := item["is_completed"]; exists {
 		if b, ok := isCompletedAttr.(*types.AttributeValueMemberBOOL); ok {
-			task.IsCompleted = b.Value
+			task.Status = taskVO.NewTaskStatus(b.Value)
 		}
 	}
 
