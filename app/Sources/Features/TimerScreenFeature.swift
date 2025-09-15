@@ -70,15 +70,21 @@ struct TimerScreenFeature {
                 }
 
             case let .sessionStartResponse(.success(session)):
+                print("🎆 Session started: \(session.id)")
                 state.sessionId = session.id
                 state.timer.sessionId = session.id
                 state.isFirstSession = false
                 return .send(.startNextRound)
 
             case let .roundStartResponse(.success(round)):
+                print("🎯 roundStartResponse: setting currentRoundId to \(round.id)")
                 state.timer.currentRoundId = round.id
-
-                return .send(.timer(.start))
+                
+                // ラウンド開始時に状態を永続化
+                return .merge(
+                    .send(.timer(.saveTimerState)),
+                    .send(.timer(.start))
+                )
 
             case .timer(.phaseCompleted):
                 if state.timer.phase == .shortBreak || state.timer.phase == .longBreak {
@@ -93,6 +99,8 @@ struct TimerScreenFeature {
                         state.timer.round = 1
                     } else {
                         state.roundConfigModalIsPresented = true
+                        // ラウンドが切り替わるタイミングでユーザー設定を再取得
+                        return .send(.refreshUserConfig)
                     }
                 }
                 return .none
@@ -140,29 +148,40 @@ struct TimerScreenFeature {
                     return .send(.restoreTimerIfNeeded)
                 } else if state.isFirstSession {
                     // 永続化データがなく、初回セッションの場合は設定を取得
-                    return .run { send in
-                        let config = try await userConfigAPIClient.getUserConfig()
-                        await send(.userConfigResponse(.success(config)))
-                    } catch: { error, send in
-                        await send(.userConfigResponse(.failure(error)))
-                    }
+                    return .send(.refreshUserConfig)
                 }
                 
                 return .none
 
+            case .refreshUserConfig:
+                return .run { send in
+                    print("🔄 Fetching user config...")
+                    let config = try await userConfigAPIClient.getUserConfig()
+                    await send(.userConfigResponse(.success(config)))
+                } catch: { error, send in
+                    print("⚠️ Fetch user config failed: \(error)")
+                    await send(.userConfigResponse(.failure(error)))
+                }
+
             case let .userConfigResponse(.success(config)):
                 state.userConfig = config
+                print("🧭 Applying UserConfig to timer: work=\(config.roundWorkTime), break=\(config.roundBreakTime), rounds=\(config.sessionRounds), longBreak=\(config.sessionBreakTime)")
                 // 永続化データがない場合のみモーダルを表示
                 if !state.hasPersistedTimer {
                     state.roundConfigModalIsPresented = true
                 }
                 
+                // サーバーは秒単位を返す前提。×60 せずにそのまま適用。
                 return .send(.timer(.updateSettings(
-                    task: config.roundWorkTime * 60,
-                    shortBreak: config.roundBreakTime * 60,
-                    longBreak: config.sessionBreakTime * 60,
+                    task: config.roundWorkTime,
+                    shortBreak: config.roundBreakTime,
+                    longBreak: config.sessionBreakTime,
                     roundsPerSession: config.sessionRounds
                 )))
+
+            case let .userConfigResponse(.failure(error)):
+                print("❗️ userConfigResponse failure: \(error)")
+                return .none
 
             case let .toggleConfigModal(show):
                 state.roundConfigModalIsPresented = show
@@ -180,16 +199,20 @@ struct TimerScreenFeature {
                 return .none
                 
             case .restoreTimerIfNeeded:
-                let effect = Effect<Action>.send(.timer(.restoreTimerState))
-                
-                // 復元が成功した場合、永続化フラグを更新
-                if TimerPersistence.load() != nil {
+                // 永続化データから sessionId を復元
+                if let persistedData = TimerPersistence.load() {
+                    print("🔄 Restoring session state: sessionId=\(persistedData.sessionId?.uuidString ?? "nil"), currentRoundId=\(persistedData.currentRoundId?.uuidString ?? "nil")")
+                    state.sessionId = persistedData.sessionId
                     state.hasPersistedTimer = true
-                    // 既に設定が存在する場合はモーダルを表示しない
                     state.roundConfigModalIsPresented = false
+                    
+                    // セッションが復元された場合は初回セッションではない
+                    if persistedData.sessionId != nil {
+                        state.isFirstSession = false
+                    }
                 }
                 
-                return effect
+                return .send(.timer(.restoreTimerState))
                 
             default:
                 return .none
