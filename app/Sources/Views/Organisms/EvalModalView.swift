@@ -16,12 +16,12 @@ struct EvalModalView: View {
             ZStack {
                 VStack(spacing: 24) {
                     // タイトル
-                    Text(L10n.Evaluation.title)
+                    Text("このラウンドはいかがでしたか？")
                         .font(.system(size: 25, weight: .bold))
                         .padding(.bottom, 16)
 
                     // ラウンド情報
-                    Text("\(L10n.Evaluation.round) \(viewStore.round)")
+                    Text("\("ラウンド") \(viewStore.round)")
                         .font(.system(size: 22, weight: .bold))
 
                     // スコアバー
@@ -41,7 +41,7 @@ struct EvalModalView: View {
 
                     // 開始ボタン
                     NormalButton(
-                        text: L10n.Timer.startBreak,
+                        text: "休憩開始",
                         bgColor: ColorTheme.navy,
                         fontColor: ColorTheme.white,
                         width: 180,
