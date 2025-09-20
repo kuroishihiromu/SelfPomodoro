@@ -8,6 +8,13 @@
 import Foundation
 import Dependencies
 import Amplify
+import AWSPluginsCore
+
+enum SessionAPIError: Error, Equatable {
+    case networkError
+    case decodingError
+    case unknown
+}
 
 struct SessionAPIClient {
     var startSession: () async throws -> SessionResult
@@ -20,16 +27,24 @@ struct SessionAPIClient {
 extension SessionAPIClient {
     static let live = SessionAPIClient(
         startSession: {
+            let idToken: String
             do {
                 let session = try await Amplify.Auth.fetchAuthSession()
+                guard let provider = session as? AuthCognitoTokensProvider else {
+                    throw SessionAPIError.unknown
+                }
+                let tokens = try provider.getCognitoTokens().get()
+                idToken = tokens.idToken
                 print("👤 Auth session (startSession) isSignedIn=\(session.isSignedIn)")
             } catch {
                 print("👤 Auth session (startSession) fetch failed: \(error)")
+                throw error
             }
             print("➡️ POST /dev/api/v1/sessions")
             let request = RESTRequest(
                 apiName: "selfpomodoro",
-                path: "/dev/api/v1/sessions"
+                path: "/dev/api/v1/sessions",
+                headers: ["Authorization" : idToken]
             )
 
             do {
@@ -45,16 +60,24 @@ extension SessionAPIClient {
         },
 
         completeSession: { sessionId in
+            let idToken: String
             do {
                 let session = try await Amplify.Auth.fetchAuthSession()
+                guard let provider = session as? AuthCognitoTokensProvider else {
+                    throw SessionAPIError.unknown
+                }
+                let tokens = try provider.getCognitoTokens().get()
+                idToken = tokens.idToken
                 print("👤 Auth session (completeSession) isSignedIn=\(session.isSignedIn)")
             } catch {
                 print("👤 Auth session (completeSession) fetch failed: \(error)")
+                throw error
             }
             print("➡️ PATCH /dev/api/v1/sessions/\(sessionId)/complete")
             let request = RESTRequest(
                 apiName: "selfpomodoro",
-                path: "/dev/api/v1/sessions/\(sessionId)/complete"
+                path: "/dev/api/v1/sessions/\(sessionId)/complete",
+                headers: ["Authorization" : idToken]
             )
 
             do {
@@ -70,17 +93,25 @@ extension SessionAPIClient {
         },
         
         startRound: { sessionId in
+            let idToken: String
             do {
                 let session = try await Amplify.Auth.fetchAuthSession()
+                guard let provider = session as? AuthCognitoTokensProvider else {
+                    throw SessionAPIError.unknown
+                }
+                let tokens = try provider.getCognitoTokens().get()
+                idToken = tokens.idToken
                 print("👤 Auth session (startRound) isSignedIn=\(session.isSignedIn)")
             } catch {
                 print("👤 Auth session (startRound) fetch failed: \(error)")
+                throw error
             }
             let sessionIdLower = sessionId.uuidString.lowercased()
             print("➡️ POST /dev/api/v1/sessions/\(sessionIdLower)/rounds")
             let request = RESTRequest(
                 apiName: "selfpomodoro",
-                path: "/dev/api/v1/sessions/\(sessionIdLower)/rounds"
+                path: "/dev/api/v1/sessions/\(sessionIdLower)/rounds",
+                headers: ["Authorization" : idToken]
             )
 
             do {
@@ -96,17 +127,25 @@ extension SessionAPIClient {
         },
         
         completeRound: { roundId, focusScore in
+            let idToken: String
             do {
                 let session = try await Amplify.Auth.fetchAuthSession()
+                guard let provider = session as? AuthCognitoTokensProvider else {
+                    throw SessionAPIError.unknown
+                }
+                let tokens = try provider.getCognitoTokens().get()
+                idToken = tokens.idToken
                 print("👤 Auth session (completeRound) isSignedIn=\(session.isSignedIn)")
             } catch {
                 print("👤 Auth session (completeRound) fetch failed: \(error)")
+                throw error
             }
             print("➡️ PATCH /dev/api/v1/rounds/\(roundId)/complete")
             let body = try JSONEncoder().encode(["focus_score": focusScore])
             let request = RESTRequest(
                 apiName: "selfpomodoro",
                 path: "/dev/api/v1/rounds/\(roundId)/complete",
+                headers: ["Authorization" : idToken],
                 body: body
             )
 
@@ -123,16 +162,24 @@ extension SessionAPIClient {
         },
 
         getSession: { sessionId in
+            let idToken: String
             do {
                 let session = try await Amplify.Auth.fetchAuthSession()
+                guard let provider = session as? AuthCognitoTokensProvider else {
+                    throw SessionAPIError.unknown
+                }
+                let tokens = try provider.getCognitoTokens().get()
+                idToken = tokens.idToken
                 print("👤 Auth session (getSession) isSignedIn=\(session.isSignedIn)")
             } catch {
                 print("👤 Auth session (getSession) fetch failed: \(error)")
+                throw error
             }
             print("➡️ GET /dev/api/v1/sessions/\(sessionId)")
             let request = RESTRequest(
                 apiName: "selfpomodoro",
-                path: "/dev/api/v1/sessions/\(sessionId)"
+                path: "/dev/api/v1/sessions/\(sessionId)",
+                headers: ["Authorization" : idToken]
             )
 
             do {

@@ -8,6 +8,8 @@
 import Foundation
 import Dependencies
 import Amplify
+import AWSPluginsCore
+
 
 struct TaskResult: Equatable, Identifiable, Codable {
     let id: UUID
@@ -34,16 +36,24 @@ struct TaskAPIClient {
 extension TaskAPIClient {
     static let live = TaskAPIClient(
         fetchTasks: {
+            let idToken: String
             do {
                 let session = try await Amplify.Auth.fetchAuthSession()
+                guard let provider = session as? AuthCognitoTokensProvider else {
+                    throw taskAPIError.unknown
+                }
+                let tokens = try provider.getCognitoTokens().get()
+                idToken = tokens.idToken
                 print("👤 Auth session (fetchTasks) isSignedIn=\(session.isSignedIn)")
             } catch {
                 print("👤 Auth session (fetchTasks) fetch failed: \(error)")
+                throw error
             }
             print("➡️ GET /dev/api/v1/tasks")
             let request = RESTRequest(
                 apiName: "selfpomodoro",
-                path: "/dev/api/v1/tasks"
+                path: "/dev/api/v1/tasks",
+                headers: ["Authorization": idToken]
             )
 
             do {
@@ -61,17 +71,25 @@ extension TaskAPIClient {
         },
         
         addTask: { detail in
+            let idToken: String
             do {
                 let session = try await Amplify.Auth.fetchAuthSession()
+                guard let provider = session as? AuthCognitoTokensProvider else {
+                    throw taskAPIError.unknown
+                }
+                let tokens = try provider.getCognitoTokens().get()
+                idToken = tokens.idToken
                 print("👤 Auth session (addTask) isSignedIn=\(session.isSignedIn)")
             } catch {
                 print("👤 Auth session (addTask) fetch failed: \(error)")
+                throw error
             }
             print("➡️ POST /dev/api/v1/tasks")
             let body = try JSONEncoder().encode(["detail": detail])
             let request = RESTRequest(
                 apiName: "selfpomodoro",
                 path: "/dev/api/v1/tasks",
+                headers: ["Authorization" : idToken],
                 body: body
             )
 
@@ -88,16 +106,24 @@ extension TaskAPIClient {
         },
 
         deleteTask: { id in
+            let idToken: String
             do {
                 let session = try await Amplify.Auth.fetchAuthSession()
+                guard let provider = session as? AuthCognitoTokensProvider else {
+                    throw taskAPIError.unknown
+                }
+                let tokens = try provider.getCognitoTokens().get()
+                idToken = tokens.idToken
                 print("👤 Auth session (deleteTask) isSignedIn=\(session.isSignedIn)")
             } catch {
                 print("👤 Auth session (deleteTask) fetch failed: \(error)")
+                throw error
             }
             print("➡️ DELETE /dev/api/v1/tasks/\(id.uuidString)")
             let request = RESTRequest(
                 apiName: "selfpomodoro",
-                path: "/dev/api/v1/tasks/\(id.uuidString)"
+                path: "/dev/api/v1/tasks/\(id.uuidString)",
+                headers: ["Authorization" : idToken]
             )
 
             do {
@@ -110,16 +136,24 @@ extension TaskAPIClient {
         },
 
         toggleCompletion: { id in
+            let idToken: String
             do {
                 let session = try await Amplify.Auth.fetchAuthSession()
+                guard let provider = session as? AuthCognitoTokensProvider else {
+                    throw taskAPIError.unknown
+                }
+                let tokens = try provider.getCognitoTokens().get()
+                idToken = tokens.idToken
                 print("👤 Auth session (toggleCompletion) isSignedIn=\(session.isSignedIn)")
             } catch {
                 print("👤 Auth session (toggleCompletion) fetch failed: \(error)")
+                throw error
             }
             print("➡️ PATCH /dev/api/v1/tasks/\(id)/toggle")
             let request = RESTRequest(
                 apiName: "selfpomodoro",
-                path: "/dev/api/v1/tasks/\(id)/toggle"
+                path: "/dev/api/v1/tasks/\(id)/toggle",
+                headers: ["Authorization" : idToken]
             )
 
             do {

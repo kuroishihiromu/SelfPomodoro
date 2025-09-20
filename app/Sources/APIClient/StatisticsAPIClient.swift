@@ -8,6 +8,7 @@
 import Foundation
 import Dependencies
 import Amplify
+import AWSPluginsCore
 
 
 enum StatisticsAPIError: Error, Equatable {
@@ -23,16 +24,24 @@ struct StatisticsAPIClient {
 extension StatisticsAPIClient {
     static let live = StatisticsAPIClient(
         fetchConcentrationData: {
+            let idToken: String
             do {
                 let session = try await Amplify.Auth.fetchAuthSession()
+                guard let provider = session as? AuthCognitoTokensProvider else {
+                    throw StatisticsAPIError.unknown
+                }
+                let tokens = try provider.getCognitoTokens().get()
+                idToken = tokens.idToken
                 print("👤 Auth session (statistics.fetchConcentrationData) isSignedIn=\(session.isSignedIn)")
             } catch {
                 print("👤 Auth session (statistics.fetchConcentrationData) fetch failed: \(error)")
+                throw error
             }
             print("➡️ GET /dev/api/v1/statistics/focus-trend")
             let request = RESTRequest(
                 apiName: "selfpomodoro",
-                path: "/dev/api/v1/statistics/focus-trend"
+                path: "/dev/api/v1/statistics/focus-trend",
+                headers: ["Authorization" : idToken]
             )
 
             do {
