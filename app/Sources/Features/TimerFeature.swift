@@ -73,7 +73,7 @@ struct TimerFeature {
             
             // 永続化
             let persistenceData = TimerPersistenceData(
-                startTime: Date(),
+                startTime: Date(timeIntervalSinceNow: -Double(state.currentSeconds)),
                 taskDuration: state.taskDuration,
                 shortBreakDuration: state.shortBreakDuration,
                 longBreakDuration: state.longBreakDuration,
@@ -163,7 +163,8 @@ struct TimerFeature {
         case .saveTimerState:
             guard state.isRunning else { return .none }
             let persistenceData = TimerPersistenceData(
-                startTime: Date(),
+                // 現在の経過秒に合わせた論理開始時刻を保存
+                startTime: Date(timeIntervalSinceNow: -Double(state.currentSeconds)),
                 taskDuration: state.taskDuration,
                 shortBreakDuration: state.shortBreakDuration,
                 longBreakDuration: state.longBreakDuration,
@@ -196,17 +197,10 @@ struct TimerFeature {
             print("🔄 Timer state restored - sessionId: \(persistedData.sessionId?.uuidString ?? "nil"), currentRoundId: \(persistedData.currentRoundId?.uuidString ?? "nil")")
             
             if persistedData.isRunning {
-                let elapsed = Int(Date().timeIntervalSince(persistedData.startTime))
-                
-                #if DEBUG
-                let accelerationFactor = 10.0 // デバッグ時は10倍速
-                #else
-                let accelerationFactor = 1.0  // リリース時は通常速度
-                #endif
-                
-                let acceleratedElapsed = Int(Double(elapsed) * accelerationFactor)
-                let adjustedElapsed = acceleratedElapsed + persistedData.currentSeconds
-                
+                // アプリ非稼働中の経過は実時間のみ反映（加速は適用しない）
+                let elapsed = max(0, Int(Date().timeIntervalSince(persistedData.startTime)))
+                let adjustedElapsed: Int = elapsed
+
                 if adjustedElapsed < state.totalSeconds {
                     state.currentSeconds = adjustedElapsed
                     state.isRunning = true

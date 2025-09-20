@@ -18,8 +18,10 @@ struct TimerScreenFeature {
         var roundConfigModalIsPresented: Bool = false
         var sessionCompleteModal: Bool = false
         var isFirstSession: Bool = true
-        var userConfig: UserConfigResult = .init(id: UUID(), roundWorkTime: 25*60, roundBreakTime: 5*60, sessionRounds: 5, sessionBreakTime: 15*60)
+        // ユーザー設定は分単位で保持（API 仕様）。タイマー適用時に秒へ変換。
+        var userConfig: UserConfigResult = .init(id: UUID(), roundWorkTime: 25, roundBreakTime: 5, sessionRounds: 5, sessionBreakTime: 15)
         var hasPersistedTimer: Bool = false
+        var didRestoreFromPersistence: Bool = false
     }
 
     enum Action {
@@ -170,17 +172,23 @@ struct TimerScreenFeature {
                 return .none
 
             case .onAppear:
-                // 永続化されたタイマーデータをチェック
-                state.hasPersistedTimer = TimerPersistence.load() != nil
-                
-                if state.hasPersistedTimer {
-                    // 永続化データがある場合は復元
+                // 既に実行中なら何もしない（タブ復帰時の二重スタート防止）
+                if state.timer.isRunning {
+                    return .none
+                }
+
+                let persistedExists = TimerPersistence.load() != nil
+                state.hasPersistedTimer = persistedExists
+
+                // 一度だけ復元する
+                if persistedExists && !state.didRestoreFromPersistence {
                     return .send(.restoreTimerIfNeeded)
-                } else if state.isFirstSession {
-                    // 永続化データがなく、初回セッションの場合は設定を取得
+                }
+
+                if state.isFirstSession {
                     return .send(.refreshUserConfig)
                 }
-                
+
                 return .none
 
             case .refreshUserConfig:
@@ -195,17 +203,17 @@ struct TimerScreenFeature {
 
             case let .userConfigResponse(.success(config)):
                 state.userConfig = config
-                print("🧭 Applying UserConfig to timer: work=\(config.roundWorkTime), break=\(config.roundBreakTime), rounds=\(config.sessionRounds), longBreak=\(config.sessionBreakTime)")
+                print("🧭 Applying UserConfig to timer (minutes): work=\(config.roundWorkTime), break=\(config.roundBreakTime), rounds=\(config.sessionRounds), longBreak=\(config.sessionBreakTime)")
                 // 永続化データがない場合のみモーダルを表示
                 if !state.hasPersistedTimer {
                     state.roundConfigModalIsPresented = true
                 }
                 
-                // サーバーは秒単位を返す前提。×60 せずにそのまま適用。
+                // サーバーは分単位を返すため、タイマー内部の秒に変換して適用
                 return .send(.timer(.updateSettings(
-                    task: config.roundWorkTime,
-                    shortBreak: config.roundBreakTime,
-                    longBreak: config.sessionBreakTime,
+                    task: config.roundWorkTime * 60,
+                    shortBreak: config.roundBreakTime * 60,
+                    longBreak: config.sessionBreakTime * 60,
                     roundsPerSession: config.sessionRounds
                 )))
 
@@ -234,6 +242,7 @@ struct TimerScreenFeature {
                     print("🔄 Restoring session state: sessionId=\(persistedData.sessionId?.uuidString ?? "nil"), currentRoundId=\(persistedData.currentRoundId?.uuidString ?? "nil")")
                     state.sessionId = persistedData.sessionId
                     state.hasPersistedTimer = true
+                    state.didRestoreFromPersistence = true
                     state.roundConfigModalIsPresented = false
                     
                     // セッションが復元された場合は初回セッションではない
