@@ -16,7 +16,7 @@ struct EvalModalView: View {
             ZStack {
                 VStack(spacing: 24) {
                     // タイトル
-                    Text("このラウンドはいかがでしたか？")
+                    Text("ラウンド終了")
                         .font(.system(size: 25, weight: .bold))
                         .padding(.bottom, 16)
 
