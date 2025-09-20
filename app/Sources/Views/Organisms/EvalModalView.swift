@@ -5,8 +5,8 @@
 //  Created by 黒石陽夢 on 2025/03/20.
 //
 
-import SwiftUI
 import ComposableArchitecture
+import SwiftUI
 
 struct EvalModalView: View {
     let store: StoreOf<EvalModalFeature>
@@ -19,6 +19,10 @@ struct EvalModalView: View {
                     Text("このラウンドはいかがでしたか？")
                         .font(.system(size: 25, weight: .bold))
                         .padding(.bottom, 16)
+
+                    Text("集中レベルを入力してください。")
+                        .font(.system(size: 12, weight: .semibold))
+                        .padding(.bottom, 10)
 
                     // ラウンド情報
                     Text("\("ラウンド") \(viewStore.round)")
