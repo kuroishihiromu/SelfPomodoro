@@ -31,6 +31,11 @@ enum AppDecoder {
                 return date
             }
 
+            // ハイフンなし yyyyMMdd
+            if let date = AppDateFormatter.compactYearMonthDay.date(from: dateStr) {
+                return date
+            }
+
             throw DecodingError.dataCorruptedError(
                 in: container,
                 debugDescription: "Unrecognized date format: \(dateStr)"

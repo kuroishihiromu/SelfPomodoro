@@ -18,8 +18,10 @@ struct TimerScreenFeature {
         var roundConfigModalIsPresented: Bool = false
         var sessionCompleteModal: Bool = false
         var isFirstSession: Bool = true
-        var userConfig: UserConfigResult = .init(id: UUID(), roundWorkTime: 25*60, roundBreakTime: 5*60, sessionRounds: 5, sessionBreakTime: 15*60)
+        // ユーザー設定は分単位で保持（API 仕様）。タイマー適用時に秒へ変換。
+        var userConfig: UserConfigResult = .init(id: UUID(), roundWorkTime: 25, roundBreakTime: 5, sessionRounds: 5, sessionBreakTime: 15)
         var hasPersistedTimer: Bool = false
+        var didRestoreFromPersistence: Bool = false
     }
 
     enum Action {
@@ -33,6 +35,7 @@ struct TimerScreenFeature {
         case sessionStartResponse(Result<SessionResult, Error>)
         case roundStartResponse(Result<RoundResult, Error>)
         case completeRoundResponse(Result<RoundResult, Error>)
+        case completeSessionResponse(Result<SessionResult, Error>)
 
         case showEvalModal
         case dismissEvalModal
@@ -70,15 +73,30 @@ struct TimerScreenFeature {
                 }
 
             case let .sessionStartResponse(.success(session)):
+                print("🎆 Session started: \(session.id)")
                 state.sessionId = session.id
                 state.timer.sessionId = session.id
                 state.isFirstSession = false
                 return .send(.startNextRound)
 
-            case let .roundStartResponse(.success(round)):
-                state.timer.currentRoundId = round.id
+            case let .sessionStartResponse(.failure(error)):
+                // 409 Conflict（セッションが既に存在）の場合は既存セッションとして次のラウンドへ進む
+                let message = String(describing: error)
+                if message.contains("409") {
+                    state.isFirstSession = false
+                    return .send(.startNextRound)
+                }
+                return .none
 
-                return .send(.timer(.start))
+            case let .roundStartResponse(.success(round)):
+                print("🎯 roundStartResponse: setting currentRoundId to \(round.id)")
+                state.timer.currentRoundId = round.id
+                
+                // ラウンド開始時に状態を永続化
+                return .merge(
+                    .send(.timer(.saveTimerState)),
+                    .send(.timer(.start))
+                )
 
             case .timer(.phaseCompleted):
                 if state.timer.phase == .shortBreak || state.timer.phase == .longBreak {
@@ -91,10 +109,32 @@ struct TimerScreenFeature {
                     if state.userConfig.sessionRounds < state.timer.round {
                         state.sessionCompleteModal = true
                         state.timer.round = 1
+                        if let sessionId = state.timer.sessionId {
+                            // セッション完了をサーバに通知
+                            return .run { send in
+                                let result = try await sessionAPIClient.completeSession(sessionId)
+                                await send(.completeSessionResponse(.success(result)))
+                            } catch: { error, send in
+                                await send(.completeSessionResponse(.failure(error)))
+                            }
+                        }
                     } else {
                         state.roundConfigModalIsPresented = true
+                        // ラウンドが切り替わるタイミングでユーザー設定を再取得
+                        return .send(.refreshUserConfig)
                     }
                 }
+                return .none
+
+            case let .completeSessionResponse(.success(session)):
+                // サーバ側でセッションは完了済み。次回は新規セッションを開始できるように状態をリセット
+                state.timer.sessionId = nil
+                state.sessionId = nil
+                state.isFirstSession = true
+                return .none
+
+            case .completeSessionResponse(.failure):
+                // エラー時は UI を妨げない（後で再試行できるようにする）
                 return .none
 
             case .evalModal(.submitEval(let score)):
@@ -132,37 +172,54 @@ struct TimerScreenFeature {
                 return .none
 
             case .onAppear:
-                // 永続化されたタイマーデータをチェック
-                state.hasPersistedTimer = TimerPersistence.load() != nil
-                
-                if state.hasPersistedTimer {
-                    // 永続化データがある場合は復元
-                    return .send(.restoreTimerIfNeeded)
-                } else if state.isFirstSession {
-                    // 永続化データがなく、初回セッションの場合は設定を取得
-                    return .run { send in
-                        let config = try await userConfigAPIClient.getUserConfig()
-                        await send(.userConfigResponse(.success(config)))
-                    } catch: { error, send in
-                        await send(.userConfigResponse(.failure(error)))
-                    }
+                // 既に実行中なら何もしない（タブ復帰時の二重スタート防止）
+                if state.timer.isRunning {
+                    return .none
                 }
-                
+
+                let persistedExists = TimerPersistence.load() != nil
+                state.hasPersistedTimer = persistedExists
+
+                // 一度だけ復元する
+                if persistedExists && !state.didRestoreFromPersistence {
+                    return .send(.restoreTimerIfNeeded)
+                }
+
+                if state.isFirstSession {
+                    return .send(.refreshUserConfig)
+                }
+
                 return .none
+
+            case .refreshUserConfig:
+                return .run { send in
+                    print("🔄 Fetching user config...")
+                    let config = try await userConfigAPIClient.getUserConfig()
+                    await send(.userConfigResponse(.success(config)))
+                } catch: { error, send in
+                    print("⚠️ Fetch user config failed: \(error)")
+                    await send(.userConfigResponse(.failure(error)))
+                }
 
             case let .userConfigResponse(.success(config)):
                 state.userConfig = config
+                print("🧭 Applying UserConfig to timer (minutes): work=\(config.roundWorkTime), break=\(config.roundBreakTime), rounds=\(config.sessionRounds), longBreak=\(config.sessionBreakTime)")
                 // 永続化データがない場合のみモーダルを表示
                 if !state.hasPersistedTimer {
                     state.roundConfigModalIsPresented = true
                 }
                 
+                // サーバーは分単位を返すため、タイマー内部の秒に変換して適用
                 return .send(.timer(.updateSettings(
                     task: config.roundWorkTime * 60,
                     shortBreak: config.roundBreakTime * 60,
                     longBreak: config.sessionBreakTime * 60,
                     roundsPerSession: config.sessionRounds
                 )))
+
+            case let .userConfigResponse(.failure(error)):
+                print("❗️ userConfigResponse failure: \(error)")
+                return .none
 
             case let .toggleConfigModal(show):
                 state.roundConfigModalIsPresented = show
@@ -180,16 +237,21 @@ struct TimerScreenFeature {
                 return .none
                 
             case .restoreTimerIfNeeded:
-                let effect = Effect<Action>.send(.timer(.restoreTimerState))
-                
-                // 復元が成功した場合、永続化フラグを更新
-                if TimerPersistence.load() != nil {
+                // 永続化データから sessionId を復元
+                if let persistedData = TimerPersistence.load() {
+                    print("🔄 Restoring session state: sessionId=\(persistedData.sessionId?.uuidString ?? "nil"), currentRoundId=\(persistedData.currentRoundId?.uuidString ?? "nil")")
+                    state.sessionId = persistedData.sessionId
                     state.hasPersistedTimer = true
-                    // 既に設定が存在する場合はモーダルを表示しない
+                    state.didRestoreFromPersistence = true
                     state.roundConfigModalIsPresented = false
+                    
+                    // セッションが復元された場合は初回セッションではない
+                    if persistedData.sessionId != nil {
+                        state.isFirstSession = false
+                    }
                 }
                 
-                return effect
+                return .send(.timer(.restoreTimerState))
                 
             default:
                 return .none

@@ -73,7 +73,7 @@ struct TimerFeature {
             
             // 永続化
             let persistenceData = TimerPersistenceData(
-                startTime: Date(),
+                startTime: Date(timeIntervalSinceNow: -Double(state.currentSeconds)),
                 taskDuration: state.taskDuration,
                 shortBreakDuration: state.shortBreakDuration,
                 longBreakDuration: state.longBreakDuration,
@@ -81,7 +81,9 @@ struct TimerFeature {
                 phase: phaseToString(state.phase),
                 round: state.round,
                 isRunning: true,
-                currentSeconds: state.currentSeconds
+                currentSeconds: state.currentSeconds,
+                sessionId: state.sessionId,
+                currentRoundId: state.currentRoundId
             )
             TimerPersistence.save(persistenceData)
             return .run { [start = correctedStart] send in
@@ -91,7 +93,7 @@ struct TimerFeature {
                     let realElapsed = start.duration(to: now).components.seconds
                     
                     #if DEBUG
-                    let accelerationFactor = 200.0 // デバッグ時は10倍速
+                    let accelerationFactor = 10.0 // デバッグ時は10倍速
                     #else
                     let accelerationFactor = 1.0  // リリース時は通常速度
                     #endif
@@ -149,6 +151,7 @@ struct TimerFeature {
             return .send(.stop)
 
         case let .updateSettings(task, short, long, rps):
+            print("🛠️ Timer updateSettings: from task=\(state.taskDuration), short=\(state.shortBreakDuration), long=\(state.longBreakDuration), rps=\(state.roundsPerSession) -> to task=\(task), short=\(short), long=\(long), rps=\(rps)")
             state.taskDuration = task
             state.shortBreakDuration = short
             state.longBreakDuration = long
@@ -160,7 +163,8 @@ struct TimerFeature {
         case .saveTimerState:
             guard state.isRunning else { return .none }
             let persistenceData = TimerPersistenceData(
-                startTime: Date(),
+                // 現在の経過秒に合わせた論理開始時刻を保存
+                startTime: Date(timeIntervalSinceNow: -Double(state.currentSeconds)),
                 taskDuration: state.taskDuration,
                 shortBreakDuration: state.shortBreakDuration,
                 longBreakDuration: state.longBreakDuration,
@@ -168,7 +172,9 @@ struct TimerFeature {
                 phase: phaseToString(state.phase),
                 round: state.round,
                 isRunning: state.isRunning,
-                currentSeconds: state.currentSeconds
+                currentSeconds: state.currentSeconds,
+                sessionId: state.sessionId,
+                currentRoundId: state.currentRoundId
             )
             TimerPersistence.save(persistenceData)
             return .none
@@ -184,20 +190,17 @@ struct TimerFeature {
             state.roundsPerSession = persistedData.roundsPerSession
             state.phase = stringToPhase(persistedData.phase)
             state.round = persistedData.round
+            state.sessionId = persistedData.sessionId
+            state.currentRoundId = persistedData.currentRoundId
             state.totalSeconds = state.currentPhaseDuration
             
+            print("🔄 Timer state restored - sessionId: \(persistedData.sessionId?.uuidString ?? "nil"), currentRoundId: \(persistedData.currentRoundId?.uuidString ?? "nil")")
+            
             if persistedData.isRunning {
-                let elapsed = Int(Date().timeIntervalSince(persistedData.startTime))
-                
-                #if DEBUG
-                let accelerationFactor = 10.0 // デバッグ時は10倍速
-                #else
-                let accelerationFactor = 1.0  // リリース時は通常速度
-                #endif
-                
-                let acceleratedElapsed = Int(Double(elapsed) * accelerationFactor)
-                let adjustedElapsed = acceleratedElapsed + persistedData.currentSeconds
-                
+                // アプリ非稼働中の経過は実時間のみ反映（加速は適用しない）
+                let elapsed = max(0, Int(Date().timeIntervalSince(persistedData.startTime)))
+                let adjustedElapsed: Int = elapsed
+
                 if adjustedElapsed < state.totalSeconds {
                     state.currentSeconds = adjustedElapsed
                     state.isRunning = true

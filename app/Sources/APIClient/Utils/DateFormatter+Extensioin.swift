@@ -32,4 +32,13 @@ enum AppDateFormatter {
         formatter.dateFormat = "yyyy-MM-dd"
         return formatter
     }()
+    
+    // 例: 20250920 のようなハイフンなし日付
+    static let compactYearMonthDay: DateFormatter = {
+        let formatter = DateFormatter()
+        formatter.locale = Locale(identifier: "en_US_POSIX")
+        formatter.timeZone = TimeZone(secondsFromGMT: 0)
+        formatter.dateFormat = "yyyyMMdd"
+        return formatter
+    }()
 }

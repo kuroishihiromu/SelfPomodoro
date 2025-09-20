@@ -43,27 +43,30 @@ struct ChartFeature {
         Reduce { state, action in
             switch action {
             case .fetchFocusTrend:
+                let targetDate = state.currentWeekStart
                 return .run { send in
+                    print("📈 ChartFeature: fetchFocusTrend start")
                     do {
-                        let data = try await apiClient.fetchConcentrationData()
+                        let data = try await apiClient.fetchConcentrationData(targetDate)
+                        print("📈 ChartFeature: fetchFocusTrend success count=\(data.count)")
                         await send(.dataLoaded(data))
                     } catch {
-                        // Error handling
+                        print("📉 ChartFeature: fetchFocusTrend failed: \(error)")
                     }
                 }
 
             case let .dataLoaded(data):
+                print("🧮 ChartFeature: dataLoaded count=\(data.count)")
                 state.data = data
-                state.currentWeekStart = .startOfCurrentWeek()
                 return .none
                 
             case .previousWeek:
                 state.currentWeekStart = Calendar.current.date(byAdding: .day, value: -7, to: state.currentWeekStart)!
-                return .none
+                return .send(.fetchFocusTrend)
 
             case .nextWeek:
                 state.currentWeekStart = Calendar.current.date(byAdding: .day, value: 7, to: state.currentWeekStart)!
-                return .none
+                return .send(.fetchFocusTrend)
             }
         }
     }
