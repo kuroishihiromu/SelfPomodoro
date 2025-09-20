@@ -33,6 +33,7 @@ struct TimerScreenFeature {
         case sessionStartResponse(Result<SessionResult, Error>)
         case roundStartResponse(Result<RoundResult, Error>)
         case completeRoundResponse(Result<RoundResult, Error>)
+        case completeSessionResponse(Result<SessionResult, Error>)
 
         case showEvalModal
         case dismissEvalModal
@@ -76,6 +77,15 @@ struct TimerScreenFeature {
                 state.isFirstSession = false
                 return .send(.startNextRound)
 
+            case let .sessionStartResponse(.failure(error)):
+                // 409 Conflict（セッションが既に存在）の場合は既存セッションとして次のラウンドへ進む
+                let message = String(describing: error)
+                if message.contains("409") {
+                    state.isFirstSession = false
+                    return .send(.startNextRound)
+                }
+                return .none
+
             case let .roundStartResponse(.success(round)):
                 print("🎯 roundStartResponse: setting currentRoundId to \(round.id)")
                 state.timer.currentRoundId = round.id
@@ -97,12 +107,32 @@ struct TimerScreenFeature {
                     if state.userConfig.sessionRounds < state.timer.round {
                         state.sessionCompleteModal = true
                         state.timer.round = 1
+                        if let sessionId = state.timer.sessionId {
+                            // セッション完了をサーバに通知
+                            return .run { send in
+                                let result = try await sessionAPIClient.completeSession(sessionId)
+                                await send(.completeSessionResponse(.success(result)))
+                            } catch: { error, send in
+                                await send(.completeSessionResponse(.failure(error)))
+                            }
+                        }
                     } else {
                         state.roundConfigModalIsPresented = true
                         // ラウンドが切り替わるタイミングでユーザー設定を再取得
                         return .send(.refreshUserConfig)
                     }
                 }
+                return .none
+
+            case let .completeSessionResponse(.success(session)):
+                // サーバ側でセッションは完了済み。次回は新規セッションを開始できるように状態をリセット
+                state.timer.sessionId = nil
+                state.sessionId = nil
+                state.isFirstSession = true
+                return .none
+
+            case .completeSessionResponse(.failure):
+                // エラー時は UI を妨げない（後で再試行できるようにする）
                 return .none
 
             case .evalModal(.submitEval(let score)):

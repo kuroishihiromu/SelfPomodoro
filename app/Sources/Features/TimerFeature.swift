@@ -93,7 +93,7 @@ struct TimerFeature {
                     let realElapsed = start.duration(to: now).components.seconds
                     
                     #if DEBUG
-                    let accelerationFactor = 200.0 // デバッグ時は10倍速
+                    let accelerationFactor = 10.0 // デバッグ時は10倍速
                     #else
                     let accelerationFactor = 1.0  // リリース時は通常速度
                     #endif
