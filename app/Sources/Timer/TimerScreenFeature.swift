@@ -98,32 +98,21 @@ struct TimerScreenFeature {
                     .send(.timer(.start))
                 )
 
-            case .timer(.phaseCompleted):
-                if state.timer.phase == .shortBreak {
+            case let .timer(.phaseCompleted(completedPhase)):
+                if completedPhase == .task {
+                    // task完了時は評価モーダルを表示
                     state.evalModal = EvalModalFeature.State(
                         score: 0.5,
                         round: state.timer.round
                     )
-                } else if state.timer.phase == .longBreak {
-                    // longBreak完了時にセッション完了
-                    state.evalModal = EvalModalFeature.State(
-                        score: 0.5,
-                        round: state.timer.round
-                    )
-                    state.sessionCompleteModal = true
-                    state.timer.round = 1
-                    if let sessionId = state.timer.sessionId {
-                        // セッション完了をサーバに通知
-                        return .run { send in
-                            let result = try await sessionAPIClient.completeSession(sessionId)
-                            await send(.completeSessionResponse(.success(result)))
-                        } catch: { error, send in
-                            await send(.completeSessionResponse(.failure(error)))
-                        }
-                    }
-                } else if state.timer.phase == .task {
+                } else if completedPhase == .shortBreak {
+                    // shortBreak完了 → 次のラウンドのtaskへ
                     state.roundConfigModalIsPresented = true
-                    // ラウンドが切り替わるタイミングでユーザー設定を再取得
+                    return .send(.refreshUserConfig)
+                } else if completedPhase == .longBreak {
+                    // longBreak完了 → 新しいセッション開始可能
+                    state.isFirstSession = true
+                    state.roundConfigModalIsPresented = true
                     return .send(.refreshUserConfig)
                 }
                 return .none
@@ -164,7 +153,24 @@ struct TimerScreenFeature {
                 }
 
             case let .completeRoundResponse(.success(round)):
-                return .send(.timer(.start))
+                // 評価送信後、次のphaseに移行
+                // 最後のラウンドだった場合はセッション完了モーダルを表示
+                if state.timer.round >= state.userConfig.sessionRounds {
+                    state.sessionCompleteModal = true
+                    if let sessionId = state.timer.sessionId {
+                        // セッション完了をサーバに通知
+                        return .run { send in
+                            let result = try await sessionAPIClient.completeSession(sessionId)
+                            await send(.completeSessionResponse(.success(result)))
+                        } catch: { error, send in
+                            await send(.completeSessionResponse(.failure(error)))
+                        }
+                    }
+                    return .none
+                } else {
+                    // 途中のラウンドの場合はshortBreak開始
+                    return .send(.timer(.start))
+                }
 
             case .completeRoundResponse(.failure(let error)):
                 return .none
@@ -229,14 +235,13 @@ struct TimerScreenFeature {
                 
             case let .toggleSessionCompleteModal(show):
                 state.sessionCompleteModal = show
-                if !show {
-                    return .send(.toggleConfigModal(true))
-                }
                 return .none
 
             case .sessionCompleteModalTapped:
-                state.isFirstSession = true
-                return .none
+                // セッション完了モーダルの"休憩を開始"ボタンが押された
+                // モーダルを閉じてlongBreakを開始
+                state.sessionCompleteModal = false
+                return .send(.timer(.start))
                 
             case .restoreTimerIfNeeded:
                 // 永続化データから sessionId を復元

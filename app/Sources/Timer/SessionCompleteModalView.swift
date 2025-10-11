@@ -13,9 +13,10 @@ struct SessionCompleteModalView: View {
     var body: some View {
         VStack(spacing: 20) {
             Text("セッションが完了しました。お疲れ様です。")
+                .font(.headline)
 
             NormalButton(
-                text: "閉じる",
+                text: "休憩を開始",
                 bgColor: ColorTheme.navy,
                 fontColor: ColorTheme.white,
                 width: 200,
