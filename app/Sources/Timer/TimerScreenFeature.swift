@@ -99,30 +99,32 @@ struct TimerScreenFeature {
                 )
 
             case .timer(.phaseCompleted):
-                if state.timer.phase == .shortBreak || state.timer.phase == .longBreak {
+                if state.timer.phase == .shortBreak {
                     state.evalModal = EvalModalFeature.State(
                         score: 0.5,
                         round: state.timer.round
                     )
-                    
-                } else if state.timer.phase == .task {
-                    if state.userConfig.sessionRounds < state.timer.round {
-                        state.sessionCompleteModal = true
-                        state.timer.round = 1
-                        if let sessionId = state.timer.sessionId {
-                            // セッション完了をサーバに通知
-                            return .run { send in
-                                let result = try await sessionAPIClient.completeSession(sessionId)
-                                await send(.completeSessionResponse(.success(result)))
-                            } catch: { error, send in
-                                await send(.completeSessionResponse(.failure(error)))
-                            }
+                } else if state.timer.phase == .longBreak {
+                    // longBreak完了時にセッション完了
+                    state.evalModal = EvalModalFeature.State(
+                        score: 0.5,
+                        round: state.timer.round
+                    )
+                    state.sessionCompleteModal = true
+                    state.timer.round = 1
+                    if let sessionId = state.timer.sessionId {
+                        // セッション完了をサーバに通知
+                        return .run { send in
+                            let result = try await sessionAPIClient.completeSession(sessionId)
+                            await send(.completeSessionResponse(.success(result)))
+                        } catch: { error, send in
+                            await send(.completeSessionResponse(.failure(error)))
                         }
-                    } else {
-                        state.roundConfigModalIsPresented = true
-                        // ラウンドが切り替わるタイミングでユーザー設定を再取得
-                        return .send(.refreshUserConfig)
                     }
+                } else if state.timer.phase == .task {
+                    state.roundConfigModalIsPresented = true
+                    // ラウンドが切り替わるタイミングでユーザー設定を再取得
+                    return .send(.refreshUserConfig)
                 }
                 return .none
 
