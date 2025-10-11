@@ -53,7 +53,7 @@ struct TimerFeature {
         case start
         case stop
         case tick(Int)
-        case phaseCompleted
+        case phaseCompleted(completedPhase: Phase)
         case updateSettings(task: Int, shortBreak: Int, longBreak: Int, roundsPerSession: Int)
         case saveTimerState
         case restoreTimerState
@@ -121,11 +121,11 @@ struct TimerFeature {
             }
             state.currentSeconds = elapsed
             if elapsed >= state.totalSeconds {
-                return .send(.phaseCompleted)
+                return .send(.phaseCompleted(completedPhase: state.phase))
             }
             return .none
 
-        case .phaseCompleted:
+        case let .phaseCompleted(completedPhase):
             state.isRunning = false
             state.currentSeconds = 0
             switch state.phase {
@@ -209,7 +209,7 @@ struct TimerFeature {
                     return .send(.start)
                 } else {
                     TimerPersistence.clear()
-                    return .send(.phaseCompleted)
+                    return .send(.phaseCompleted(completedPhase: state.phase))
                 }
             }
             
