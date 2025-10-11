@@ -131,7 +131,7 @@ struct TimerFeature {
             switch state.phase {
             case .task:
                 // セッションの最後のタスクだった場合は longBreak
-                if state.round > state.roundsPerSession {
+                if state.round >= state.roundsPerSession {
                     state.phase = .longBreak
                 } else {
                     state.phase = .shortBreak
@@ -139,11 +139,11 @@ struct TimerFeature {
             case .shortBreak:
                 state.phase = .task
                 state.round += 1
-                
+
             case .longBreak:
                 state.phase = .task
                 state.round = 1
-                
+
             }
 
             state.totalSeconds = state.currentPhaseDuration
