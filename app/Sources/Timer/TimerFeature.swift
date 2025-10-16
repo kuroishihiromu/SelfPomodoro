@@ -92,7 +92,7 @@ struct TimerFeature {
                     let now = ContinuousClock().now
                     let realElapsed = start.duration(to: now).components.seconds
 
-                    let accelerationFactor = 1.0  // リリース時は通常速度
+                    let accelerationFactor = 20.0  // リリース時は通常速度
 
                     let acceleratedElapsed = Int(Double(realElapsed) * accelerationFactor)
 
