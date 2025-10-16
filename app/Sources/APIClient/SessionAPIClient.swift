@@ -142,6 +142,9 @@ extension SessionAPIClient {
             }
             print("➡️ PATCH /dev/api/v1/rounds/\(roundId)/complete")
             let body = try JSONEncoder().encode(["focus_score": focusScore])
+            if let bodyString = String(data: body, encoding: .utf8) {
+                print("📤 completeRound request body: \(bodyString)")
+            }
             let request = RESTRequest(
                 apiName: "selfpomodoro",
                 path: "/dev/api/v1/rounds/\(roundId)/complete",
