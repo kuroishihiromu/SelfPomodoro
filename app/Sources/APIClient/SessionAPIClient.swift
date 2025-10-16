@@ -154,6 +154,7 @@ extension SessionAPIClient {
                 print("📦 completeRound bytes=\(data.count)")
                 let result = try APIFormatters.jsonDecoderWithISOEasyVersion.decode(RoundResult.self, from: data)
                 print("✅ completeRound id=\(result.id) focus=\(result.focusScore ?? -1)")
+                print("complete Round body:::: \(result)")
                 return result
             } catch {
                 print("❌ completeRound failed: \(error)")
