@@ -46,7 +46,7 @@ struct TimerFeature {
                 return longBreakDuration
             }
         }
-        
+
     }
 
     enum Action: Equatable {
@@ -70,7 +70,7 @@ struct TimerFeature {
             state.totalSeconds = state.currentPhaseDuration
             let correctedStart = ContinuousClock().now.advanced(by: .seconds(-state.currentSeconds))
             state.startTime = correctedStart
-            
+
             // 永続化
             let persistenceData = TimerPersistenceData(
                 startTime: Date(timeIntervalSinceNow: -Double(state.currentSeconds)),
@@ -91,13 +91,9 @@ struct TimerFeature {
                 while !Task.isCancelled {
                     let now = ContinuousClock().now
                     let realElapsed = start.duration(to: now).components.seconds
-                    
-                    #if DEBUG
-                    let accelerationFactor = 10.0 // デバッグ時は10倍速
-                    #else
+
                     let accelerationFactor = 1.0  // リリース時は通常速度
-                    #endif
-                    
+
                     let acceleratedElapsed = Int(Double(realElapsed) * accelerationFactor)
 
                     if acceleratedElapsed != lastElapsed {
@@ -105,7 +101,7 @@ struct TimerFeature {
                         lastElapsed = acceleratedElapsed
                     }
 
-                    try? await Task.sleep(nanoseconds: 100_000_000) // 0.1秒ごとにチェック（=リアルタイム）
+                    try? await Task.sleep(nanoseconds: 100_000_000)  // 0.1秒ごとにチェック（=リアルタイム）
                 }
             }
             .cancellable(id: CancelID.timer)
@@ -151,7 +147,9 @@ struct TimerFeature {
             return .send(.stop)
 
         case let .updateSettings(task, short, long, rps):
-            print("🛠️ Timer updateSettings: from task=\(state.taskDuration), short=\(state.shortBreakDuration), long=\(state.longBreakDuration), rps=\(state.roundsPerSession) -> to task=\(task), short=\(short), long=\(long), rps=\(rps)")
+            print(
+                "🛠️ Timer updateSettings: from task=\(state.taskDuration), short=\(state.shortBreakDuration), long=\(state.longBreakDuration), rps=\(state.roundsPerSession) -> to task=\(task), short=\(short), long=\(long), rps=\(rps)"
+            )
             state.taskDuration = task
             state.shortBreakDuration = short
             state.longBreakDuration = long
@@ -159,7 +157,7 @@ struct TimerFeature {
             state.totalSeconds = state.currentPhaseDuration
             state.currentSeconds = 0
             return .none
-            
+
         case .saveTimerState:
             guard state.isRunning else { return .none }
             let persistenceData = TimerPersistenceData(
@@ -178,12 +176,12 @@ struct TimerFeature {
             )
             TimerPersistence.save(persistenceData)
             return .none
-            
+
         case .restoreTimerState:
             guard let persistedData = TimerPersistence.load() else {
                 return .none
             }
-            
+
             state.taskDuration = persistedData.taskDuration
             state.shortBreakDuration = persistedData.shortBreakDuration
             state.longBreakDuration = persistedData.longBreakDuration
@@ -193,9 +191,11 @@ struct TimerFeature {
             state.sessionId = persistedData.sessionId
             state.currentRoundId = persistedData.currentRoundId
             state.totalSeconds = state.currentPhaseDuration
-            
-            print("🔄 Timer state restored - sessionId: \(persistedData.sessionId?.uuidString ?? "nil"), currentRoundId: \(persistedData.currentRoundId?.uuidString ?? "nil")")
-            
+
+            print(
+                "🔄 Timer state restored - sessionId: \(persistedData.sessionId?.uuidString ?? "nil"), currentRoundId: \(persistedData.currentRoundId?.uuidString ?? "nil")"
+            )
+
             if persistedData.isRunning {
                 // アプリ非稼働中の経過は実時間のみ反映（加速は適用しない）
                 let elapsed = max(0, Int(Date().timeIntervalSince(persistedData.startTime)))
@@ -204,7 +204,8 @@ struct TimerFeature {
                 if adjustedElapsed < state.totalSeconds {
                     state.currentSeconds = adjustedElapsed
                     state.isRunning = true
-                    let correctedStart = ContinuousClock().now.advanced(by: .seconds(-adjustedElapsed))
+                    let correctedStart = ContinuousClock().now.advanced(
+                        by: .seconds(-adjustedElapsed))
                     state.startTime = correctedStart
                     return .send(.start)
                 } else {
@@ -212,15 +213,15 @@ struct TimerFeature {
                     return .send(.phaseCompleted(completedPhase: state.phase))
                 }
             }
-            
+
             return .none
-            
+
         case .clearPersistedState:
             TimerPersistence.clear()
             return .none
         }
     }
-    
+
     private func phaseToString(_ phase: Phase) -> String {
         switch phase {
         case .task: return "task"
@@ -228,7 +229,7 @@ struct TimerFeature {
         case .longBreak: return "longBreak"
         }
     }
-    
+
     private func stringToPhase(_ string: String) -> Phase {
         switch string {
         case "task": return .task
