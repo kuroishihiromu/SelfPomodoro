@@ -3,6 +3,7 @@ package usecase
 import (
 	"context"
 	"errors"
+	"strconv"
 
 	"github.com/google/uuid"
 	"github.com/tsunakit99/selfpomodoro/internal/domain/entity"
@@ -232,26 +233,15 @@ func (uc *roundUseCase) CompleteRound(ctx context.Context, id uuid.UUID, userID 
 		}
 	}
 
-	// 完了したラウンドを取得して返す
-	completedRound, err := uc.sessionRepo.GetRoundByID(ctx, roundIDVO, userIDVO)
-	if err != nil {
-		uc.logger.Errorf("完了ラウンド取得エラー: %v", err)
-
-		// Infrastructure Error → Domain Error 変換
-		if errors.Is(err, appErrors.ErrRecordNotFound) {
-			return nil, appErrors.NewRoundNotFoundError()
-		}
-		if appErrors.IsDatabaseError(err) {
-			return nil, appErrors.NewInternalError(err)
-		}
-
-		return nil, appErrors.NewInternalError(err)
+	focusScoreLog := "未設定"
+	if req.FocusScore != nil {
+		focusScoreLog = strconv.Itoa(*req.FocusScore)
 	}
 
-	uc.logger.Infof("ラウンド完了成功: ID=%s, FocusScore=%v, WorkTime=%d分, BreakTime=%d分",
-		id.String(), req.FocusScore, workTime.Minutes(), breakTime.Minutes())
+	uc.logger.Infof("ラウンド完了成功: ID=%s, FocusScore=%s, WorkTime=%d分, BreakTime=%d分",
+		id.String(), focusScoreLog, workTime.Minutes(), breakTime.Minutes())
 
-	return uc.roundMapper.ToRoundResponse(completedRound), nil
+	return uc.roundMapper.ToRoundResponse(round), nil
 }
 
 // ✅ ドメインロジック活用：OptimizationPreferences安全取得（フォールバック）
