@@ -188,7 +188,7 @@ func (uc *roundUseCase) CompleteRound(ctx context.Context, id uuid.UUID, userID 
 	}
 
 	// SessionRepository経由でラウンドを完了
-	err = uc.sessionRepo.CompleteRound(ctx, round.SessionID, userIDVO, roundIDVO, req.FocusScore, workTime.Minutes(), breakTime.Minutes())
+	err = uc.sessionRepo.CompleteRound(ctx, round, userIDVO)
 	if err != nil {
 		uc.logger.Errorf("ラウンド完了永続化エラー: %v", err)
 
