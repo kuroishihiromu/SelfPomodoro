@@ -132,6 +132,12 @@ deploy-api-sessions: build-api-sessions
 	serverless deploy function --function api-sessions --aws-profile selfpomodoro-dev
 	@echo "✅ api-sessions デプロイ完了"
 
+.PHONY: deploy-api-optimization-preferences
+deploy-api-optimization-preferences: build-api-optimization-preferences
+	@echo "🚀 api-optimization-preferences をデプロイ中..."
+	serverless deploy function --function api-optimization-preferences --aws-profile selfpomodoro-dev
+	@echo "✅ api-optimization-preferences デプロイ完了"
+
 .PHONY: deploy-api-rounds
 deploy-api-rounds: build-api-rounds
 	@echo "🚀 api-rounds をデプロイ中..."
