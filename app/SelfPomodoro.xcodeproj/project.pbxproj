@@ -21,6 +21,10 @@
 		4399C9532E090A3C002D4F5C /* AWSAPIPlugin in Frameworks */ = {isa = PBXBuildFile; productRef = 4399C9522E090A3C002D4F5C /* AWSAPIPlugin */; };
 		43CC498A2D8D6E85003CA625 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 43CC49892D8D6E85003CA625 /* Assets.xcassets */; };
 		43EF5F3E2E05AD5900E57C3E /* Amplify in Frameworks */ = {isa = PBXBuildFile; productRef = 43EF5F3D2E05AD5900E57C3E /* Amplify */; };
+		43F63A672EA2189A00495253 /* AppKitNavigation in Frameworks */ = {isa = PBXBuildFile; productRef = 43F63A662EA2189A00495253 /* AppKitNavigation */; };
+		43F63A692EA2189A00495253 /* SwiftNavigation in Frameworks */ = {isa = PBXBuildFile; productRef = 43F63A682EA2189A00495253 /* SwiftNavigation */; };
+		43F63A6B2EA2189A00495253 /* SwiftUINavigation in Frameworks */ = {isa = PBXBuildFile; productRef = 43F63A6A2EA2189A00495253 /* SwiftUINavigation */; };
+		43F63A6D2EA2189A00495253 /* UIKitNavigation in Frameworks */ = {isa = PBXBuildFile; productRef = 43F63A6C2EA2189A00495253 /* UIKitNavigation */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -80,10 +84,14 @@
 			files = (
 				4399C8DA2E08EDDA002D4F5C /* AWSPluginsCore in Frameworks */,
 				4399C8D92E08EDDA002D4F5C /* Supabase in Frameworks */,
+				43F63A692EA2189A00495253 /* SwiftNavigation in Frameworks */,
 				4399C8D82E08EDDA002D4F5C /* Auth in Frameworks */,
+				43F63A672EA2189A00495253 /* AppKitNavigation in Frameworks */,
 				438B3D7F2E05C5D4003CEE33 /* AWSCognitoAuthPlugin in Frameworks */,
 				438B3D7B2E05B52D003CEE33 /* ComposableArchitecture in Frameworks */,
+				43F63A6D2EA2189A00495253 /* UIKitNavigation in Frameworks */,
 				43EF5F3E2E05AD5900E57C3E /* Amplify in Frameworks */,
+				43F63A6B2EA2189A00495253 /* SwiftUINavigation in Frameworks */,
 				4399C9532E090A3C002D4F5C /* AWSAPIPlugin in Frameworks */,
 				434F40882DB1D86200EE4D6D /* Storage in Frameworks */,
 				434F40862DB1D86200EE4D6D /* PostgREST in Frameworks */,
@@ -178,6 +186,10 @@
 				438B3D7C2E05C184003CEE33 /* AWSPluginsCore */,
 				438B3D7E2E05C5D4003CEE33 /* AWSCognitoAuthPlugin */,
 				4399C9522E090A3C002D4F5C /* AWSAPIPlugin */,
+				43F63A662EA2189A00495253 /* AppKitNavigation */,
+				43F63A682EA2189A00495253 /* SwiftNavigation */,
+				43F63A6A2EA2189A00495253 /* SwiftUINavigation */,
+				43F63A6C2EA2189A00495253 /* UIKitNavigation */,
 			);
 			productName = SelfPomodoro;
 			productReference = 433A04352CE4979100E73A8E /* SelfPomodoro.app */;
@@ -266,6 +278,7 @@
 				434F40822DB1D86200EE4D6D /* XCRemoteSwiftPackageReference "supabase-swift" */,
 				43772F962DFFE99700EC8B5F /* XCRemoteSwiftPackageReference "amplify-swift" */,
 				438B3D792E05B52D003CEE33 /* XCRemoteSwiftPackageReference "swift-composable-architecture" */,
+				43F63A652EA2189A00495253 /* XCRemoteSwiftPackageReference "swift-navigation" */,
 			);
 			preferredProjectObjectVersion = 77;
 			productRefGroup = 433A04362CE4979100E73A8E /* Products */;
@@ -669,7 +682,7 @@
 			repositoryURL = "https://github.com/aws-amplify/amplify-swift.git";
 			requirement = {
 				kind = upToNextMajorVersion;
-				minimumVersion = 2.48.1;
+				minimumVersion = 2.51.2;
 			};
 		};
 		438B3D792E05B52D003CEE33 /* XCRemoteSwiftPackageReference "swift-composable-architecture" */ = {
@@ -677,7 +690,15 @@
 			repositoryURL = "https://github.com/pointfreeco/swift-composable-architecture.git";
 			requirement = {
 				kind = upToNextMajorVersion;
-				minimumVersion = 1.20.2;
+				minimumVersion = 1.23.0;
+			};
+		};
+		43F63A652EA2189A00495253 /* XCRemoteSwiftPackageReference "swift-navigation" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/pointfreeco/swift-navigation.git";
+			requirement = {
+				kind = upToNextMajorVersion;
+				minimumVersion = 2.6.0;
 			};
 		};
 /* End XCRemoteSwiftPackageReference section */
@@ -727,6 +748,26 @@
 			isa = XCSwiftPackageProductDependency;
 			package = 43772F962DFFE99700EC8B5F /* XCRemoteSwiftPackageReference "amplify-swift" */;
 			productName = Amplify;
+		};
+		43F63A662EA2189A00495253 /* AppKitNavigation */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 43F63A652EA2189A00495253 /* XCRemoteSwiftPackageReference "swift-navigation" */;
+			productName = AppKitNavigation;
+		};
+		43F63A682EA2189A00495253 /* SwiftNavigation */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 43F63A652EA2189A00495253 /* XCRemoteSwiftPackageReference "swift-navigation" */;
+			productName = SwiftNavigation;
+		};
+		43F63A6A2EA2189A00495253 /* SwiftUINavigation */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 43F63A652EA2189A00495253 /* XCRemoteSwiftPackageReference "swift-navigation" */;
+			productName = SwiftUINavigation;
+		};
+		43F63A6C2EA2189A00495253 /* UIKitNavigation */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 43F63A652EA2189A00495253 /* XCRemoteSwiftPackageReference "swift-navigation" */;
+			productName = UIKitNavigation;
 		};
 /* End XCSwiftPackageProductDependency section */
 	};
