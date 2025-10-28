@@ -29,6 +29,7 @@ help:
 	@echo "  make check-optimization    - 最適化システム動作確認"
 	@echo "  make optimization-logs     - 最適化Lambda関数ログ表示"
 	@echo "  make optimization-status   - 最適化システム総合ステータス"
+	@echo "  make deploy-opt-session IMAGE_TAG=<tag> - セッション最適化Lambdaを指定イメージで更新"
 	@echo ""
 	@echo "その他:"
 	@echo "  make migrate-up     - マイグレーションを適用"
@@ -131,6 +132,12 @@ deploy-api-sessions: build-api-sessions
 	@echo "🚀 api-sessions をデプロイ中..."
 	serverless deploy function --function api-sessions --aws-profile selfpomodoro-dev
 	@echo "✅ api-sessions デプロイ完了"
+
+.PHONY: deploy-api-optimization-preferences
+deploy-api-optimization-preferences: build-api-optimization-preferences
+	@echo "🚀 api-optimization-preferences をデプロイ中..."
+	serverless deploy function --function api-optimization-preferences --aws-profile selfpomodoro-dev
+	@echo "✅ api-optimization-preferences デプロイ完了"
 
 .PHONY: deploy-api-rounds
 deploy-api-rounds: build-api-rounds
@@ -432,3 +439,17 @@ optimization-status:
 		--profile selfpomodoro-dev \
 		--query 'Item' \
 		--output table
+
+.PHONY: deploy-opt-session
+deploy-opt-session:
+	@if [ -z "$(IMAGE_TAG)" ]; then \
+		echo "❌ エラー: IMAGE_TAG を指定してください (例: make deploy-opt-session IMAGE_TAG=v2)"; \
+		exit 1; \
+	fi
+	@echo "🚀 optimization-session-v2 をイメージタグ $(IMAGE_TAG) で更新中..."
+	aws lambda update-function-code \
+		--function-name selfpomodoro-serverless-dev-optimization-session-v2 \
+		--image-uri 545009834501.dkr.ecr.ap-northeast-1.amazonaws.com/selfpomodoro-optimization-session:$(IMAGE_TAG) \
+		--profile selfpomodoro-dev \
+		--region ap-northeast-1 >/dev/null
+	@echo "✅ optimization-session-v2 を更新しました (image tag: $(IMAGE_TAG))"

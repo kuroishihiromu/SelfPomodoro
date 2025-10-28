@@ -2,6 +2,7 @@ package dynamodb
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"strings"
 	"time"
@@ -13,11 +14,11 @@ import (
 	"github.com/tsunakit99/selfpomodoro/internal/config"
 	"github.com/tsunakit99/selfpomodoro/internal/domain/entity"
 	"github.com/tsunakit99/selfpomodoro/internal/domain/repository"
-	appErrors "github.com/tsunakit99/selfpomodoro/internal/errors"
-	"github.com/tsunakit99/selfpomodoro/internal/infrastructure/logger"
 	roundVO "github.com/tsunakit99/selfpomodoro/internal/domain/valueobject/round"
 	sessionVO "github.com/tsunakit99/selfpomodoro/internal/domain/valueobject/session"
 	userVO "github.com/tsunakit99/selfpomodoro/internal/domain/valueobject/user"
+	appErrors "github.com/tsunakit99/selfpomodoro/internal/errors"
+	"github.com/tsunakit99/selfpomodoro/internal/infrastructure/logger"
 )
 
 // SessionRepositoryImpl はDynamoDBを使用したSessionRepositoryの実装
@@ -62,10 +63,10 @@ func (r *SessionRepositoryImpl) CreateSession(ctx context.Context, session *enti
 		item["end_time"] = &types.AttributeValueMemberS{Value: session.EndTime.Format(time.RFC3339)}
 	}
 	if session.AverageFocus != nil {
-		item["average_focus"] = &types.AttributeValueMemberN{Value: fmt.Sprintf("%.2f", *session.AverageFocus)}
+		item["average_focus"] = &types.AttributeValueMemberN{Value: fmt.Sprintf("%.2f", session.AverageFocus.Score())}
 	}
 	if session.TotalWorkMin != nil {
-		item["total_work_min"] = &types.AttributeValueMemberN{Value: fmt.Sprintf("%d", *session.TotalWorkMin)}
+		item["total_work_min"] = &types.AttributeValueMemberN{Value: fmt.Sprintf("%d", session.TotalWorkMin.Minutes())}
 	}
 	if session.RoundCount != nil {
 		item["round_count"] = &types.AttributeValueMemberN{Value: fmt.Sprintf("%d", session.RoundCount.Count())}
@@ -103,7 +104,6 @@ func (r *SessionRepositoryImpl) GetSession(ctx context.Context, sessionID sessio
 		ExpressionAttributeValues: map[string]types.AttributeValue{
 			":session_id": &types.AttributeValueMemberS{Value: id.String()},
 		},
-		Limit: aws.Int32(1), // 最初の1件のみ
 	}
 
 	result, err := r.client.Query(ctx, input)
@@ -119,8 +119,26 @@ func (r *SessionRepositoryImpl) GetSession(ctx context.Context, sessionID sessio
 		return nil, appErrors.ErrRecordNotFound
 	}
 
+	// GSI結果からSESSIONレコードのみを抽出
+	var sessionItem map[string]types.AttributeValue
+	for _, item := range result.Items {
+		if skAttr, exists := item["SK"]; exists {
+			if s, ok := skAttr.(*types.AttributeValueMemberS); ok {
+				if strings.Contains(s.Value, "SESSION#") {
+					sessionItem = item
+					break
+				}
+			}
+		}
+	}
+
+	if sessionItem == nil {
+		r.logger.Debugf("GSI: SESSIONレコードが見つかりません: ID=%s", id.String())
+		return nil, appErrors.ErrRecordNotFound
+	}
+
 	// GSI結果からセッションを変換
-	session, err := r.itemToSession(result.Items[0])
+	session, err := r.itemToSession(sessionItem)
 	if err != nil {
 		r.logger.Errorf("GSI結果のセッション変換エラー: %v", err)
 		return nil, appErrors.NewDynamoDBOperationError("session_conversion", err)
@@ -194,10 +212,10 @@ func (r *SessionRepositoryImpl) Update(ctx context.Context, session *entity.Sess
 		item["end_time"] = &types.AttributeValueMemberS{Value: session.EndTime.Format(time.RFC3339)}
 	}
 	if session.AverageFocus != nil {
-		item["average_focus"] = &types.AttributeValueMemberN{Value: fmt.Sprintf("%.2f", *session.AverageFocus)}
+		item["average_focus"] = &types.AttributeValueMemberN{Value: fmt.Sprintf("%.2f", session.AverageFocus.Score())}
 	}
 	if session.TotalWorkMin != nil {
-		item["total_work_min"] = &types.AttributeValueMemberN{Value: fmt.Sprintf("%d", *session.TotalWorkMin)}
+		item["total_work_min"] = &types.AttributeValueMemberN{Value: fmt.Sprintf("%d", session.TotalWorkMin.Minutes())}
 	}
 	if session.RoundCount != nil {
 		item["round_count"] = &types.AttributeValueMemberN{Value: fmt.Sprintf("%d", session.RoundCount.Count())}
@@ -233,21 +251,21 @@ func (r *SessionRepositoryImpl) Complete(ctx context.Context, id sessionVO.Sessi
 	// セッションを完了状態に更新
 	now := time.Now()
 	session.EndTime = &now
-	
+
 	// Value Objectsを作成
 	if avgFocusVO, err := sessionVO.NewAverageFocus(averageFocus); err == nil {
 		session.AverageFocus = &avgFocusVO
 	}
-	
+
 	if totalWorkVO, err := sessionVO.NewTotalWorkMinutes(totalWorkMin); err == nil {
 		session.TotalWorkMin = &totalWorkVO
 	}
-	
+
 	// RoundCount Value Objectを作成
 	if roundCountVO, err := sessionVO.NewRoundCount(roundCount); err == nil {
 		session.RoundCount = &roundCountVO
 	}
-	
+
 	// BreakTime Value Objectを作成
 	var breakTimeVO *sessionVO.BreakTime
 	if breakTime > 0 {
@@ -382,17 +400,17 @@ func (r *SessionRepositoryImpl) AddRoundToSession(ctx context.Context, sessionID
 	ttl := round.CreatedAt.Add(30 * 24 * time.Hour).Unix()
 
 	item := map[string]types.AttributeValue{
-		"PK":         &types.AttributeValueMemberS{Value: pk},
-		"SK":         &types.AttributeValueMemberS{Value: sk},
-		"user_id":    &types.AttributeValueMemberS{Value: userID.String()},
-		"session_id": &types.AttributeValueMemberS{Value: sessionID.String()},
-		"round_id":   &types.AttributeValueMemberS{Value: round.ID.String()},
+		"PK":          &types.AttributeValueMemberS{Value: pk},
+		"SK":          &types.AttributeValueMemberS{Value: sk},
+		"user_id":     &types.AttributeValueMemberS{Value: userID.String()},
+		"session_id":  &types.AttributeValueMemberS{Value: sessionID.String()},
+		"round_id":    &types.AttributeValueMemberS{Value: round.ID.String()},
 		"round_order": &types.AttributeValueMemberN{Value: fmt.Sprintf("%d", round.RoundOrder.Order())},
-		"date":       &types.AttributeValueMemberS{Value: date},
-		"start_time": &types.AttributeValueMemberS{Value: round.StartTime.Format(time.RFC3339)},
-		"created_at": &types.AttributeValueMemberS{Value: round.CreatedAt.Format(time.RFC3339)},
-		"updated_at": &types.AttributeValueMemberS{Value: round.UpdatedAt.Format(time.RFC3339)},
-		"ttl":        &types.AttributeValueMemberN{Value: fmt.Sprintf("%d", ttl)},
+		"date":        &types.AttributeValueMemberS{Value: date},
+		"start_time":  &types.AttributeValueMemberS{Value: round.StartTime.Format(time.RFC3339)},
+		"created_at":  &types.AttributeValueMemberS{Value: round.CreatedAt.Format(time.RFC3339)},
+		"updated_at":  &types.AttributeValueMemberS{Value: round.UpdatedAt.Format(time.RFC3339)},
+		"ttl":         &types.AttributeValueMemberN{Value: fmt.Sprintf("%d", ttl)},
 	}
 
 	// オプショナルフィールドの設定
@@ -424,48 +442,34 @@ func (r *SessionRepositoryImpl) AddRoundToSession(ctx context.Context, sessionID
 }
 
 // CompleteRound はラウンドを完了する
-func (r *SessionRepositoryImpl) CompleteRound(ctx context.Context, sessionID sessionVO.SessionID, userID userVO.UserID, roundID roundVO.RoundID, focusScore *int, workTime, breakTime int) error {
-	date := time.Now().Format("2006-01-02")
+func (r *SessionRepositoryImpl) CompleteRound(ctx context.Context, round *entity.Round, userID userVO.UserID) error {
+	if round == nil {
+		return appErrors.NewBadRequestError("round is nil")
+	}
+
+	if round.EndTime == nil {
+		return appErrors.NewBadRequestError("round end time is not set")
+	}
+
+	if round.WorkTime == nil || round.BreakTime == nil {
+		return appErrors.NewBadRequestError("round work/break time is not set")
+	}
+
+	date := round.StartTime.Format("2006-01-02")
 	pk := UserPartitionKey(userID.String())
-	
-	// ラウンドのSKを検索するため、まずラウンドを取得
-	rounds, err := r.GetRoundsBySession(ctx, sessionID, userID)
-	if err != nil {
-		return err
-	}
+	sk := RoundSortKey(date, round.SessionID.String(), round.RoundOrder.Order())
 
-	var targetRound *entity.Round
-	for _, round := range rounds {
-		if round.ID.Equals(roundID) {
-			targetRound = round
-			break
-		}
-	}
-
-	if targetRound == nil {
-		return appErrors.NewNotFoundError("Round")
-	}
-
-	// ラウンドを完了
-	err = targetRound.CompleteWith(focusScore, workTime, breakTime)
-	if err != nil {
-		return err
-	}
-
-	// データベースを更新
-	sk := RoundSortKey(date, sessionID.String(), targetRound.RoundOrder.Order())
-	
 	updateExpression := "SET end_time = :end_time, work_time = :work_time, break_time = :break_time, updated_at = :updated_at"
 	expressionAttributeValues := map[string]types.AttributeValue{
-		":end_time":   &types.AttributeValueMemberS{Value: targetRound.EndTime.Format(time.RFC3339)},
-		":work_time":  &types.AttributeValueMemberN{Value: fmt.Sprintf("%d", *targetRound.WorkTime)},
-		":break_time": &types.AttributeValueMemberN{Value: fmt.Sprintf("%d", *targetRound.BreakTime)},
-		":updated_at": &types.AttributeValueMemberS{Value: targetRound.UpdatedAt.Format(time.RFC3339)},
+		":end_time":   &types.AttributeValueMemberS{Value: round.EndTime.Format(time.RFC3339)},
+		":work_time":  &types.AttributeValueMemberN{Value: fmt.Sprintf("%d", round.WorkTime.Minutes())},
+		":break_time": &types.AttributeValueMemberN{Value: fmt.Sprintf("%d", round.BreakTime.Minutes())},
+		":updated_at": &types.AttributeValueMemberS{Value: round.UpdatedAt.Format(time.RFC3339)},
 	}
 
-	if focusScore != nil {
+	if round.FocusScore != nil {
 		updateExpression += ", focus_score = :focus_score"
-		expressionAttributeValues[":focus_score"] = &types.AttributeValueMemberN{Value: fmt.Sprintf("%d", *focusScore)}
+		expressionAttributeValues[":focus_score"] = &types.AttributeValueMemberN{Value: fmt.Sprintf("%d", round.FocusScore.Value())}
 	}
 
 	input := &dynamodb.UpdateItemInput{
@@ -478,7 +482,7 @@ func (r *SessionRepositoryImpl) CompleteRound(ctx context.Context, sessionID ses
 		ExpressionAttributeValues: expressionAttributeValues,
 	}
 
-	_, err = r.client.UpdateItem(ctx, input)
+	_, err := r.client.UpdateItem(ctx, input)
 	if err != nil {
 		r.logger.Errorf("ラウンド完了エラー: %v", err)
 		return appErrors.NewInternalError(err)
@@ -600,7 +604,7 @@ func (r *SessionRepositoryImpl) GetActiveSession(ctx context.Context, userID use
 		}
 	}
 
-	return nil, appErrors.NewNotFoundError("ActiveSession")
+	return nil, appErrors.ErrRecordNotFound
 }
 
 // GetRecentSessions は最近のセッションを取得する
@@ -747,6 +751,17 @@ func (r *SessionRepositoryImpl) itemToRound(item map[string]types.AttributeValue
 
 // itemToSession はDynamoDBアイテムをSessionモデルに変換する
 func (r *SessionRepositoryImpl) itemToSession(item map[string]types.AttributeValue) (*entity.Session, error) {
+	// SKを確認してSESSIONレコードのみを処理
+	if skAttr, exists := item["SK"]; exists {
+		if s, ok := skAttr.(*types.AttributeValueMemberS); ok {
+			if !strings.Contains(s.Value, "SESSION#") {
+				return nil, errors.New("not a session record")
+			}
+		}
+	} else {
+		return nil, errors.New("SK attribute missing")
+	}
+
 	session := &entity.Session{}
 
 	// user_id

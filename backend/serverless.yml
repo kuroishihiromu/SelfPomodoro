@@ -7,6 +7,7 @@ provider:
   stage: ${opt:stage, 'dev'}
   profile: ${self:custom.awsProfile.${self:provider.stage}}
   versionFunctions: false
+  environment: ${self:custom.environment}
   iam:
     role:
       statements:
@@ -63,8 +64,6 @@ custom:
 
 
   environment:
-    COGNITO_USER_POOL_ID: ${self:custom.cognitoUserPoolId.${self:provider.stage}}
-    COGNITO_CLIENT_ID: ${self:custom.cognitoClientId.${self:provider.stage}}
     DYNAMO_UNIFIED_TABLE: selfpomodoro_unified_table_${self:provider.stage}
     SQS_ROUND_OPTIMIZATION_URL: https://sqs.ap-northeast-1.amazonaws.com/545009834501/selfpomodoro-round-optimization-${self:provider.stage}
     SQS_SESSION_OPTIMIZATION_URL: https://sqs.ap-northeast-1.amazonaws.com/545009834501/selfpomodoro-session-optimization-${self:provider.stage}
@@ -216,28 +215,27 @@ functions:
     memorySize: 256
     # Cognito Triggerの場合、eventsセクションは不要（resourcesで設定）
 
-# 🎯 最適化Lambda関数（Container Image with Bayesian Optimization） - 一時コメントアウト
-#  optimization-round-v2:
-#    image: 545009834501.dkr.ecr.ap-northeast-1.amazonaws.com/selfpomodoro-optimization-round:v5
-#    timeout: 30
-#    memorySize: 1024
-#    events:
-#      - sqs:
-#          arn: arn:aws:sqs:${self:provider.region}:545009834501:selfpomodoro-round-optimization-${self:provider.stage}
-#          batchSize: 1
-#    environment:
-#      DYNAMODB_TABLE_NAME: selfpomodoro_unified_table_${self:provider.stage}
+  optimization-round-v2:
+    image: 545009834501.dkr.ecr.ap-northeast-1.amazonaws.com/selfpomodoro-optimization-round:v1
+    timeout: 30
+    memorySize: 1024
+    events:
+      - sqs:
+          arn: arn:aws:sqs:${self:provider.region}:545009834501:selfpomodoro-round-optimization-${self:provider.stage}
+          batchSize: 1
+    environment:
+      DYNAMODB_TABLE_NAME: selfpomodoro_unified_table_${self:provider.stage}
 
-#  optimization-session-v2:
-#    image: 545009834501.dkr.ecr.ap-northeast-1.amazonaws.com/selfpomodoro-optimization-session:v5
-#    timeout: 30
-#    memorySize: 1024
-#    events:
-#      - sqs:
-#          arn: arn:aws:sqs:${self:provider.region}:545009834501:selfpomodoro-session-optimization-${self:provider.stage}
-#          batchSize: 1
-#    environment:
-#      DYNAMODB_TABLE_NAME: selfpomodoro_unified_table_${self:provider.stage}
+  optimization-session-v2:
+    image: 545009834501.dkr.ecr.ap-northeast-1.amazonaws.com/selfpomodoro-optimization-session:v2
+    timeout: 30
+    memorySize: 1024
+    events:
+      - sqs:
+          arn: arn:aws:sqs:${self:provider.region}:545009834501:selfpomodoro-session-optimization-${self:provider.stage}
+          batchSize: 1
+    environment:
+      DYNAMODB_TABLE_NAME: selfpomodoro_unified_table_${self:provider.stage}
 
 package:
   individually: true

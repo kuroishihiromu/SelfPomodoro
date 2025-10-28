@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
+	"strconv"
 	"strings"
 
 	"github.com/aws/aws-lambda-go/events"
@@ -138,7 +139,12 @@ func (h *RoundHandler) handleCompleteRound(ctx context.Context, request events.A
 		return createErrorResponse(http.StatusBadRequest, "VALIDATION_ERROR", "集中度スコアは必須です"), nil
 	}
 
-	h.logger.Infof("ラウンド完了要求: ラウンドID=%s, 集中度スコア=%v", roundID.String(), req.FocusScore)
+	focusScoreLog := "未設定"
+	if req.FocusScore != nil {
+		focusScoreLog = strconv.Itoa(*req.FocusScore)
+	}
+
+	h.logger.Infof("ラウンド完了要求: ラウンドID=%s, 集中度スコア=%s", roundID.String(), focusScoreLog)
 
 	roundResponse, err := h.useCases.Round.CompleteRound(ctx, roundID, userID, &req)
 	if err != nil {
