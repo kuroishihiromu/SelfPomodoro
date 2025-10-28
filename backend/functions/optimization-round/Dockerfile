@@ -1,5 +1,5 @@
-# AWS Lambda Python Runtime Interface Client for Container Images
-FROM public.ecr.aws/lambda/python:3.9
+# AWS Lambda Python Runtime Interface Client for Container Images (x86_64)
+FROM public.ecr.aws/lambda/python:3.9-x86_64
 
 # Install system dependencies
 RUN yum update -y && \

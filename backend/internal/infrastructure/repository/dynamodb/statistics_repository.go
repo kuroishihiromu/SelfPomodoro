@@ -70,16 +70,16 @@ func (r *StatisticsRepositoryImpl) SaveDailyStatistics(ctx context.Context, stat
 	sk := DailyStatsSortKey(stats.DateString())
 
 	item := map[string]types.AttributeValue{
-		"PK":                &types.AttributeValueMemberS{Value: pk},
-		"SK":                &types.AttributeValueMemberS{Value: sk},
-		"user_id":           &types.AttributeValueMemberS{Value: stats.UserID().String()},
-		"date":              &types.AttributeValueMemberS{Value: stats.DateString()},
-		"total_rounds":      &types.AttributeValueMemberN{Value: strconv.Itoa(stats.TotalRoundsCount())},
-		"avg_focus_score":   &types.AttributeValueMemberN{Value: fmt.Sprintf("%.2f", stats.AvgFocusScore().Score())},
-		"total_work_min":    &types.AttributeValueMemberN{Value: strconv.Itoa(stats.TotalWorkMin().Minutes())},
-		"total_break_min":   &types.AttributeValueMemberN{Value: strconv.Itoa(stats.TotalBreakMin().Minutes())},
-		"session_count":     &types.AttributeValueMemberN{Value: strconv.Itoa(stats.SessionCountValue())},
-		"updated_at":        &types.AttributeValueMemberS{Value: stats.UpdatedAt().Format(time.RFC3339)},
+		"PK":              &types.AttributeValueMemberS{Value: pk},
+		"SK":              &types.AttributeValueMemberS{Value: sk},
+		"user_id":         &types.AttributeValueMemberS{Value: stats.UserID().String()},
+		"date":            &types.AttributeValueMemberS{Value: stats.DateString()},
+		"total_rounds":    &types.AttributeValueMemberN{Value: strconv.Itoa(stats.TotalRoundsCount())},
+		"avg_focus_score": &types.AttributeValueMemberN{Value: fmt.Sprintf("%.2f", stats.AvgFocusScore().Score())},
+		"total_work_min":  &types.AttributeValueMemberN{Value: strconv.Itoa(stats.TotalWorkMin().Minutes())},
+		"total_break_min": &types.AttributeValueMemberN{Value: strconv.Itoa(stats.TotalBreakMin().Minutes())},
+		"session_count":   &types.AttributeValueMemberN{Value: strconv.Itoa(stats.SessionCountValue())},
+		"updated_at":      &types.AttributeValueMemberS{Value: stats.UpdatedAt().Format(time.RFC3339)},
 	}
 
 	input := &dynamodb.PutItemInput{
@@ -169,16 +169,16 @@ func (r *StatisticsRepositoryImpl) SaveHourlyStatistics(ctx context.Context, sta
 	sk := HourlyStatsSortKey(stats.DateString(), stats.HourValue())
 
 	item := map[string]types.AttributeValue{
-		"PK":                &types.AttributeValueMemberS{Value: pk},
-		"SK":                &types.AttributeValueMemberS{Value: sk},
-		"user_id":           &types.AttributeValueMemberS{Value: stats.UserID().String()},
-		"date":              &types.AttributeValueMemberS{Value: stats.DateString()},
-		"hour":              &types.AttributeValueMemberN{Value: strconv.Itoa(stats.HourValue())},
-		"total_rounds":      &types.AttributeValueMemberN{Value: strconv.Itoa(stats.TotalRoundsCount())},
-		"avg_focus_score":   &types.AttributeValueMemberN{Value: fmt.Sprintf("%.2f", stats.AvgFocusScore().Score())},
-		"total_work_min":    &types.AttributeValueMemberN{Value: strconv.Itoa(stats.TotalWorkMin().Minutes())},
-		"total_break_min":   &types.AttributeValueMemberN{Value: strconv.Itoa(stats.TotalBreakMin().Minutes())},
-		"updated_at":        &types.AttributeValueMemberS{Value: time.Now().Format(time.RFC3339)},
+		"PK":              &types.AttributeValueMemberS{Value: pk},
+		"SK":              &types.AttributeValueMemberS{Value: sk},
+		"user_id":         &types.AttributeValueMemberS{Value: stats.UserID().String()},
+		"date":            &types.AttributeValueMemberS{Value: stats.DateString()},
+		"hour":            &types.AttributeValueMemberN{Value: strconv.Itoa(stats.HourValue())},
+		"total_rounds":    &types.AttributeValueMemberN{Value: strconv.Itoa(stats.TotalRoundsCount())},
+		"avg_focus_score": &types.AttributeValueMemberN{Value: fmt.Sprintf("%.2f", stats.AvgFocusScore().Score())},
+		"total_work_min":  &types.AttributeValueMemberN{Value: strconv.Itoa(stats.TotalWorkMin().Minutes())},
+		"total_break_min": &types.AttributeValueMemberN{Value: strconv.Itoa(stats.TotalBreakMin().Minutes())},
+		"updated_at":      &types.AttributeValueMemberS{Value: time.Now().Format(time.RFC3339)},
 	}
 
 	input := &dynamodb.PutItemInput{
@@ -268,18 +268,18 @@ func (r *StatisticsRepositoryImpl) SaveWeeklyStatistics(ctx context.Context, sta
 	sk := WeeklyStatsSortKey(stats.WeekStart())
 
 	item := map[string]types.AttributeValue{
-		"PK":                &types.AttributeValueMemberS{Value: pk},
-		"SK":                &types.AttributeValueMemberS{Value: sk},
-		"user_id":           &types.AttributeValueMemberS{Value: stats.UserID().String()},
-		"week_start":        &types.AttributeValueMemberS{Value: stats.WeekStart()},
-		"week_end":          &types.AttributeValueMemberS{Value: stats.WeekEnd()},
-		"total_rounds":      &types.AttributeValueMemberN{Value: strconv.Itoa(stats.TotalRoundsCount())},
-		"avg_focus_score":   &types.AttributeValueMemberN{Value: fmt.Sprintf("%.2f", stats.AvgFocusScore().Score())},
-		"total_work_min":    &types.AttributeValueMemberN{Value: strconv.Itoa(stats.TotalWorkMin().Minutes())},
-		"total_break_min":   &types.AttributeValueMemberN{Value: strconv.Itoa(stats.TotalBreakMin().Minutes())},
-		"session_count":     &types.AttributeValueMemberN{Value: strconv.Itoa(stats.SessionCountValue())},
-		"days_active":       &types.AttributeValueMemberN{Value: strconv.Itoa(stats.DaysActiveValue())},
-		"updated_at":        &types.AttributeValueMemberS{Value: stats.UpdatedAt().Format(time.RFC3339)},
+		"PK":              &types.AttributeValueMemberS{Value: pk},
+		"SK":              &types.AttributeValueMemberS{Value: sk},
+		"user_id":         &types.AttributeValueMemberS{Value: stats.UserID().String()},
+		"week_start":      &types.AttributeValueMemberS{Value: stats.WeekStart()},
+		"week_end":        &types.AttributeValueMemberS{Value: stats.WeekEnd()},
+		"total_rounds":    &types.AttributeValueMemberN{Value: strconv.Itoa(stats.TotalRoundsCount())},
+		"avg_focus_score": &types.AttributeValueMemberN{Value: fmt.Sprintf("%.2f", stats.AvgFocusScore().Score())},
+		"total_work_min":  &types.AttributeValueMemberN{Value: strconv.Itoa(stats.TotalWorkMin().Minutes())},
+		"total_break_min": &types.AttributeValueMemberN{Value: strconv.Itoa(stats.TotalBreakMin().Minutes())},
+		"session_count":   &types.AttributeValueMemberN{Value: strconv.Itoa(stats.SessionCountValue())},
+		"days_active":     &types.AttributeValueMemberN{Value: strconv.Itoa(stats.DaysActiveValue())},
+		"updated_at":      &types.AttributeValueMemberS{Value: stats.UpdatedAt().Format(time.RFC3339)},
 	}
 
 	input := &dynamodb.PutItemInput{
@@ -357,6 +357,12 @@ func (r *StatisticsRepositoryImpl) UpdateStatisticsWithRound(ctx context.Context
 		return err
 	}
 
+	// 週別統計の更新
+	if err := r.updateWeeklyStatisticsWithRound(ctx, userID, date, round); err != nil {
+		r.logger.Errorf("週別統計更新エラー: %v", err)
+		return err
+	}
+
 	return nil
 }
 
@@ -400,6 +406,31 @@ func (r *StatisticsRepositoryImpl) updateHourlyStatisticsWithRound(ctx context.C
 
 	// 統計を保存
 	return r.SaveHourlyStatistics(ctx, stats)
+}
+
+// updateWeeklyStatisticsWithRound は週別統計を更新する
+func (r *StatisticsRepositoryImpl) updateWeeklyStatisticsWithRound(ctx context.Context, userID userVO.UserID, date string, round *entity.Round) error {
+	dateVO, err := statisticsVO.NewDate(date)
+	if err != nil {
+		return appErrors.NewInternalError(err)
+	}
+
+	weekPeriod := statisticsVO.NewWeekPeriodFromDate(dateVO)
+	weekStart := weekPeriod.WeekStartString()
+	weekEnd := weekPeriod.WeekEndString()
+
+	stats, err := r.GetWeeklyStatistics(ctx, userID, weekStart, weekEnd)
+	if err != nil {
+		if appErrors.IsNotFoundError(err) {
+			stats = entity.NewWeeklyStatistics(userID, weekStart, weekEnd)
+		} else {
+			return err
+		}
+	}
+
+	stats.UpdateWithRound(round)
+
+	return r.SaveWeeklyStatistics(ctx, stats)
 }
 
 // itemToDailyStatistics はDynamoDBアイテムを日別統計エンティティに変換する
