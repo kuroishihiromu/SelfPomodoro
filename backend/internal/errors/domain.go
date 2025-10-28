@@ -327,6 +327,7 @@ func IsNotFoundError(err error) bool {
 		errors.Is(err, ErrSessionNotFound) ||
 		errors.Is(err, ErrRoundNotFound) ||
 		errors.Is(err, ErrUserConfigNotFound) ||
+		errors.Is(err, ErrNotFound) ||
 		errors.Is(err, ErrStatisticsNotFound)
 }
 

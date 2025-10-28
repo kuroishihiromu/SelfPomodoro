@@ -1,6 +1,7 @@
 import json
 import logging
 import boto3
+from botocore.exceptions import ClientError
 import os
 from datetime import datetime
 from typing import Dict, Any, List, Optional
@@ -116,54 +117,53 @@ def update_user_config(user_id: str, session_break_time: float, session_rounds: 
     """Update OptimizationPreferences with session optimization results"""
     try:
         timestamp = datetime.now().isoformat()
-        
-        # Update OptimizationPreferences with new optimized values
+        try:
+            # 既存レコードがあればセッション系の値のみ更新
+            dynamodb.update_item(
+                TableName=DYNAMODB_TABLE_NAME,
+                Key={
+                    'PK': {'S': f'USER#{user_id}'},
+                    'SK': {'S': 'OPTIMIZATION_PREFERENCES'}
+                },
+                UpdateExpression='SET session_rounds = :rounds, session_break_time = :break, updated_at = :updated_at',
+                ExpressionAttributeValues={
+                    ':rounds': {'N': str(int(session_rounds))},
+                    ':break': {'N': str(int(session_break_time))},
+                    ':updated_at': {'S': timestamp}
+                },
+                ConditionExpression='attribute_exists(PK) AND attribute_exists(SK)'
+            )
+            logger.info(
+                f"Updated OptimizationPreferences for user {user_id[:8]}... "
+                f"- session_break_time: {session_break_time:.1f}, session_rounds: {session_rounds}"
+            )
+            return
+        except ClientError as e:
+            if e.response['Error']['Code'] != 'ConditionalCheckFailedException':
+                logger.error(f"Failed to update OptimizationPreferences: {str(e)}")
+                raise
+
+        # レコードが存在しない場合は初期値込みで作成
         dynamodb.put_item(
             TableName=DYNAMODB_TABLE_NAME,
             Item={
                 'PK': {'S': f'USER#{user_id}'},
                 'SK': {'S': 'OPTIMIZATION_PREFERENCES'},
                 'user_id': {'S': user_id},
-                'round_work_time': {'N': '25'},  # Default value
-                'round_break_time': {'N': '5'},  # Default value
-                'session_rounds': {'N': str(session_rounds)},
+                'round_work_time': {'N': '25'},
+                'round_break_time': {'N': '5'},
+                'session_rounds': {'N': str(int(session_rounds))},
                 'session_break_time': {'N': str(int(session_break_time))},
+                'created_at': {'S': timestamp},
                 'updated_at': {'S': timestamp},
                 'entity_type': {'S': 'optimization_preferences'}
-            },
-            # Update existing config or create if not exists
-            ConditionExpression='attribute_exists(PK) AND attribute_exists(SK)'
+            }
         )
-        
-        logger.info(f"Updated OptimizationPreferences for user {user_id[:8]}... - session_break_time: {session_break_time:.1f}, session_rounds: {session_rounds}")
-        
+        logger.info(f"Created new OptimizationPreferences for user {user_id[:8]}...")
+
     except Exception as e:
-        # If preferences doesn't exist, create it
-        if 'ConditionalCheckFailedException' in str(e):
-            logger.info(f"OptimizationPreferences not found for user {user_id[:8]}..., creating new one")
-            try:
-                dynamodb.put_item(
-                    TableName=DYNAMODB_TABLE_NAME,
-                    Item={
-                        'PK': {'S': f'USER#{user_id}'},
-                        'SK': {'S': 'OPTIMIZATION_PREFERENCES'},
-                        'user_id': {'S': user_id},
-                        'round_work_time': {'N': '25'},  # Default value
-                        'round_break_time': {'N': '5'},  # Default value
-                        'session_rounds': {'N': str(session_rounds)},
-                        'session_break_time': {'N': str(int(session_break_time))},
-                        'created_at': {'S': timestamp},
-                        'updated_at': {'S': timestamp},
-                        'entity_type': {'S': 'optimization_preferences'}
-                    }
-                )
-                logger.info(f"Created new OptimizationPreferences for user {user_id[:8]}...")
-            except Exception as create_error:
-                logger.error(f"Failed to create OptimizationPreferences: {str(create_error)}")
-                raise
-        else:
-            logger.error(f"Failed to update OptimizationPreferences: {str(e)}")
-            raise
+        logger.error(f"Failed to persist OptimizationPreferences: {str(e)}")
+        raise
 
 
 def save_optimization_result(user_id: str, session_id: str, total_work_time: float, break_time: float, round_count: int, avg_focus_score: float) -> None:

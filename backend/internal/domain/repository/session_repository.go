@@ -17,13 +17,13 @@ type SessionRepository interface {
 	GetSession(ctx context.Context, sessionID sessionVO.SessionID, userID userVO.UserID) (*entity.Session, error)
 	GetSessionWithRounds(ctx context.Context, sessionID sessionVO.SessionID, userID userVO.UserID) (*entity.Session, error)
 	CompleteSession(ctx context.Context, session *entity.Session) error
-	
+
 	// Session集約内のRound操作（Sessionを通じて管理）
 	AddRoundToSession(ctx context.Context, sessionID sessionVO.SessionID, userID userVO.UserID, round *entity.Round) error
-	CompleteRound(ctx context.Context, sessionID sessionVO.SessionID, userID userVO.UserID, roundID roundVO.RoundID, focusScore *int, workTime, breakTime int) error
+	CompleteRound(ctx context.Context, round *entity.Round, userID userVO.UserID) error
 	GetRoundsBySession(ctx context.Context, sessionID sessionVO.SessionID, userID userVO.UserID) ([]*entity.Round, error)
 	GetRoundByID(ctx context.Context, roundID roundVO.RoundID, userID userVO.UserID) (*entity.Round, error)
-	
+
 	// Session集約のビジネスロジック支援
 	GetActiveSession(ctx context.Context, userID userVO.UserID) (*entity.Session, error)
 	GetRecentSessions(ctx context.Context, userID userVO.UserID, limit int) ([]*entity.Session, error)
