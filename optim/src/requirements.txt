@@ -3,5 +3,5 @@ fastapi
 # pandas  # for CSV handler
 scikit-learn
 scikit-optimize
-tensorflow
+# tensorflow  # for FocusScore model
 uvicorn
