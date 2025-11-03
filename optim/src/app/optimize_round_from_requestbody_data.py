@@ -1,6 +1,6 @@
 import uuid
 from typing import List, Dict, Union
-from helper.make_round_data_list import make_round_data_list
+from helper.make_data_list import make_data_list
 from optimizer.bayesian_optimizer import BayesianOptimizer
 
 
@@ -23,8 +23,8 @@ def optimize_round_from_requestbody_data(
     print(f"ラウンドデータ: {round_data}")
     
     # --- 説明変数と目的変数を取得 ---
-    explanatory_variable = make_round_data_list(round_data, ["work_time", "break_time"])
-    objective_variable = make_round_data_list(round_data, ["focus_score"])
+    explanatory_variable = make_data_list(round_data, ["work_time", "break_time"])
+    objective_variable = make_data_list(round_data, ["focus_score"])
     print("説明変数リスト: ", explanatory_variable)
     print("目的変数リスト: ", objective_variable)
     

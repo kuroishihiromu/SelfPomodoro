@@ -1,27 +1,25 @@
 from typing import List, Union
 
 
-def make_round_data_list(
-    round_data: List[dict],
+def make_data_list(
+    data: List[dict],
     columns: List[str]
 ) -> Union[List[Union[float, int]], List[List[Union[float, int]]]]:
-    """ラウンドデータから特定のカラムをリスト形式で取得
-    
-    get_round_data_listと同じ構造のデータを返す関数
+    """データから特定のカラムをリスト形式で取得
     
     Parameters:
-        round_data (List[dict]): ラウンドデータのリスト
+        data (List[dict]): ラウンドデータのリスト
         columns (List[str]): 取得したいカラム名のリスト
         
     Returns:
         指定したカラムのデータ。一つの列の場合は1次元リスト、複数列の場合は2次元リスト
     """
-    if not round_data:
+    if not data:
         return []
     
     # 指定されたカラムの値を取得
     result = []
-    for item in round_data:
+    for item in data:
         row_data = [item.get(col) for col in columns if col in item]
         if row_data:
             result.append(row_data)
