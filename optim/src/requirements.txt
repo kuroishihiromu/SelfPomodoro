@@ -1,9 +1,7 @@
 boto3
 fastapi
-moto
 # pandas  # for CSV handler
 scikit-learn
 scikit-optimize
 tensorflow
 uvicorn
-pytest

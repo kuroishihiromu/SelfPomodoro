@@ -7,8 +7,6 @@ requires-python = ">=3.12"
 dependencies = [
     "boto3>=1.38.46",
     "fastapi>=0.115.14",
-    "moto>=5.1.6",
-    "pytest>=8.4.1",
     "scikit-learn>=1.7.0",
     "scikit-optimize>=0.10.2",
     "tensorflow>=2.19.0",
