@@ -1,4 +1,4 @@
-from optim.src.handler._csv.csv_handler import CSVHandler
+from handler._csv.csv_handler import CSVHandler
 
 
 def _test_csv_handler():

@@ -1,7 +1,7 @@
 #! /usr/bin/env python3
 
 import uuid
-from optim.src.handler._csv.csv_handler import CSVHandler
+from handler._csv.csv_handler import CSVHandler
 from optimizer.bayesian_optimizer import BayesianOptimizer
 
 def _optimize_session_from_csv_data(
