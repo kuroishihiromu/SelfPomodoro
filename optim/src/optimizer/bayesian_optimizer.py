@@ -26,7 +26,7 @@ class BayesianOptimizer:
                 )
             elif target == "session":
                 self.opt = Optimizer(
-                    dimensions=[(15.0, 360.0), (10.0, 60.0), Integer(1, 6)],
+                    dimensions=[(15.0, 360.0), (5.0, 60.0), Integer(1, 6)],
                     base_estimator=GaussianProcessRegressor(kernel=Matern(length_scale=1.0)),
                     n_initial_points=10,
                     acq_func="EI"
