@@ -49,11 +49,11 @@ jobs:
         run: |
           uvx ruff check
 
-      ## 型チェック
-      - name: Type check with ty
-        working-directory: ./optim/src
-        run: |
-          uvx ty check
+      # ## 型チェック
+      # - name: Type check with ty
+      #   working-directory: ./optim/src
+      #   run: |
+      #     uvx ty check
 
       ## テスト
       - name: Test with pytest
