@@ -1,4 +1,4 @@
-boto3
+# boto3  # for DynamoDB handler
 fastapi
 # pandas  # for CSV handler
 scikit-learn

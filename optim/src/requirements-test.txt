@@ -1,2 +1,2 @@
-moto
+# moto  # for DynamoDB handler
 pytest
