@@ -2,8 +2,9 @@ import uuid
 from fastapi import FastAPI
 from typing import Dict, List, Union
 from app.optimize_round_with_focus_score_prediction import optimize_round_from_dynamodb_data_with_focus_score_prediction
-from app.optimize_session_from_dynamodb_data import optimize_session_from_dynamodb_data
 from app.optimize_round_from_requestbody_data import optimize_round_from_requestbody_data
+from app.optimize_session_from_dynamodb_data import optimize_session_from_dynamodb_data
+from app.optimize_session_from_requestbody_data import optimize_session_from_requestbody_data
 
 
 app = FastAPI()
@@ -63,6 +64,7 @@ def session_v1(
     # return _optimize_session_from_csv_data(user_id, avg_focus_score)
     return {"message": "このエンドポイントは非推奨です。/session/v3/{user_id} を使用してください。"}
 
+
 # DynamoDBデータから最適化
 @app.get("/session/v2/{user_id}")
 def session_v2(
@@ -70,3 +72,12 @@ def session_v2(
     avg_focus_score: float
 ):
     return optimize_session_from_dynamodb_data(user_id, avg_focus_score)
+
+
+# RequestBodyデータから最適化
+@app.post("/session/v3/{user_id}")
+def session_v3(
+    user_id: uuid.UUID,
+    session_data: List[Dict[str, Union[str, float, int]]]
+):
+    return optimize_session_from_requestbody_data(user_id, session_data)
