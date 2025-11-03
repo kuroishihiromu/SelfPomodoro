@@ -9,3 +9,6 @@ test/_test_dynamodb_handler.py
 
 # CSV handler
 handler/_csv/
+
+# venv
+.venv/
