@@ -24,6 +24,7 @@ def optimize_session_from_dynamodb_data(
     
     # --- 最新のセッションデータを取得 ---
     latest_data = dynamodb_handler.get_session_data(user_id=str(user_id))
+    print("最新のセッションデータ取得完了: ", latest_data)
     latest_time = datetime.now().isoformat()
     
     if latest_data and isinstance(latest_data, list) and len(latest_data) > 0:

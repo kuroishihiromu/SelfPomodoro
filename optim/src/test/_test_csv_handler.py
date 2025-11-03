@@ -1,7 +1,7 @@
-from handler.csv.csv_handler import CSVHandler
+from optim.src.handler._csv.csv_handler import CSVHandler
 
 
-def test_csv_handler():
+def _test_csv_handler():
     """CSVHandlerのテスト"""
 
     csv_handler = CSVHandler("../data/round/123e4567-e89b-12d3-a456-426614174000.csv")

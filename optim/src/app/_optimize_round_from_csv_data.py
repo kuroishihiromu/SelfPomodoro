@@ -1,10 +1,10 @@
 #! /usr/bin/env python3
 
 import uuid
-from handler.csv.csv_handler import CSVHandler
+from optim.src.handler._csv.csv_handler import CSVHandler
 from optimizer.bayesian_optimizer import BayesianOptimizer
 
-def optimize_round_from_csv_data(
+def _optimize_round_from_csv_data(
     user_id: uuid.UUID,
     focus_score: float
 ):

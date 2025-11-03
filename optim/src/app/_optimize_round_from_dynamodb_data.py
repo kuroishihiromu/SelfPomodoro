@@ -6,7 +6,7 @@ from optimizer.bayesian_optimizer import BayesianOptimizer
 from datetime import datetime
 
 
-def optimize_round_from_dynamodb_data(
+def _optimize_round_from_dynamodb_data(
     user_id: uuid.UUID,
     focus_score: float
 ):
