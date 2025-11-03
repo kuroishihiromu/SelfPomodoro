@@ -1,5 +1,3 @@
-#! /usr/bin/env python3
-
 from typing import List, Union
 from skopt import Optimizer
 from skopt.learning import GaussianProcessRegressor
