@@ -1,9 +1,7 @@
 import uuid
 from fastapi import FastAPI
 from typing import Dict, List, Union
-from app.optimize_round_from_dynamodb_data_with_focus_score_prediction import optimize_round_from_dynamodb_data_with_focus_score_prediction
 from app.optimize_round_from_requestbody_data import optimize_round_from_requestbody_data
-from app.optimize_session_from_dynamodb_data import optimize_session_from_dynamodb_data
 from app.optimize_session_from_requestbody_data import optimize_session_from_requestbody_data
 
 
@@ -35,13 +33,14 @@ def round_v2(
     return {"message": "このエンドポイントは非推奨です。/round/v4/{user_id} を使用してください。"}
 
 
-# 疲労度とモチベーション予測モデルを使用した最適化
+# DynamoDBデータから疲労度とモチベーション予測モデルを使用した最適化
 @app.get("/round/v3/{user_id}")
 def round_v3(
     user_id: uuid.UUID,
     user_input_focus_score: float
 ):
-    return optimize_round_from_dynamodb_data_with_focus_score_prediction(user_id, user_input_focus_score)
+    # return _optimize_round_from_dynamodb_data_with_focus_score_prediction(user_id, user_input_focus_score)
+    return {"message": "このエンドポイントは非推奨です。/round/v4/{user_id} を使用してください。"}
 
 
 # RequestBodyデータから最適化
@@ -71,7 +70,8 @@ def session_v2(
     user_id: uuid.UUID,
     avg_focus_score: float
 ):
-    return optimize_session_from_dynamodb_data(user_id, avg_focus_score)
+    # return _optimize_session_from_dynamodb_data(user_id, avg_focus_score)
+    return {"message": "このエンドポイントは非推奨です。/session/v3/{user_id} を使用してください。"}
 
 
 # RequestBodyデータから最適化
