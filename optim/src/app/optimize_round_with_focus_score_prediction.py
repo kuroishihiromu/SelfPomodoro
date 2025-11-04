@@ -8,7 +8,7 @@ from helper.make_time_series_data import make_time_series_data
 from model.focus_score_model import FocusScoreModel
 from optimizer.bayesian_optimizer import BayesianOptimizer
 
-def optimize_round_with_focus_score_prediction(
+def optimize_round_from_dynamodb_data_with_focus_score_prediction(
     user_id: uuid.UUID,
     user_input_focus_score: float
 ):
@@ -65,6 +65,7 @@ def optimize_round_with_focus_score_prediction(
     
     # --- 最新の作業時間・休憩時間のデータを取得 ---
     latest_data = round_dynamodb_handler.get_round_data(user_id=str(user_id))
+    print("最新のラウンドデータ取得完了: ", latest_data)
     latest_time = datetime.now().isoformat()
     
     if latest_data and isinstance(latest_data, list) and len(latest_data) > 0:

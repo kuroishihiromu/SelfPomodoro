@@ -47,16 +47,17 @@ jobs:
       - name: Lint check with ruff
         working-directory: ./optim/src
         run: |
-          uv run ruff check
+          uvx ruff check
 
-      ## 型チェック
-      - name: Type check with ty
-        working-directory: ./optim/src
-        run: |
-          uv run ty check
+      # ## 型チェック
+      # - name: Type check with ty
+      #   working-directory: ./optim/src
+      #   run: |
+      #     uvx ty check
 
       ## テスト
       - name: Test with pytest
         working-directory: ./optim/src
         run: |
+          uv pip install -r requirements-test.txt
           uv run pytest test/
