@@ -1,9 +1,9 @@
 import uuid
-from handler.dynamodb.dynamodb_handler import DynamoDBHandler
+from handler._dynamodb.dynamodb_handler import DynamoDBHandler
 from optimizer.bayesian_optimizer import BayesianOptimizer
 from datetime import datetime
 
-def optimize_session_from_dynamodb_data(
+def _optimize_session_from_dynamodb_data(
     user_id: uuid.UUID,
     avg_focus_score: float
 ):

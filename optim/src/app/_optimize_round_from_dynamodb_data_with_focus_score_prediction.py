@@ -1,12 +1,12 @@
 import uuid
 import numpy as np
 from datetime import datetime
-from handler.dynamodb.dynamodb_handler import DynamoDBHandler
+from handler._dynamodb.dynamodb_handler import DynamoDBHandler
 from helper.make_time_series_data import make_time_series_data
 from model.focus_score_model import FocusScoreModel
 from optimizer.bayesian_optimizer import BayesianOptimizer
 
-def optimize_round_from_dynamodb_data_with_focus_score_prediction(
+def _optimize_round_from_dynamodb_data_with_focus_score_prediction(
     user_id: uuid.UUID,
     user_input_focus_score: float
 ):

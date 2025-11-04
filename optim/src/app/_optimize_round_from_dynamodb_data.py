@@ -1,5 +1,5 @@
 import uuid
-from handler.dynamodb.dynamodb_handler import DynamoDBHandler
+from handler._dynamodb.dynamodb_handler import DynamoDBHandler
 from optimizer.bayesian_optimizer import BayesianOptimizer
 from datetime import datetime
 

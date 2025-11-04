@@ -1,7 +1,9 @@
 # legacy Apps
 app/_optimize_round_from_csv_data.py
-app/_optimize_session_from_csv_data.py
 app/_optimize_round_from_dynamodb_data.py
+app/_optimize_round_from_dynamodb_data_with_focus_score_prediction.py
+app/_optimize_session_from_csv_data.py
+app/_optimize_session_from_dynamodb_data.py
 
 # Tests
 test/*
@@ -12,3 +14,6 @@ handler/_csv/
 
 # venv
 .venv/
+
+# Cache files
+.ruff_cache/
