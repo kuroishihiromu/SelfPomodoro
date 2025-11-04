@@ -1,5 +1,3 @@
-#! /usr/bin/env python3
-
 import uuid
 from handler.dynamodb.dynamodb_handler import DynamoDBHandler
 from optimizer.bayesian_optimizer import BayesianOptimizer
