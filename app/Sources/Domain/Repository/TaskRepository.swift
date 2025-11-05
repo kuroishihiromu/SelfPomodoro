@@ -8,8 +8,8 @@
 import Foundation
 
 protocol TaskRepository {
-    func fetchTasks(for identifier: String) async throws -> [Task]
-    func createTask(detail: String, for identifier: String) async throws -> Task
-    func toggleTaskCompletion(for id: UUID) async throws -> Task
+    func fetchTasks(for identifier: String) async throws -> [TodoTask]
+    func createTask(detail: String, for identifier: String) async throws -> TodoTask
+    func toggleTaskCompletion(for id: UUID) async throws -> TodoTask
     func deleteTask(with id: UUID) async throws
 }

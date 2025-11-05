@@ -17,7 +17,7 @@ struct ToDoListRowFeature {
 
     enum Action {
         case toggleCompleted
-        case toggleCompletedResponse(Result<Task, Error>)
+        case toggleCompletedResponse(Result<TodoTask, Error>)
     }
 
     @Dependency(\.taskRepository) private var taskRepository

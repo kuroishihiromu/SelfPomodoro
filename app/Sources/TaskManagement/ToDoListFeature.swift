@@ -17,7 +17,7 @@ struct ToDoListFeature {
 
     enum Action {
         case addItem(detail: String)
-        case addItemResponse(Result<Task, Error>)
+        case addItemResponse(Result<TodoTask, Error>)
         case items(IdentifiedActionOf<ToDoListRowFeature>)
     }
     

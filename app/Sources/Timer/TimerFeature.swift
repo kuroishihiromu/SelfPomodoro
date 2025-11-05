@@ -88,7 +88,7 @@ struct TimerFeature {
             TimerPersistence.save(persistenceData)
             return .run { [start = correctedStart] send in
                 var lastElapsed = -1
-                while !Swift.Task.isCancelled {
+                while !Task.isCancelled {
                     let now = ContinuousClock().now
                     let realElapsed = start.duration(to: now).components.seconds
 
@@ -101,7 +101,7 @@ struct TimerFeature {
                         lastElapsed = acceleratedElapsed
                     }
 
-                    try? await Swift.Task.sleep(nanoseconds: 100_000_000)  // 0.1秒ごとにチェック（=リアルタイム）
+                    try? await Task.sleep(nanoseconds: 100_000_000)  // 0.1秒ごとにチェック（=リアルタイム）
                 }
             }
             .cancellable(id: CancelID.timer)

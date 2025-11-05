@@ -18,7 +18,7 @@ final class SwiftDataTaskRepository: TaskRepository {
 
     // MARK: - TaskRepository
 
-    func createTask(detail: String, for identifier: String) async throws -> Task {
+    func createTask(detail: String, for identifier: String) async throws -> TodoTask {
         let now = Date()
         let model = TaskModel(
             userIdentifier: identifier,
@@ -32,7 +32,7 @@ final class SwiftDataTaskRepository: TaskRepository {
         return mapTask(model)
     }
 
-    func fetchTasks(for identifier: String) async throws -> [Task] {
+    func fetchTasks(for identifier: String) async throws -> [TodoTask] {
         var descriptor = FetchDescriptor<TaskModel>(
             predicate: #Predicate { $0.userIdentifier == identifier },
             sortBy: [SortDescriptor(\.createdAt, order: .forward)]
@@ -40,7 +40,7 @@ final class SwiftDataTaskRepository: TaskRepository {
         return try context.fetch(descriptor).map(mapTask)
     }
 
-    func toggleTaskCompletion(for id: UUID) async throws -> Task {
+    func toggleTaskCompletion(for id: UUID) async throws -> TodoTask {
         guard let model = try fetchTaskModel(by: id) else {
             throw RepositoryError.recordNotFound
         }
@@ -66,8 +66,8 @@ final class SwiftDataTaskRepository: TaskRepository {
         return try context.fetch(descriptor).first
     }
 
-    private func mapTask(_ model: TaskModel) -> Task {
-        Task(
+    private func mapTask(_ model: TaskModel) -> TodoTask {
+        TodoTask(
             id: model.id,
             detail: model.detail,
             isCompleted: model.isCompleted,

@@ -23,7 +23,7 @@ struct TabButtonFeature {
         case statsButtonTapped
         case profileButtonTapped
         
-        case fetchTasksResponse(Result<[Task], Error>)
+        case fetchTasksResponse(Result<[TodoTask], Error>)
         case todoList(ToDoListFeature.Action)
     }
     
