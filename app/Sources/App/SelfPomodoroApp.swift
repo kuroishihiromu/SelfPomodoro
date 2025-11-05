@@ -5,80 +5,40 @@
 //  Created by 黒石陽夢 on 2024/11/13.
 //
 
-import SwiftUI
-import Amplify
-import AWSCognitoAuthPlugin
-import AWSCognitoIdentityProvider
 import ComposableArchitecture
-import AWSPluginsCore
-import AWSAPIPlugin
+import SwiftUI
+import SwiftData
 
 @main
 struct SelfPomodoroApp: App {
-    @State private var isConfigured = false
-    @State private var isSignedIn: Bool? = nil
-    @State private var tokens: AuthTokens? = nil
+    @State private var modelContainer: ModelContainer = SwiftDataStack.makeContainer()
+    @State private var hasInitialized = false
 
     var body: some Scene {
         WindowGroup {
-            ZStack {
-                if !isConfigured {
-                    ProgressView("Initializing...")
-                } else if isSignedIn == true, let tokens {
-                    AuthScreenView(
-                        store: Store(
-                            initialState: AuthFeature.State(
-                                tokens: tokens,
-                                isLoggedIn: true
-                            ),
-                            reducer: { AuthFeature() }
-                        )
-                    )
-                } else {
-                    AuthScreenView(
-                        store: Store(
-                            initialState: AuthFeature.State(),
-                            reducer: { AuthFeature() }
-                        )
-                    )
+            MainView()
+                .task {
+                    await initializeAppIfNeeded()
                 }
-            }
-            .task {
-                await initializeApp()
-            }
         }
+        .modelContainer(modelContainer)
     }
 
     @MainActor
-    private func initializeApp() async {
-        do {
-            try Amplify.add(plugin: AWSCognitoAuthPlugin())
-            try Amplify.add(plugin: AWSAPIPlugin())
-            try Amplify.configure()
-            isConfigured = true
+    private func initializeAppIfNeeded() async {
+        guard !hasInitialized else { return }
 
-            let session = try await Amplify.Auth.fetchAuthSession()
-            if session.isSignedIn,
-               let provider = session as? AuthCognitoTokensProvider {
-                let result = provider.getCognitoTokens()
-                let token = try result.get()
-                let authTokens = AuthTokens(
-                    idToken: token.idToken,
-                    accessToken: token.accessToken,
-                    refreshToken: token.refreshToken
-                )
-                tokens = authTokens
-                isSignedIn = true
-            } else {
-                isSignedIn = false
-            }
-        } catch {
-            if let authError = error as? AuthError,
-               case .service(_, _, let underlyingError) = authError,
-               let cognitoError = underlyingError as? AWSCognitoIdentityProvider.NotAuthorizedException,
-               cognitoError.properties.message?.contains("Refresh Token has expired") == true {
-            }
-            isSignedIn = false
-        }
+        var dependencies = DependencyValues._current
+        dependencies.configureAppDependencies(modelContainer: modelContainer)
+        DependencyValues._current = dependencies
+
+        let userRepository = dependencies.userRepository
+        let initializer = AppInitializer(
+            userRepository: userRepository,
+            userIdentifierProvider: UserIdentifierProvider.resolve
+        )
+
+        await initializer.initialize()
+        hasInitialized = true
     }
 }
