@@ -9,16 +9,8 @@ import ComposableArchitecture
 import SwiftUI
 
 struct MainView: View {
-    var token: AuthTokens
-    let authStore: StoreOf<AuthFeature>
-    
     let store: StoreOf<TabButtonFeature> = Store(initialState: TabButtonFeature.State()) {
         TabButtonFeature()
-    }
-    
-    init(token: AuthTokens, authStore: StoreOf<AuthFeature>) {
-        self.token = token
-        self.authStore = authStore
     }
     
     let timerStore = Store(
@@ -58,7 +50,7 @@ struct MainView: View {
                     StatisticsScreenView(store: statisticsStore)
                         .frame(maxWidth: .infinity, maxHeight: .infinity)
                 case 3:
-                    ProfileScreenView(authStore: authStore)
+                    ProfileScreenView()
                 default:
                     EmptyView()
                 }
