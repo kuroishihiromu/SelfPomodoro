@@ -30,10 +30,11 @@ final class UserModel {
     }
 }
 
+// userIdentifierのindexは手動で設定する必要がある？
 @Model
 final class TaskModel {
     @Attribute(.unique) var id: UUID
-    @Attribute(.indexed) var userIdentifier: String
+    var userIdentifier: String
     var detail: String
     var isCompleted: Bool
     var createdAt: Date
