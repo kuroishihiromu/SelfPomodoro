@@ -7,8 +7,7 @@
 
 import Foundation
 import Dependencies
-import Amplify
-import AWSPluginsCore
+import Dependencies
 
 enum userconfigAPIError: Error, Equatable {
     case networkError
@@ -23,34 +22,14 @@ struct UserConfigAPIClient {
 extension UserConfigAPIClient {
     static let live = UserConfigAPIClient(
         getUserConfig: {
-            let idToken: String
-            do {
-                let session = try await Amplify.Auth.fetchAuthSession()
-                guard let provider = session as? AuthCognitoTokensProvider else {
-                    throw userconfigAPIError.unknown
-                }
-                let tokens = try provider.getCognitoTokens().get()
-                idToken = tokens.idToken
-                print("👤 Auth session (fetchUserconfig) isSignedIn=\(session.isSignedIn)")
-            } catch {
-                print("👤 Auth session (fetchUserconfig) fetch failed: \(error)")
-                throw error
-            }
-            print("➡️ GET /dev/api/v1/optimization-preferences")
-            let request = RESTRequest(
-                apiName: "selfpomodoro",
-                path: "/dev/api/v1/optimization-preferences",
-                headers: ["Authorization" : idToken]
+            // TODO: SwiftDataへの移行が完了したら永続化された最適化設定を参照する
+            return UserConfigResult(
+                id: UUID(),
+                roundWorkTime: 25,
+                roundBreakTime: 5,
+                sessionRounds: 5,
+                sessionBreakTime: 15
             )
-            
-            do {
-                let data = try await Amplify.API.get(request: request)
-                let userconfig = try APIFormatters.jsonDecoder.decode(UserConfigResult.self, from: data)
-                return userconfig
-            } catch {
-                print("❌ fetchUserconfig failed: \(error)")
-                throw error
-            }
         }
     )
 }
