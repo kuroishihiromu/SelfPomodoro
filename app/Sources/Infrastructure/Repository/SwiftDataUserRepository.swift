@@ -20,8 +20,10 @@ final class SwiftDataUserRepository: UserRepository {
 
     func fetchUser(by identifier: String) async throws -> User? {
         guard let model = try fetchUserModel(by: identifier) else {
+            print("🔍 SwiftDataUserRepository: no user found for identifier=\(identifier)")
             return nil
         }
+        print("🔍 SwiftDataUserRepository: fetched user id=\(model.id)")
         return mapUser(model)
     }
 
@@ -30,6 +32,7 @@ final class SwiftDataUserRepository: UserRepository {
         let model = UserModel(identifier: identifier, createdAt: now, updatedAt: now)
         context.insert(model)
         try context.save()
+        print("🧾 SwiftDataUserRepository: created user id=\(model.id) identifier=\(identifier)")
         return mapUser(model)
     }
 

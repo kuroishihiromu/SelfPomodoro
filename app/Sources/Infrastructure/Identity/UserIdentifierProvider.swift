@@ -13,15 +13,18 @@ enum UserIdentifierProvider {
 
     static func resolve() -> String {
         if let stored = UserDefaults.standard.string(forKey: storageKey) {
+            print("🆔 UserIdentifierProvider: reuse stored identifier=\(stored)")
             return stored
         }
 
         if let vendorId = UIDevice.current.identifierForVendor?.uuidString {
+            print("🆔 UserIdentifierProvider: identifierForVendor provided id=\(vendorId)")
             store(vendorId)
             return vendorId
         }
 
         let fresh = UUID().uuidString
+        print("🆔 UserIdentifierProvider: generated fallback id=\(fresh)")
         store(fresh)
         return fresh
     }

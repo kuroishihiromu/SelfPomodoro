@@ -29,6 +29,7 @@ final class SwiftDataTaskRepository: TaskRepository {
         )
         context.insert(model)
         try context.save()
+        print("📝 SwiftDataTaskRepository: created task id=\(model.id) detail=\(detail) userIdentifier=\(identifier)")
         return mapTask(model)
     }
 
@@ -37,7 +38,9 @@ final class SwiftDataTaskRepository: TaskRepository {
             predicate: #Predicate { $0.userIdentifier == identifier },
             sortBy: [SortDescriptor(\.createdAt, order: .forward)]
         )
-        return try context.fetch(descriptor).map(mapTask)
+        let models = try context.fetch(descriptor)
+        print("📦 SwiftDataTaskRepository: fetched \(models.count) tasks for identifier=\(identifier)")
+        return models.map(mapTask)
     }
 
     func toggleTaskCompletion(for id: UUID) async throws -> TodoTask {
@@ -47,6 +50,7 @@ final class SwiftDataTaskRepository: TaskRepository {
         model.isCompleted.toggle()
         model.updatedAt = Date()
         try context.save()
+        print("🔁 SwiftDataTaskRepository: toggled task id=\(id) isCompleted=\(model.isCompleted)")
         return mapTask(model)
     }
 
@@ -54,6 +58,7 @@ final class SwiftDataTaskRepository: TaskRepository {
         guard let model = try fetchTaskModel(by: id) else { return }
         context.delete(model)
         try context.save()
+        print("🗑️ SwiftDataTaskRepository: deleted task id=\(id)")
     }
 
     // MARK: - Helpers

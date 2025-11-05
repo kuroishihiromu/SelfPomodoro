@@ -22,9 +22,13 @@ final class AppInitializer {
 
     func initialize() async {
         let identifier = userIdentifierProvider()
+        print("🚀 AppInitializer: resolved identifier=\(identifier)")
         do {
-            if try await userRepository.fetchUser(by: identifier) == nil {
-                _ = try await userRepository.createUser(identifier: identifier)
+            if let existing = try await userRepository.fetchUser(by: identifier) {
+                print("✅ AppInitializer: existing user found id=\(existing.id)")
+            } else {
+                let created = try await userRepository.createUser(identifier: identifier)
+                print("✨ AppInitializer: created new user id=\(created.id)")
             }
         } catch {
             // TODO: エラーロギング戦略を決めたら差し替え
