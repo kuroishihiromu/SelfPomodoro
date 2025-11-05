@@ -36,10 +36,10 @@ final class SwiftDataUserRepository: UserRepository {
     // MARK: - Helpers
 
     private func fetchUserModel(by identifier: String) throws -> UserModel? {
-        let descriptor = FetchDescriptor<UserModel>(
-            predicate: #Predicate { $0.identifier == identifier },
-            fetchLimit: 1
+        var descriptor = FetchDescriptor<UserModel>(
+            predicate: #Predicate { $0.identifier == identifier }
         )
+        descriptor.fetchLimit = 1
         return try context.fetch(descriptor).first
     }
 

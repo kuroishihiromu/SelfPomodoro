@@ -33,7 +33,7 @@ final class SwiftDataTaskRepository: TaskRepository {
     }
 
     func fetchTasks(for identifier: String) async throws -> [Task] {
-        let descriptor = FetchDescriptor<TaskModel>(
+        var descriptor = FetchDescriptor<TaskModel>(
             predicate: #Predicate { $0.userIdentifier == identifier },
             sortBy: [SortDescriptor(\.createdAt, order: .forward)]
         )
@@ -59,10 +59,10 @@ final class SwiftDataTaskRepository: TaskRepository {
     // MARK: - Helpers
 
     private func fetchTaskModel(by id: UUID) throws -> TaskModel? {
-        let descriptor = FetchDescriptor<TaskModel>(
-            predicate: #Predicate { $0.id == id },
-            fetchLimit: 1
+        var descriptor = FetchDescriptor<TaskModel>(
+            predicate: #Predicate { $0.id == id }
         )
+        descriptor.fetchLimit = 1
         return try context.fetch(descriptor).first
     }
 
