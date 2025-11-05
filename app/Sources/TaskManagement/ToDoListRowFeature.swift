@@ -17,29 +17,28 @@ struct ToDoListRowFeature {
 
     enum Action {
         case toggleCompleted
-        case toggleCompletedResponse(Result<TaskResult, taskAPIError>)
+        case toggleCompletedResponse(Result<Task, Error>)
     }
 
-    @Dependency(\.taskAPIClient) var apiClient
+    @Dependency(\.taskRepository) private var taskRepository
     
     func reduce(into state: inout State, action: Action) -> Effect<Action> {
         switch action {
         case .toggleCompleted:
            return .run { [id = state.id] send in
                do {
-                   let result = try await apiClient.toggleCompletion(id)
-                   await send(.toggleCompletedResponse(.success(result)))
-               } catch let apiError as taskAPIError {
-                   await send(.toggleCompletedResponse(.failure(apiError)))
+                   let task = try await taskRepository.toggleTaskCompletion(for: id)
+                   await send(.toggleCompletedResponse(.success(task)))
                } catch {
-                   await send(.toggleCompletedResponse(.failure(.unknown)))
+                   await send(.toggleCompletedResponse(.failure(error)))
                }
            }
-        case let .toggleCompletedResponse(.success(result)):
-            state.isCompleted = result.isCompleted
+        case let .toggleCompletedResponse(.success(task)):
+            state.detail = task.detail
+            state.isCompleted = task.isCompleted
             return .none
 
-        case let .toggleCompletedResponse(.failure(err)):
+        case .toggleCompletedResponse(.failure):
             return .none
         }
     }

@@ -17,11 +17,12 @@ struct ToDoListFeature {
 
     enum Action {
         case addItem(detail: String)
-        case addItemResponse(Result<TaskResult, taskAPIError>)
+        case addItemResponse(Result<Task, Error>)
         case items(IdentifiedActionOf<ToDoListRowFeature>)
     }
     
-    @Dependency(\.taskAPIClient) var apiClient
+    @Dependency(\.taskRepository) private var taskRepository
+    @Dependency(\.userIdentifier) private var userIdentifier
 
     var body: some ReducerOf<Self> {
         Reduce { state, action in
@@ -29,12 +30,13 @@ struct ToDoListFeature {
             case let .addItem(detail):
                 return .run { send in
                     do {
-                        let result = try await apiClient.addTask(detail)
-                        await send(.addItemResponse(.success(result)))
-                    } catch let error as taskAPIError {
-                        await send(.addItemResponse(.failure(error)))
+                        let task = try await taskRepository.createTask(
+                            detail: detail,
+                            for: userIdentifier()
+                        )
+                        await send(.addItemResponse(.success(task)))
                     } catch {
-                        await send(.addItemResponse(.failure(.unknown)))
+                        await send(.addItemResponse(.failure(error)))
                     }
                 }
                 
@@ -42,7 +44,7 @@ struct ToDoListFeature {
                 state.items.append(.init(id: task.id, detail: task.detail, isCompleted: task.isCompleted))
                 return .none
 
-            case let .addItemResponse(.failure(toggleCompleteResponseErr)):
+            case .addItemResponse(.failure):
                 return .none
                 
             case .items:
@@ -54,4 +56,3 @@ struct ToDoListFeature {
         }
     }
 }
-
