@@ -9,29 +9,54 @@ import ComposableArchitecture
 import SwiftUI
 
 struct MainView: View {
-    let store: StoreOf<TabButtonFeature> = Store(initialState: TabButtonFeature.State()) {
-        TabButtonFeature()
-    }
-    
-    let timerStore = Store(
-        initialState: TimerScreenFeature.State(
-            timer: TimerFeature.State(
-                totalSeconds: 23*62,
-                taskDuration: 30,
-                shortBreakDuration: 5*60,
-                longBreakDuration: 20,
-                roundsPerSession: 3
-            ),
-            evalModal: nil
-        ),
-        reducer: { TimerScreenFeature() }
-    )
-    let toDoStore = Store(initialState: ToDoListFeature.State()) {
-        ToDoListFeature()
-    }
-    
-    let statisticsStore = Store(initialState: StatisticsFeature.State()) {
-        StatisticsFeature()
+    private let store: StoreOf<TabButtonFeature>
+    private let timerStore: StoreOf<TimerScreenFeature>
+    private let toDoStore: StoreOf<ToDoListFeature>
+    private let statisticsStore: StoreOf<StatisticsFeature>
+
+    init(dependencies: DependencyValues) {
+        store = withDependencies {
+            $0 = dependencies
+        } operation: {
+            Store(initialState: TabButtonFeature.State()) {
+                TabButtonFeature()
+            }
+        }
+
+        timerStore = withDependencies {
+            $0 = dependencies
+        } operation: {
+            Store(
+                initialState: TimerScreenFeature.State(
+                    timer: TimerFeature.State(
+                        totalSeconds: 23 * 62,
+                        taskDuration: 30,
+                        shortBreakDuration: 5 * 60,
+                        longBreakDuration: 20,
+                        roundsPerSession: 3
+                    ),
+                    evalModal: nil
+                )
+            ) {
+                TimerScreenFeature()
+            }
+        }
+
+        toDoStore = withDependencies {
+            $0 = dependencies
+        } operation: {
+            Store(initialState: ToDoListFeature.State()) {
+                ToDoListFeature()
+            }
+        }
+
+        statisticsStore = withDependencies {
+            $0 = dependencies
+        } operation: {
+            Store(initialState: StatisticsFeature.State()) {
+                StatisticsFeature()
+            }
+        }
     }
     
     var body: some View {

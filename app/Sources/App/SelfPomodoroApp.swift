@@ -12,11 +12,12 @@ import SwiftData
 @main
 struct SelfPomodoroApp: App {
     @State private var modelContainer: ModelContainer = SwiftDataStack.makeContainer()
+    @State private var dependencies = DependencyValues._current
     @State private var hasInitialized = false
 
     var body: some Scene {
         WindowGroup {
-            MainView()
+            MainView(dependencies: dependencies)
                 .task {
                     await initializeAppIfNeeded()
                 }
@@ -28,14 +29,11 @@ struct SelfPomodoroApp: App {
     private func initializeAppIfNeeded() async {
         guard !hasInitialized else { return }
 
-        var dependencies = DependencyValues._current
         dependencies.configureAppDependencies(modelContainer: modelContainer)
-        DependencyValues._current = dependencies
 
-        let userRepository = dependencies.userRepository
         let initializer = AppInitializer(
-            userRepository: userRepository,
-            userIdentifierProvider: UserIdentifierProvider.resolve
+            userRepository: dependencies.userRepository,
+            userIdentifierProvider: dependencies.userIdentifier
         )
 
         await initializer.initialize()
