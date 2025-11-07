@@ -122,7 +122,7 @@ struct TimerScreenFeature {
                 state.timer.currentRoundId = roundId
 
                 let identifier = resolveUserIdentifier()
-                let workMinutes = Double(state.timer.currentSeconds) / 60.0
+                let workMinutes = Double(state.timer.lastTaskDuration) / 60.0
                 let breakMinutes: Double = state.timer.round >= state.userConfig.sessionRounds
                     ? state.userConfig.sessionBreakMinutes
                     : state.userConfig.roundBreakMinutes

@@ -35,6 +35,7 @@ struct TimerFeature {
         var roundsPerSession: Int
 
         var startTime: ContinuousClock.Instant? = nil
+        var lastTaskDuration: Int = 0
 
         var currentPhaseDuration: Int {
             switch phase {
@@ -123,6 +124,10 @@ struct TimerFeature {
 
         case let .phaseCompleted(completedPhase):
             state.isRunning = false
+            let elapsed = state.currentSeconds
+            if state.phase == .task {
+                state.lastTaskDuration = elapsed
+            }
             state.currentSeconds = 0
             switch state.phase {
             case .task:
