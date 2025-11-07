@@ -126,7 +126,7 @@ struct TimerFeature {
             state.isRunning = false
             let elapsed = state.currentSeconds
             if state.phase == .task {
-                state.lastTaskDuration = elapsed
+                state.lastTaskDuration = min(elapsed, state.currentPhaseDuration)
             }
             state.currentSeconds = 0
             switch state.phase {
