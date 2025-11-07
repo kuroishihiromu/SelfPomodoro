@@ -4,7 +4,7 @@
 
 ### Endpoint
 ```
-POST /optimize/round/{user_id}
+POST /round/v4/{user_id}
 ```
 
 ### Path Parameters
@@ -26,7 +26,7 @@ interface RoundRecord {
 
 ### Sample Request
 ```
-POST /optimize/round/123e4567-e89b-12d3-a456-426614174000
+POST /round/v4/123e4567-e89b-12d3-a456-426614174000
 
 Content-Type: application/json
 
@@ -57,7 +57,7 @@ Request Body:
 
 ### Endpoint
 ```
-POST /optimize/session/{user_id}
+POST /session/v3/{user_id}
 ```
 
 ### Path Parameters
@@ -80,7 +80,7 @@ interface SessionRecord {
 
 ### Sample Request
 ```
-POST /optimize/session/123e4567-e89b-12d3-a456-426614174000
+POST /session/v3/123e4567-e89b-12d3-a456-426614174000
 
 Content-Type: application/json
 
