@@ -74,8 +74,12 @@ struct TimerScreenView: View {
                     }
                 }
             }
-            .animation(.easeInOut, value: viewStore.evalModal != nil)
             .animation(.easeInOut, value: viewStore.roundConfigModalIsPresented)
+            .overlay(alignment: .top) {
+                ToastView(state: viewStore.toast)
+                    .padding(.top, 40)
+            }
+
         }
     }
 }
