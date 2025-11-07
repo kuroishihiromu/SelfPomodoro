@@ -23,6 +23,7 @@ struct TimerScreenFeature {
         var hasPersistedTimer: Bool = false
         var didRestoreFromPersistence: Bool = false
         var currentSessionRounds: [RoundRecord] = []
+        var toast: ToastState = ToastState(message: "")
     }
 
     enum Action {
@@ -45,6 +46,8 @@ struct TimerScreenFeature {
         case toggleConfigModal(Bool)
         case toggleSessionCompleteModal(Bool)
         case restoreTimerIfNeeded
+        case toastDismissed
+        case showToast(String)
         
     }
 
@@ -297,6 +300,18 @@ struct TimerScreenFeature {
                 
                 return .send(.timer(.restoreTimerState))
                 
+            case .toastDismissed:
+                state.toast.isVisible = false
+                return .none
+                
+            case let .showToast(message):
+                state.toast.message = message
+                state.toast.isVisible = true
+                return .run { send in
+                    try? await Task.sleep(nanoseconds: 2_000_000_000)
+                    await send(.toastDismissed)
+                }
+                
             default:
                 return .none
             }
@@ -346,6 +361,8 @@ struct TimerScreenFeature {
                     latest.roundBreakMinutes = rest
                     latest.updatedAt = Date()
                     try await userConfigRepository.upsertLatest(latest)
+                    
+                    await send(.showToast("ラウンドの最適化が完了しました"))
                 }
             } catch {
                 print("⚠️ Round optimization failed: \(error)")
@@ -390,6 +407,8 @@ struct TimerScreenFeature {
                     latest.sessionBreakMinutes = rest
                     latest.updatedAt = Date()
                     try await userConfigRepository.upsertLatest(latest)
+                    
+                    await send(.showToast("セッションの最適化が完了しました"))
                 }
             } catch {
                 print("⚠️ Session optimization failed: \(error)")
