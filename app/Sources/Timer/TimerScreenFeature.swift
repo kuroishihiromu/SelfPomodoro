@@ -51,6 +51,7 @@ struct TimerScreenFeature {
     @Dependency(\.roundRecordRepository) var roundRecordRepository
     @Dependency(\.sessionRecordRepository) var sessionRecordRepository
     @Dependency(\.userConfigRepository) var userConfigRepository
+    @Dependency(\.optimizationAPIClient) var optimizationAPIClient
     @Dependency(\.userIdentifier) var resolveUserIdentifier
     
     var body: some ReducerOf<Self> {
@@ -148,6 +149,7 @@ struct TimerScreenFeature {
 
             case let .completeRoundResponse(.success(round)):
                 state.currentSessionRounds.append(round)
+                let roundOptimizationEffect = sendRoundOptimization(for: round.userIdentifier)
 
                 if state.timer.round >= state.userConfig.sessionRounds {
                     state.sessionCompleteModal = true
@@ -174,15 +176,23 @@ struct TimerScreenFeature {
                     state.sessionId = nil
                     state.timer.sessionId = nil
                     state.currentSessionRounds = []
+                    let sessionOptimizationEffect = sendSessionOptimization(for: identifier)
 
-                    return .run { send in
+                    return .merge(
+                        .run { send in
                         try await sessionRecordRepository.save(sessionRecord)
                         await send(.completeSessionResponse(.success(sessionRecord)))
                     } catch: { error, send in
                         await send(.completeSessionResponse(.failure(error)))
-                    }
+                    },
+                        sessionOptimizationEffect,
+                        roundOptimizationEffect
+                    )
                 } else {
-                    return .send(.timer(.start))
+                    return .merge(
+                        .send(.timer(.start)),
+                        roundOptimizationEffect
+                    )
                 }
 
             case .completeRoundResponse(.failure(let error)):
@@ -298,4 +308,86 @@ struct TimerScreenFeature {
         guard !scores.isEmpty else { return 0 }
         return Double(scores.reduce(0, +)) / Double(scores.count)
     }
+
+    private func sendRoundOptimization(for userIdentifier: String) -> Effect<Action> {
+        guard let uuid = UUID(uuidString: userIdentifier) else {
+            print("⚠️ Invalid userIdentifier for optimization: \(userIdentifier)")
+            return .none
+        }
+
+        return .run { _ in
+            let records = try await roundRecordRepository.fetchRecent(for: userIdentifier, limit: nil)
+            let payloads = records.compactMap { record -> OptimizationRoundPayload? in
+                guard let focus = record.focusScore else { return nil }
+                return OptimizationRoundPayload(
+                    time: Self.isoFormatter.string(from: record.createdAt),
+                    work_time: record.workMinutes,
+                    break_time: record.breakMinutes,
+                    focus_score: focus
+                )
+            }
+            guard !payloads.isEmpty else { return }
+            if let response = try await optimizationAPIClient.sendRoundData(uuid, payloads) {
+                print("📬 Round optimization response: work=\(response.round_work_time), break=\(response.round_break_time)")
+                let entry = UserConfigRoundHistoryEntry(
+                    id: UUID(),
+                    userIdentifier: userIdentifier,
+                    recommendedWorkMinutes: response.round_work_time,
+                    recommendedBreakMinutes: response.round_break_time,
+                    createdAt: Date()
+                )
+                try await userConfigRepository.addRoundHistory(entry)
+
+                var latest = try await userConfigRepository.fetchLatest(for: userIdentifier) ?? UserConfig.default(for: userIdentifier)
+                latest.roundWorkMinutes = response.round_work_time
+                latest.roundBreakMinutes = response.round_break_time
+                latest.updatedAt = Date()
+                try await userConfigRepository.upsertLatest(latest)
+            }
+        }
+    }
+
+    private func sendSessionOptimization(for userIdentifier: String) -> Effect<Action> {
+        guard let uuid = UUID(uuidString: userIdentifier) else {
+            print("⚠️ Invalid userIdentifier for session optimization: \(userIdentifier)")
+            return .none
+        }
+
+        return .run { _ in
+            let records = try await sessionRecordRepository.fetchRecent(for: userIdentifier, limit: nil)
+            let payloads = records.map { record in
+                OptimizationSessionPayload(
+                    time: Self.isoFormatter.string(from: record.createdAt),
+                    round_count: record.roundCount,
+                    total_work_time: record.totalWorkMinutes,
+                    break_time: record.breakMinutes,
+                    avg_focus_score: record.averageFocusScore
+                )
+            }
+            guard !payloads.isEmpty else { return }
+            if let response = try await optimizationAPIClient.sendSessionData(uuid, payloads) {
+                print("📬 Session optimization response: rounds=\(response.session_rounds), break=\(response.session_break_minutes)")
+                let entry = UserConfigSessionHistoryEntry(
+                    id: UUID(),
+                    userIdentifier: userIdentifier,
+                    recommendedSessionRounds: response.session_rounds,
+                    recommendedSessionBreakMinutes: response.session_break_minutes,
+                    createdAt: Date()
+                )
+                try await userConfigRepository.addSessionHistory(entry)
+
+                var latest = try await userConfigRepository.fetchLatest(for: userIdentifier) ?? UserConfig.default(for: userIdentifier)
+                latest.sessionRounds = response.session_rounds
+                latest.sessionBreakMinutes = response.session_break_minutes
+                latest.updatedAt = Date()
+                try await userConfigRepository.upsertLatest(latest)
+            }
+        }
+    }
+
+    private static let isoFormatter: ISO8601DateFormatter = {
+        let formatter = ISO8601DateFormatter()
+        formatter.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
+        return formatter
+    }()
 }
