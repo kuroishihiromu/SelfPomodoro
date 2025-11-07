@@ -47,6 +47,22 @@ final class SwiftDataRoundRecordRepository: RoundRecordRepository {
         return try models.map { try map($0) }
     }
 
+    func countCompleted(for userIdentifier: String) async throws -> Int {
+        let descriptor = FetchDescriptor<RoundRecordModel>(
+            predicate: #Predicate { $0.userIdentifier == userIdentifier && $0.isAborted == false }
+        )
+        let models = try context.fetch(descriptor)
+        return models.count
+    }
+
+    func totalWorkMinutes(for userIdentifier: String) async throws -> Double {
+        let descriptor = FetchDescriptor<RoundRecordModel>(
+            predicate: #Predicate { $0.userIdentifier == userIdentifier && $0.isAborted == false }
+        )
+        let models = try context.fetch(descriptor)
+        return models.reduce(0.0) { $0 + $1.workMinutes }
+    }
+
     // MARK: - Helpers
 
     private func fetchUserModel(by identifier: String) throws -> UserModel {

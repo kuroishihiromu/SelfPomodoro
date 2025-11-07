@@ -22,7 +22,11 @@ extension DependencyValues {
         self.userRepository = userRepository
         self.taskRepository = taskRepository
         self.sessionRecordRepository = sessionRecordRepository
+        #if DEBUG
+        self.roundRecordRepository = DebugRoundRecordRepository(base: roundRecordRepository)
+        #else
         self.roundRecordRepository = roundRecordRepository
+        #endif
         self.userConfigRepository = userConfigRepository
         self.statisticsRepository = statisticsRepository
     }
