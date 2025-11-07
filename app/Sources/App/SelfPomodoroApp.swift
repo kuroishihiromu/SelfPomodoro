@@ -11,16 +11,30 @@ import SwiftData
 
 @main
 struct SelfPomodoroApp: App {
-    @State private var modelContainer: ModelContainer = SwiftDataStack.makeContainer()
-    @State private var dependencies = DependencyValues._current
+    @State private var modelContainer: ModelContainer
+    @State private var dependencies: DependencyValues
     @State private var hasInitialized = false
+
+    init() {
+        let container = SwiftDataStack.makeContainer()
+        var deps = DependencyValues._current
+        deps.configureAppDependencies(modelContainer: container)
+        _modelContainer = State(initialValue: container)
+        _dependencies = State(initialValue: deps)
+    }
 
     var body: some Scene {
         WindowGroup {
-            MainView(dependencies: dependencies)
-                .task {
-                    await initializeAppIfNeeded()
+            Group {
+                if hasInitialized {
+                    MainView(dependencies: dependencies)
+                } else {
+                    ProgressView("Loading...")
                 }
+            }
+            .task {
+                await initializeAppIfNeeded()
+            }
         }
         .modelContainer(modelContainer)
     }
@@ -28,8 +42,6 @@ struct SelfPomodoroApp: App {
     @MainActor
     private func initializeAppIfNeeded() async {
         guard !hasInitialized else { return }
-
-        dependencies.configureAppDependencies(modelContainer: modelContainer)
 
         let initializer = AppInitializer(
             userRepository: dependencies.userRepository,

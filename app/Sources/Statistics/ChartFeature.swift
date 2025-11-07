@@ -37,17 +37,19 @@ struct ChartFeature {
         case nextWeek
     }
 
-    @Dependency(\.statisticsAPIClient) var apiClient
+    @Dependency(\.statisticsRepository) var statisticsRepository
+    @Dependency(\.userIdentifier) var userIdentifier
 
     var body: some ReducerOf<Self> {
         Reduce { state, action in
             switch action {
             case .fetchFocusTrend:
                 let targetDate = state.currentWeekStart
+                let identifier = userIdentifier()
                 return .run { send in
                     print("📈 ChartFeature: fetchFocusTrend start")
                     do {
-                        let data = try await apiClient.fetchConcentrationData(targetDate)
+                        let data = try await statisticsRepository.fetchFocusTrend(forWeekStarting: targetDate, userIdentifier: identifier)
                         print("📈 ChartFeature: fetchFocusTrend success count=\(data.count)")
                         await send(.dataLoaded(data))
                     } catch {

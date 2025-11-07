@@ -8,14 +8,14 @@
 import SwiftUI
 
 struct RoundConfigModalView: View {
-    let config: UserConfigResult
+    let config: UserConfig
     let currentRound: Int
     let onStart: () -> Void
 
     var body: some View {
         VStack(spacing: 20) {
-            Text("作業時間: \(config.roundWorkTime)分")
-            Text("休憩時間: \(config.roundBreakTime)分")
+            Text("作業時間: \(Int(config.roundWorkMinutes))分")
+            Text("休憩時間: \(Int(config.roundBreakMinutes))分")
             Text(" \(currentRound) / \(config.sessionRounds)")
 
             NormalButton(
@@ -32,7 +32,7 @@ struct RoundConfigModalView: View {
         .cornerRadius(20)
         .shadow(radius: 10)
         .onAppear {
-            print("🪟 RoundConfigModalView show: work=\(config.roundWorkTime), break=\(config.roundBreakTime), currentRound=\(currentRound)/\(config.sessionRounds)")
+            print("🪟 RoundConfigModalView show: work=\(config.roundWorkMinutes), break=\(config.roundBreakMinutes), currentRound=\(currentRound)/\(config.sessionRounds)")
         }
     }
 }

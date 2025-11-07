@@ -16,6 +16,11 @@ enum SwiftDataStack {
             return try ModelContainer(
                 for: UserModel.self,
                 TaskModel.self,
+                SessionRecordModel.self,
+                RoundRecordModel.self,
+                UserConfigRoundHistoryModel.self,
+                UserConfigSessionHistoryModel.self,
+                UserConfigLatestModel.self,
                 configurations: configuration
             )
         } catch {

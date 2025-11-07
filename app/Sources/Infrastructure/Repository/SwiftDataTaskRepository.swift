@@ -20,12 +20,13 @@ final class SwiftDataTaskRepository: TaskRepository {
 
     func createTask(detail: String, for identifier: String) async throws -> TodoTask {
         let now = Date()
+        let user = try fetchUserModel(by: identifier)
         let model = TaskModel(
             userIdentifier: identifier,
             detail: detail,
             createdAt: now,
             updatedAt: now,
-            user: nil
+            user: user
         )
         context.insert(model)
         try context.save()
@@ -71,6 +72,17 @@ final class SwiftDataTaskRepository: TaskRepository {
         return try context.fetch(descriptor).first
     }
 
+    private func fetchUserModel(by identifier: String) throws -> UserModel {
+        var descriptor = FetchDescriptor<UserModel>(
+            predicate: #Predicate { $0.identifier == identifier }
+        )
+        descriptor.fetchLimit = 1
+        guard let user = try context.fetch(descriptor).first else {
+            throw RepositoryError.userNotFound
+        }
+        return user
+    }
+
     private func mapTask(_ model: TaskModel) -> TodoTask {
         TodoTask(
             id: model.id,
@@ -79,9 +91,5 @@ final class SwiftDataTaskRepository: TaskRepository {
             createdAt: model.createdAt,
             updatedAt: model.updatedAt
         )
-    }
-
-    enum RepositoryError: Error {
-        case recordNotFound
     }
 }

@@ -30,7 +30,7 @@ struct TimerScreenView: View {
                     send: TimerScreenFeature.Action.toggleConfigModal
                 )
             ) {
-                RoundConfigModalView(config: viewStore.userConfig, currentRound: store.timer.round) {
+                RoundConfigModalView(config: viewStore.userConfig, currentRound: viewStore.timer.round) {
                     viewStore.send(.StartRoundButtonTapped)
                     viewStore.send(.toggleConfigModal(false))
                 }
