@@ -163,7 +163,7 @@ struct TimerScreenFeature {
                         sessionIdentifier: sessionId,
                         roundCount: rounds.count,
                         totalWorkMinutes: rounds.reduce(0) { $0 + $1.workMinutes },
-                        breakMinutes: rounds.reduce(0) { $0 + $1.breakMinutes },
+                        breakMinutes: state.userConfig.sessionBreakMinutes,
                         averageFocusScore: averageFocus(from: rounds),
                         isAborted: false,
                         createdAt: Date(),
