@@ -53,7 +53,17 @@ extension OptimizationAPIClient {
                 throw OptimizationAPIError.invalidResponse
             }
             print("📮 Round optimization sent, bytes=\(data.count)")
-            return try? JSONDecoder().decode(OptimizationRoundResponse.self, from: data)
+            if let raw = String(data: data, encoding: .utf8) {
+                print("📦 Round optimization raw response: \(raw)")
+            }
+            let decoder = JSONDecoder()
+            decoder.keyDecodingStrategy = .convertFromSnakeCase
+            do {
+                return try decoder.decode(OptimizationRoundResponse.self, from: data)
+            } catch {
+                print("⚠️ Round optimization decode failed: \(error)")
+                return nil
+            }
         },
         sendSessionData: { userId, records in
             guard !records.isEmpty else { return nil }
@@ -68,7 +78,17 @@ extension OptimizationAPIClient {
                 throw OptimizationAPIError.invalidResponse
             }
             print("📮 Session optimization sent, bytes=\(data.count)")
-            return try? JSONDecoder().decode(OptimizationSessionResponse.self, from: data)
+            if let raw = String(data: data, encoding: .utf8) {
+                print("📦 Session optimization raw response: \(raw)")
+            }
+            let decoder = JSONDecoder()
+            decoder.keyDecodingStrategy = .convertFromSnakeCase
+            do {
+                return try decoder.decode(OptimizationSessionResponse.self, from: data)
+            } catch {
+                print("⚠️ Session optimization decode failed: \(error)")
+                return nil
+            }
         }
     )
 }
