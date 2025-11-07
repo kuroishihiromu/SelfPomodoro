@@ -42,7 +42,8 @@ extension OptimizationAPIClient {
     static let live = OptimizationAPIClient(
         sendRoundData: { userId, records in
             guard !records.isEmpty else { return nil }
-            var request = URLRequest(url: URL(string: "https://6cacxhgjoz2bejfydr3vogjpla0bwvkb.lambda-url.ap-northeast-1.on.aws/round/v4/?user_id=\(userId.uuidString)")!)
+            let url = URL(string: "https://6cacxhgjoz2bejfydr3vogjpla0bwvkb.lambda-url.ap-northeast-1.on.aws/round/v4/\(userId.uuidString)")!
+            var request = URLRequest(url: url)
             request.httpMethod = "POST"
             request.setValue("application/json", forHTTPHeaderField: "Content-Type")
             request.httpBody = try JSONEncoder().encode(records)
@@ -56,7 +57,8 @@ extension OptimizationAPIClient {
         },
         sendSessionData: { userId, records in
             guard !records.isEmpty else { return nil }
-            var request = URLRequest(url: URL(string: "https://6cacxhgjoz2bejfydr3vogjpla0bwvkb.lambda-url.ap-northeast-1.on.aws/session/v3/?user_id=\(userId.uuidString)")!)
+            let url = URL(string: "https://6cacxhgjoz2bejfydr3vogjpla0bwvkb.lambda-url.ap-northeast-1.on.aws/session/v3/\(userId.uuidString)")!
+            var request = URLRequest(url: url)
             request.httpMethod = "POST"
             request.setValue("application/json", forHTTPHeaderField: "Content-Type")
             request.httpBody = try JSONEncoder().encode(records)
