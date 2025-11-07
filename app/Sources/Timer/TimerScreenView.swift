@@ -23,16 +23,25 @@ struct TimerScreenView: View {
             .safeAreaInset(edge: .top, spacing: 0) {
                 MenuBarView(title: "Pomodoro")
             }
-            // ラウンド設定モーダル
-            .fullScreenCover(
-                isPresented: viewStore.binding(
-                    get: \.roundConfigModalIsPresented,
-                    send: TimerScreenFeature.Action.toggleConfigModal
-                )
-            ) {
-                RoundConfigModalView(config: viewStore.userConfig, currentRound: viewStore.timer.round) {
-                    viewStore.send(.StartRoundButtonTapped)
-                    viewStore.send(.toggleConfigModal(false))
+            // ラウンド設定モーダル（中央フェード/マスク0.7）
+            .overlay {
+                if viewStore.roundConfigModalIsPresented {
+                    ZStack {
+                        Color.black.opacity(0.7)
+                            .ignoresSafeArea()
+                            .onTapGesture {
+                                viewStore.send(.toggleConfigModal(false))
+                            }
+
+                        RoundConfigModalView(
+                            config: viewStore.userConfig,
+                            currentRound: viewStore.timer.round
+                        ) {
+                            viewStore.send(.StartRoundButtonTapped)
+                            viewStore.send(.toggleConfigModal(false))
+                        }
+                        .transition(.scale.combined(with: .opacity))
+                    }
                 }
             }
             .fullScreenCover(
@@ -66,6 +75,7 @@ struct TimerScreenView: View {
                 }
             }
             .animation(.easeInOut, value: viewStore.evalModal != nil)
+            .animation(.easeInOut, value: viewStore.roundConfigModalIsPresented)
         }
     }
 }
