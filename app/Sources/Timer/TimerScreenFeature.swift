@@ -18,10 +18,11 @@ struct TimerScreenFeature {
         var roundConfigModalIsPresented: Bool = false
         var sessionCompleteModal: Bool = false
         var isFirstSession: Bool = true
-        // ユーザー設定は分単位で保持（API 仕様）。タイマー適用時に秒へ変換。
-        var userConfig: UserConfigResult = .init(id: UUID(), roundWorkTime: 25, roundBreakTime: 5, sessionRounds: 5, sessionBreakTime: 15)
+        // ユーザー設定は分単位で保持。タイマー適用時に秒へ変換。
+        var userConfig: UserConfig = .default()
         var hasPersistedTimer: Bool = false
         var didRestoreFromPersistence: Bool = false
+        var currentSessionRounds: [RoundRecord] = []
     }
 
     enum Action {
@@ -31,26 +32,27 @@ struct TimerScreenFeature {
         case StartRoundButtonTapped
 
         case startNextRound
-        
-        case sessionStartResponse(Result<SessionResult, Error>)
-        case roundStartResponse(Result<RoundResult, Error>)
-        case completeRoundResponse(Result<RoundResult, Error>)
-        case completeSessionResponse(Result<SessionResult, Error>)
+
+        case completeRoundResponse(Result<RoundRecord, Error>)
+        case completeSessionResponse(Result<SessionRecord, Error>)
 
         case showEvalModal
         case dismissEvalModal
         case sessionCompleteModalTapped
         case onAppear
         case refreshUserConfig
-        case userConfigResponse(Result<UserConfigResult, Error>)
+        case userConfigResponse(Result<UserConfig, Error>)
         case toggleConfigModal(Bool)
         case toggleSessionCompleteModal(Bool)
         case restoreTimerIfNeeded
         
     }
 
-    @Dependency(\.sessionAPIClient) var sessionAPIClient
-    @Dependency(\.userConfigAPIClient) var userConfigAPIClient
+    @Dependency(\.roundRecordRepository) var roundRecordRepository
+    @Dependency(\.sessionRecordRepository) var sessionRecordRepository
+    @Dependency(\.userConfigRepository) var userConfigRepository
+    @Dependency(\.optimizationAPIClient) var optimizationAPIClient
+    @Dependency(\.userIdentifier) var resolveUserIdentifier
     
     var body: some ReducerOf<Self> {
         Scope(state: \.timer, action: \.timer) { TimerFeature() }
@@ -60,39 +62,21 @@ struct TimerScreenFeature {
             switch action {
 
             case .StartRoundButtonTapped:
-                
-                if !state.isFirstSession {
-                    return .send(.startNextRound)
-                } else {
-                    return .run { send in
-                        let session = try await sessionAPIClient.startSession()
-                        await send(.sessionStartResponse(.success(session)))
-                    } catch: { error, send in
-                        await send(.sessionStartResponse(.failure(error)))
-                    }
+                if state.isFirstSession || state.sessionId == nil {
+                    let newSessionId = UUID()
+                    state.sessionId = newSessionId
+                    state.timer.sessionId = newSessionId
+                    state.currentSessionRounds = []
+                    state.isFirstSession = false
+                    print("🎆 Session started locally: \(newSessionId)")
                 }
-
-            case let .sessionStartResponse(.success(session)):
-                print("🎆 Session started: \(session.id)")
-                state.sessionId = session.id
-                state.timer.sessionId = session.id
-                state.isFirstSession = false
+                state.roundConfigModalIsPresented = false
                 return .send(.startNextRound)
 
-            case let .sessionStartResponse(.failure(error)):
-                // 409 Conflict（セッションが既に存在）の場合は既存セッションとして次のラウンドへ進む
-                let message = String(describing: error)
-                if message.contains("409") {
-                    state.isFirstSession = false
-                    return .send(.startNextRound)
-                }
-                return .none
-
-            case let .roundStartResponse(.success(round)):
-                print("🎯 roundStartResponse: setting currentRoundId to \(round.id)")
-                state.timer.currentRoundId = round.id
-                
-                // ラウンド開始時に状態を永続化
+            case .startNextRound:
+                let newRoundId = UUID()
+                state.timer.currentRoundId = newRoundId
+                print("🎯 Starting round id=\(newRoundId)")
                 return .merge(
                     .send(.timer(.saveTimerState)),
                     .send(.timer(.start))
@@ -130,49 +114,89 @@ struct TimerScreenFeature {
 
             case .evalModal(.submitEval(let score)):
                 state.evalModal = nil
-                guard let roundId = state.timer.currentRoundId else {
+                guard let sessionId = state.timer.sessionId else {
+                    print("⚠️ Session ID missing, cannot save round")
                     return .none
                 }
 
+                let roundId = state.timer.currentRoundId ?? UUID()
+                state.timer.currentRoundId = roundId
+
+                let identifier = resolveUserIdentifier()
+                let workMinutes = Double(state.timer.lastTaskDuration) / 60.0
+                let breakMinutes: Double = state.timer.round >= state.userConfig.sessionRounds
+                    ? state.userConfig.sessionBreakMinutes
+                    : state.userConfig.roundBreakMinutes
+                let focusScore = Int(score * 100)
+                let record = RoundRecord(
+                    id: roundId,
+                    userIdentifier: identifier,
+                    sessionIdentifier: sessionId,
+                    workMinutes: workMinutes,
+                    breakMinutes: breakMinutes,
+                    focusScore: focusScore,
+                    isAborted: false,
+                    createdAt: Date(),
+                    updatedAt: Date()
+                )
+
                 return .run { send in
-                    let result = try await sessionAPIClient.completeRound(roundId, Int(score * 100))
-                    await send(.completeRoundResponse(.success(result)))
+                    try await roundRecordRepository.save(record)
+                    await send(.completeRoundResponse(.success(record)))
                 } catch: { error, send in
                     await send(.completeRoundResponse(.failure(error)))
                 }
 
-            case .startNextRound:
-                guard let sessionId = state.timer.sessionId else {
-                    return .none
-                }
-                return .run { send in
-                    let round = try await sessionAPIClient.startRound(sessionId)
-                    await send(.roundStartResponse(.success(round)))
-                } catch: { error, send in
-                    await send(.roundStartResponse(.failure(error)))
-                }
-
             case let .completeRoundResponse(.success(round)):
-                // 評価送信後、次のphaseに移行
-                // 最後のラウンドだった場合はセッション完了モーダルを表示
+                state.currentSessionRounds.append(round)
+                let roundOptimizationEffect = sendRoundOptimization(for: round.userIdentifier)
+
                 if state.timer.round >= state.userConfig.sessionRounds {
                     state.sessionCompleteModal = true
-                    if let sessionId = state.timer.sessionId {
-                        // セッション完了をサーバに通知
-                        return .run { send in
-                            let result = try await sessionAPIClient.completeSession(sessionId)
-                            await send(.completeSessionResponse(.success(result)))
-                        } catch: { error, send in
-                            await send(.completeSessionResponse(.failure(error)))
-                        }
+                    guard let sessionId = state.timer.sessionId else {
+                        return .none
                     }
-                    return .none
+
+                    let identifier = resolveUserIdentifier()
+                    let rounds = state.currentSessionRounds
+                    let sessionRecord = SessionRecord(
+                        id: UUID(),
+                        userIdentifier: identifier,
+                        sessionIdentifier: sessionId,
+                        roundCount: rounds.count,
+                        totalWorkMinutes: rounds.reduce(0) { $0 + $1.workMinutes },
+                        breakMinutes: state.userConfig.sessionBreakMinutes,
+                        averageFocusScore: averageFocus(from: rounds),
+                        isAborted: false,
+                        createdAt: Date(),
+                        updatedAt: Date()
+                    )
+
+                    state.isFirstSession = true
+                    state.sessionId = nil
+                    state.timer.sessionId = nil
+                    state.currentSessionRounds = []
+                    let sessionOptimizationEffect = sendSessionOptimization(for: identifier)
+
+                    return .merge(
+                        .run { send in
+                        try await sessionRecordRepository.save(sessionRecord)
+                        await send(.completeSessionResponse(.success(sessionRecord)))
+                    } catch: { error, send in
+                        await send(.completeSessionResponse(.failure(error)))
+                    },
+                        sessionOptimizationEffect,
+                        roundOptimizationEffect
+                    )
                 } else {
-                    // 途中のラウンドの場合はshortBreak開始
-                    return .send(.timer(.start))
+                    return .merge(
+                        .send(.timer(.start)),
+                        roundOptimizationEffect
+                    )
                 }
 
             case .completeRoundResponse(.failure(let error)):
+                print("⚠️ Round record save failed: \(error)")
                 return .none
 
             case .dismissEvalModal:
@@ -200,10 +224,15 @@ struct TimerScreenFeature {
                 return .none
 
             case .refreshUserConfig:
+                let identifier = resolveUserIdentifier()
                 return .run { send in
-                    print("🔄 Fetching user config...")
-                    let config = try await userConfigAPIClient.getUserConfig()
-                    await send(.userConfigResponse(.success(config)))
+                    if let config = try await userConfigRepository.fetchLatest(for: identifier) {
+                        await send(.userConfigResponse(.success(config)))
+                    } else {
+                        let defaults = UserConfig.default(for: identifier)
+                        try await userConfigRepository.upsertLatest(defaults)
+                        await send(.userConfigResponse(.success(defaults)))
+                    }
                 } catch: { error, send in
                     print("⚠️ Fetch user config failed: \(error)")
                     await send(.userConfigResponse(.failure(error)))
@@ -211,7 +240,7 @@ struct TimerScreenFeature {
 
             case let .userConfigResponse(.success(config)):
                 state.userConfig = config
-                print("🧭 Applying UserConfig to timer (minutes): work=\(config.roundWorkTime), break=\(config.roundBreakTime), rounds=\(config.sessionRounds), longBreak=\(config.sessionBreakTime)")
+                print("🧭 Applying UserConfig to timer (minutes): work=\(config.roundWorkMinutes), break=\(config.roundBreakMinutes), rounds=\(config.sessionRounds), longBreak=\(config.sessionBreakMinutes)")
                 // 永続化データがない場合のみモーダルを表示
                 if !state.hasPersistedTimer {
                     state.roundConfigModalIsPresented = true
@@ -219,9 +248,9 @@ struct TimerScreenFeature {
                 
                 // サーバーは分単位を返すため、タイマー内部の秒に変換して適用
                 return .send(.timer(.updateSettings(
-                    task: config.roundWorkTime * 60,
-                    shortBreak: config.roundBreakTime * 60,
-                    longBreak: config.sessionBreakTime * 60,
+                    task: Int(config.roundWorkMinutes * 60),
+                    shortBreak: Int(config.roundBreakMinutes * 60),
+                    longBreak: Int(config.sessionBreakMinutes * 60),
                     roundsPerSession: config.sessionRounds
                 )))
 
@@ -235,6 +264,14 @@ struct TimerScreenFeature {
                 
             case let .toggleSessionCompleteModal(show):
                 state.sessionCompleteModal = show
+                return .none
+
+            case let .completeSessionResponse(.success(record)):
+                print("✅ SessionRecord saved id=\(record.id)")
+                return .send(.refreshUserConfig)
+
+            case let .completeSessionResponse(.failure(error)):
+                print("⚠️ Session record save failed: \(error)")
                 return .none
 
             case .sessionCompleteModalTapped:
@@ -265,4 +302,104 @@ struct TimerScreenFeature {
             }
         }
     }
+
+    private func averageFocus(from rounds: [RoundRecord]) -> Double {
+        let scores = rounds.compactMap(\.focusScore)
+        guard !scores.isEmpty else { return 0 }
+        return Double(scores.reduce(0, +)) / Double(scores.count)
+    }
+
+    private func sendRoundOptimization(for userIdentifier: String) -> Effect<Action> {
+        guard let uuid = UUID(uuidString: userIdentifier) else {
+            print("⚠️ Invalid userIdentifier for optimization: \(userIdentifier)")
+            return .none
+        }
+
+        return .run { send in
+            let records = try await roundRecordRepository.fetchRecent(for: userIdentifier, limit: nil)
+            let payloads = records.compactMap { record -> OptimizationRoundPayload? in
+                guard let focus = record.focusScore else { return nil }
+                return OptimizationRoundPayload(
+                    time: Self.isoFormatter.string(from: record.createdAt),
+                    work_time: record.workMinutes,
+                    break_time: record.breakMinutes,
+                    focus_score: focus
+                )
+            }
+            guard !payloads.isEmpty else { return }
+            do {
+                if let response = try await optimizationAPIClient.sendRoundData(uuid, payloads) {
+                    let work = response.workTime
+                    let rest = response.breakTime
+                    print("📬 Round optimization response: work=\(work), break=\(rest)")
+                    let entry = UserConfigRoundHistoryEntry(
+                        id: UUID(),
+                        userIdentifier: userIdentifier,
+                        recommendedWorkMinutes: work,
+                        recommendedBreakMinutes: rest,
+                        createdAt: Date()
+                    )
+                    try await userConfigRepository.addRoundHistory(entry)
+
+                    var latest = try await userConfigRepository.fetchLatest(for: userIdentifier) ?? UserConfig.default(for: userIdentifier)
+                    latest.roundWorkMinutes = work
+                    latest.roundBreakMinutes = rest
+                    latest.updatedAt = Date()
+                    try await userConfigRepository.upsertLatest(latest)
+                }
+            } catch {
+                print("⚠️ Round optimization failed: \(error)")
+            }
+        }
+    }
+
+    private func sendSessionOptimization(for userIdentifier: String) -> Effect<Action> {
+        guard let uuid = UUID(uuidString: userIdentifier) else {
+            print("⚠️ Invalid userIdentifier for session optimization: \(userIdentifier)")
+            return .none
+        }
+
+        return .run { send in
+            let records = try await sessionRecordRepository.fetchRecent(for: userIdentifier, limit: nil)
+            let payloads = records.map { record in
+                OptimizationSessionPayload(
+                    time: Self.isoFormatter.string(from: record.createdAt),
+                    round_count: record.roundCount,
+                    total_work_time: record.totalWorkMinutes,
+                    break_time: record.breakMinutes,
+                    avg_focus_score: record.averageFocusScore
+                )
+            }
+            guard !payloads.isEmpty else { return }
+            do {
+                if let response = try await optimizationAPIClient.sendSessionData(uuid, payloads) {
+                    let rounds = response.roundCount
+                    let rest = response.breakTime
+                    print("📬 Session optimization response: rounds=\(rounds), break=\(rest)")
+                    let entry = UserConfigSessionHistoryEntry(
+                        id: UUID(),
+                        userIdentifier: userIdentifier,
+                        recommendedSessionRounds: rounds,
+                        recommendedSessionBreakMinutes: rest,
+                        createdAt: Date()
+                    )
+                    try await userConfigRepository.addSessionHistory(entry)
+
+                    var latest = try await userConfigRepository.fetchLatest(for: userIdentifier) ?? UserConfig.default(for: userIdentifier)
+                    latest.sessionRounds = rounds
+                    latest.sessionBreakMinutes = rest
+                    latest.updatedAt = Date()
+                    try await userConfigRepository.upsertLatest(latest)
+                }
+            } catch {
+                print("⚠️ Session optimization failed: \(error)")
+            }
+        }
+    }
+
+    private static let isoFormatter: ISO8601DateFormatter = {
+        let formatter = ISO8601DateFormatter()
+        formatter.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
+        return formatter
+    }()
 }
