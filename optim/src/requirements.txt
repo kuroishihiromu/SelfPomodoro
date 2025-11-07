@@ -1,10 +1,7 @@
-boto3
+# boto3  # for DynamoDB handler
 fastapi
-moto
-pandas
+# pandas  # for CSV handler
 scikit-learn
 scikit-optimize
+tensorflow
 uvicorn
-pytest
-ruff
-ty

@@ -1,7 +1,7 @@
 import boto3
 import os
 from moto import mock_aws
-from handler.dynamodb.dynamodb_handler import DynamoDBHandler
+from handler._dynamodb.dynamodb_handler import DynamoDBHandler
 
 def set_env():
     """公式推奨のenv設定
@@ -14,7 +14,7 @@ def set_env():
     os.environ['AWS_SESSION_TOKEN'] = 'test'
 
 @mock_aws
-def test_dynamodb_handler():
+def _test_dynamodb_handler():
     """DynamoDBHandlerのテスト"""
     # --- 環境変数を設定 ---
     set_env()

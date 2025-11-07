@@ -1,3 +1,4 @@
+from datetime import datetime
 from typing import Union, List, Optional
 import boto3
 
@@ -342,3 +343,115 @@ class DynamoDBHandler:
         except Exception as e:
             print(f"セッションデータのリスト化に失敗しました: {e}")
             raise Exception(f"セッションデータのリスト化に失敗しました: {e}") 
+
+
+    def get_all_timestamps(
+        self,
+        user_id: str
+    ) -> List[str]:
+        """指定されたユーザーのすべてのタイムスタンプを取得
+        
+        Parameters:
+            user_id (str): ユーザーID
+        
+        Returns:
+            List[str]: タイムスタンプのリスト
+        """
+        try:
+            # 全データを取得
+            response = self.client.query(
+                TableName=self.table_name,
+                KeyConditionExpression='user_id = :user_id',
+                ExpressionAttributeValues={
+                    ':user_id': {'S': user_id}
+                }
+            )
+            
+            items = response.get('Items', [])
+            
+            # タイムスタンプのみを抽出
+            timestamps = []
+            for item in items:
+                if 'time' in item and 'S' in item['time']:
+                    timestamps.append(item['time']['S'])
+            
+            return timestamps
+            
+        except Exception as e:
+            print(f"タイムスタンプの取得に失敗しました: {e}")
+            raise Exception(f"タイムスタンプの取得に失敗しました: {e}")
+
+
+    def get_latest_day_and_all_past_days_data(
+        self,
+        user_id: str
+    ) -> tuple[List[dict], List[List[dict]]]:
+        """最新の日付と過去全てのデータを取得
+        
+        Parameters:
+            user_id (str): ユーザーID
+        
+        Returns:
+            tuple[List[dict], List[List[dict]]]: (最新の日付のデータ, 過去全てのデータ)
+        """
+        try:
+            # --- 全タイムスタンプを取得 ---
+            all_timestamps = self.get_all_timestamps(user_id)
+            
+            if not all_timestamps:
+                return [], []
+            
+            # --- タイムスタンプを日付でグループ化 ---
+            date_groups = {}
+            for timestamp in all_timestamps:
+                # タイムスタンプから日付部分を抽出
+                try:
+                    # ISO形式のタイムスタンプをパース
+                    if '+' in timestamp:
+                        # UTCオフセット付きの場合
+                        dt = datetime.fromisoformat(timestamp.replace('+00:00', '+00:00'))
+                    else:
+                        # オフセットなしの場合
+                        dt = datetime.fromisoformat(timestamp)
+                    
+                    date_key = dt.strftime('%Y-%m-%d')
+                    
+                    if date_key not in date_groups:
+                        date_groups[date_key] = []
+                    date_groups[date_key].append(timestamp)
+                    
+                except ValueError as e:
+                    print(f"タイムスタンプのパースに失敗しました: {timestamp}, エラー: {e}")
+                    continue
+            
+            # --- 過去全てのデータを取得 ---
+            sorted_dates = sorted(date_groups.keys(), reverse=True)
+            latest_date = sorted_dates[0]
+            print(f"最新の日付のデータ: {latest_date}")
+            all_past_dates = sorted_dates[1:]
+            
+            # 最新の日付のデータを取得
+            latest_data = []
+            for timestamp in date_groups[latest_date]:
+                # 各タイムスタンプのデータを取得
+                data = self.get_round_data(user_id, timestamp)
+                if data:
+                    latest_data.append(data)
+            
+            # 過去全てのデータを取得
+            all_past_datas = []
+            for date in all_past_dates:
+                date_data = []
+                for timestamp in date_groups[date]:
+                    # 各タイムスタンプのデータを取得
+                    data = self.get_round_data(user_id, timestamp)
+                    if data:
+                        date_data.append(data)
+                
+                all_past_datas.append(date_data)
+            
+            return latest_data, all_past_datas
+            
+        except Exception as e:
+            print(f"最新の日付と過去全てのデータの取得に失敗しました: {e}")
+            raise Exception(f"最新の日付と過去全てのデータの取得に失敗しました: {e}")

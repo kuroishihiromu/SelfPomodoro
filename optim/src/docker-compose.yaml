@@ -15,6 +15,6 @@ services:
       - .env
     volumes:
       # 開発時のホットリロード用
-      - ./src:/code/src
+      - .:/code/src
     restart: unless-stopped
     container_name: pomodoro-optimizer
