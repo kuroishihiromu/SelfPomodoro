@@ -33,7 +33,7 @@ final class SwiftDataSessionRecordRepository: SessionRecordRepository {
         )
         context.insert(model)
         try context.save()
-        print("🧾 SessionRecord saved id=\(model.id) aborted=\(model.isAborted)")
+        print("🧾 SessionRecord saved id=\(model.id) totalWorkMinutes=\(model.totalWorkMinutes) breakMinutes=\(model.breakMinutes) avgFocusScore=\(model.avgFocusScore) aborted=\(model.isAborted)")
     }
 
     func fetchRecent(for userIdentifier: String, limit: Int?) async throws -> [SessionRecord] {
