@@ -29,13 +29,14 @@ struct OptimizationSessionPayload: Codable, Equatable {
 }
 
 struct OptimizationRoundResponse: Decodable {
-    let round_work_time: Double
-    let round_break_time: Double
+    let workTime: Double
+    let breakTime: Double
 }
 
 struct OptimizationSessionResponse: Decodable {
-    let session_rounds: Int
-    let session_break_minutes: Double
+    let totalWorkTime: Double
+    let breakTime: Double
+    let roundCount: Int
 }
 
 extension OptimizationAPIClient {
