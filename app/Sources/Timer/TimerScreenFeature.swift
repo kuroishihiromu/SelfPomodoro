@@ -315,7 +315,7 @@ struct TimerScreenFeature {
             return .none
         }
 
-        return .run { _ in
+        return .run { send in
             let records = try await roundRecordRepository.fetchRecent(for: userIdentifier, limit: nil)
             let payloads = records.compactMap { record -> OptimizationRoundPayload? in
                 guard let focus = record.focusScore else { return nil }
@@ -327,22 +327,26 @@ struct TimerScreenFeature {
                 )
             }
             guard !payloads.isEmpty else { return }
-            if let response = try await optimizationAPIClient.sendRoundData(uuid, payloads) {
-                print("📬 Round optimization response: work=\(response.round_work_time), break=\(response.round_break_time)")
-                let entry = UserConfigRoundHistoryEntry(
-                    id: UUID(),
-                    userIdentifier: userIdentifier,
-                    recommendedWorkMinutes: response.round_work_time,
-                    recommendedBreakMinutes: response.round_break_time,
-                    createdAt: Date()
-                )
-                try await userConfigRepository.addRoundHistory(entry)
+            do {
+                if let response = try await optimizationAPIClient.sendRoundData(uuid, payloads) {
+                    print("📬 Round optimization response: work=\(response.round_work_time), break=\(response.round_break_time)")
+                    let entry = UserConfigRoundHistoryEntry(
+                        id: UUID(),
+                        userIdentifier: userIdentifier,
+                        recommendedWorkMinutes: response.round_work_time,
+                        recommendedBreakMinutes: response.round_break_time,
+                        createdAt: Date()
+                    )
+                    try await userConfigRepository.addRoundHistory(entry)
 
-                var latest = try await userConfigRepository.fetchLatest(for: userIdentifier) ?? UserConfig.default(for: userIdentifier)
-                latest.roundWorkMinutes = response.round_work_time
-                latest.roundBreakMinutes = response.round_break_time
-                latest.updatedAt = Date()
-                try await userConfigRepository.upsertLatest(latest)
+                    var latest = try await userConfigRepository.fetchLatest(for: userIdentifier) ?? UserConfig.default(for: userIdentifier)
+                    latest.roundWorkMinutes = response.round_work_time
+                    latest.roundBreakMinutes = response.round_break_time
+                    latest.updatedAt = Date()
+                    try await userConfigRepository.upsertLatest(latest)
+                }
+            } catch {
+                print("⚠️ Round optimization failed: \(error)")
             }
         }
     }
@@ -353,7 +357,7 @@ struct TimerScreenFeature {
             return .none
         }
 
-        return .run { _ in
+        return .run { send in
             let records = try await sessionRecordRepository.fetchRecent(for: userIdentifier, limit: nil)
             let payloads = records.map { record in
                 OptimizationSessionPayload(
@@ -365,22 +369,26 @@ struct TimerScreenFeature {
                 )
             }
             guard !payloads.isEmpty else { return }
-            if let response = try await optimizationAPIClient.sendSessionData(uuid, payloads) {
-                print("📬 Session optimization response: rounds=\(response.session_rounds), break=\(response.session_break_minutes)")
-                let entry = UserConfigSessionHistoryEntry(
-                    id: UUID(),
-                    userIdentifier: userIdentifier,
-                    recommendedSessionRounds: response.session_rounds,
-                    recommendedSessionBreakMinutes: response.session_break_minutes,
-                    createdAt: Date()
-                )
-                try await userConfigRepository.addSessionHistory(entry)
+            do {
+                if let response = try await optimizationAPIClient.sendSessionData(uuid, payloads) {
+                    print("📬 Session optimization response: rounds=\(response.session_rounds), break=\(response.session_break_minutes)")
+                    let entry = UserConfigSessionHistoryEntry(
+                        id: UUID(),
+                        userIdentifier: userIdentifier,
+                        recommendedSessionRounds: response.session_rounds,
+                        recommendedSessionBreakMinutes: response.session_break_minutes,
+                        createdAt: Date()
+                    )
+                    try await userConfigRepository.addSessionHistory(entry)
 
-                var latest = try await userConfigRepository.fetchLatest(for: userIdentifier) ?? UserConfig.default(for: userIdentifier)
-                latest.sessionRounds = response.session_rounds
-                latest.sessionBreakMinutes = response.session_break_minutes
-                latest.updatedAt = Date()
-                try await userConfigRepository.upsertLatest(latest)
+                    var latest = try await userConfigRepository.fetchLatest(for: userIdentifier) ?? UserConfig.default(for: userIdentifier)
+                    latest.sessionRounds = response.session_rounds
+                    latest.sessionBreakMinutes = response.session_break_minutes
+                    latest.updatedAt = Date()
+                    try await userConfigRepository.upsertLatest(latest)
+                }
+            } catch {
+                print("⚠️ Session optimization failed: \(error)")
             }
         }
     }
