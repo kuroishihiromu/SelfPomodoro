@@ -10,4 +10,6 @@ import Foundation
 protocol RoundRecordRepository {
     func save(_ record: RoundRecord) async throws
     func fetchRecent(for userIdentifier: String, limit: Int?) async throws -> [RoundRecord]
+    func countCompleted(for userIdentifier: String) async throws -> Int
+    func totalWorkMinutes(for userIdentifier: String) async throws -> Double
 }
