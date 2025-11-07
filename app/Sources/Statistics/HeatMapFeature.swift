@@ -23,13 +23,22 @@ struct HeatMapFeature: Reducer {
 
     public init(){}
     
-    @Dependency(\.heatMapper) var heatMapper
+    @Dependency(\.statisticsRepository) var statisticsRepository
+    @Dependency(\.userIdentifier) var userIdentifier
 
     func reduce(into state: inout State, action: Action) -> Effect<Action> {
         switch action {
         case .fetchHeatMap:
-            let data = heatMapper.loadFocusData()
-            return .send(.heatMapDataLoaded(data))
+            let month = state.currentMonth
+            let identifier = userIdentifier()
+            return .run { send in
+                do {
+                    let data = try await statisticsRepository.fetchHeatMapData(forMonth: month, userIdentifier: identifier)
+                    await send(.heatMapDataLoaded(data))
+                } catch {
+                    print("📉 HeatMapFeature: fetchHeatMap failed: \(error)")
+                }
+            }
 
         case let .heatMapDataLoaded(data):
             state.focusData = data
