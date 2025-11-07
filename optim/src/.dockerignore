@@ -1,9 +1,12 @@
-# legacy Apps
+# Legacy Apps
 app/_optimize_round_from_csv_data.py
 app/_optimize_round_from_dynamodb_data.py
 app/_optimize_round_from_dynamodb_data_with_focus_score_prediction.py
 app/_optimize_session_from_csv_data.py
 app/_optimize_session_from_dynamodb_data.py
+
+# Legacy Models
+model/_old_focus_score_model.py
 
 # Tests
 test/*
