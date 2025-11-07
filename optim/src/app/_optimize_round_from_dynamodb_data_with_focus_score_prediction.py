@@ -3,7 +3,7 @@ import numpy as np
 from datetime import datetime
 from handler._dynamodb.dynamodb_handler import DynamoDBHandler
 from helper.make_time_series_data import make_time_series_data
-from model._old_focus_score_model import OldFocusScoreModel
+from model._old_focus_score_model.model import OldFocusScoreModel
 from optimizer.bayesian_optimizer import BayesianOptimizer
 
 def _optimize_round_from_dynamodb_data_with_focus_score_prediction(
