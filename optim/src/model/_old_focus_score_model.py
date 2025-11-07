@@ -3,7 +3,7 @@ from sklearn.preprocessing import MinMaxScaler
 from tensorflow.keras.models import Sequential # type: ignore
 from tensorflow.keras.layers import GRU, Dense # type: ignore
 
-class FocusScoreModel:
+class OldFocusScoreModel:
   """集中度スコアを予測するモデル"""
 
   def __init__(

@@ -3,7 +3,7 @@ import numpy as np
 from datetime import datetime
 from handler._dynamodb.dynamodb_handler import DynamoDBHandler
 from helper.make_time_series_data import make_time_series_data
-from model.focus_score_model import FocusScoreModel
+from model._old_focus_score_model import OldFocusScoreModel
 from optimizer.bayesian_optimizer import BayesianOptimizer
 
 def _optimize_round_from_dynamodb_data_with_focus_score_prediction(
@@ -47,7 +47,7 @@ def _optimize_round_from_dynamodb_data_with_focus_score_prediction(
     print(f"all_past_time_series_dataの長さ: {len(all_past_time_series_data)}")
     
     # --- モデルの作成 ---
-    model = FocusScoreModel(time_step=time_step)
+    model = OldFocusScoreModel(time_step=time_step)
     
     # --- モデルの訓練 ---
     model.fit(train_data=np.array(all_past_time_series_data))
