@@ -32,7 +32,7 @@ final class SwiftDataRoundRecordRepository: RoundRecordRepository {
         )
         context.insert(model)
         try context.save()
-        print("🧾 RoundRecord saved id=\(model.id) aborted=\(model.isAborted)")
+        print("🧾 RoundRecord saved id=\(model.id) work=\(model.workMinutes) break=\(model.breakMinutes) aborted=\(model.isAborted)")
     }
 
     func fetchRecent(for userIdentifier: String, limit: Int?) async throws -> [RoundRecord] {
