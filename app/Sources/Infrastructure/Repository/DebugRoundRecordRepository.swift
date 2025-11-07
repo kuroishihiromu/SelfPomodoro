@@ -29,11 +29,11 @@ final class DebugRoundRecordRepository: RoundRecordRepository {
     }
 
     func countCompleted(for userIdentifier: String) async throws -> Int {
-        return fixedCount
+        fixedCount
     }
 
     func totalWorkMinutes(for userIdentifier: String) async throws -> Double {
-        return fixedTotalMinutes
+        fixedTotalMinutes
     }
 }
 #endif
