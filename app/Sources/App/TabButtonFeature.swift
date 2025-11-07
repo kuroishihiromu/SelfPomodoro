@@ -23,12 +23,13 @@ struct TabButtonFeature {
         case statsButtonTapped
         case profileButtonTapped
         
-        case fetchTasksResponse(Result<[TaskResult], taskAPIError>)
+        case fetchTasksResponse(Result<[TodoTask], Error>)
         case todoList(ToDoListFeature.Action)
     }
     
     
-    @Dependency(\.taskAPIClient) var apiClient
+    @Dependency(\.taskRepository) private var taskRepository
+    @Dependency(\.userIdentifier) private var userIdentifier
 
     var body: some ReducerOf<Self> {
         Scope(state: \.todoListState, action: \..todoList) {
@@ -44,14 +45,10 @@ struct TabButtonFeature {
                 state.selectedTabIndex = 1
                 return .run { send in
                     do {
-                        let tasks = try await apiClient.fetchTasks()
+                        let tasks = try await taskRepository.fetchTasks(for: userIdentifier())
                         await send(.fetchTasksResponse(.success(tasks)))
-                    } catch let error as taskAPIError {
-                        await send(.fetchTasksResponse(.failure(error)))
-                    } catch let error as DecodingError {
-                        await send(.fetchTasksResponse(.failure(.decodingError)))
                     } catch {
-                        await send(.fetchTasksResponse(.failure(.unknown)))
+                        await send(.fetchTasksResponse(.failure(error)))
                     }
 
                 }
@@ -68,7 +65,7 @@ struct TabButtonFeature {
                 )
                 return .none
 
-            case .fetchTasksResponse(.failure(let error)):
+            case .fetchTasksResponse(.failure):
                 // エラー状態に応じた UI 対応も可能
                 return .none
                 

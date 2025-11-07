@@ -1,5 +1,5 @@
 //
-//  AuthScreenView.swift
+//  _AuthScreenView.swift
 //  SelfPomodoro
 //
 //  Created by 黒石陽夢 on 2025/02/27.
@@ -8,12 +8,13 @@
 import SwiftUI
 import ComposableArchitecture
 
-struct AuthScreenView: View {
+struct _AuthScreenView: View {
     @Bindable var store: StoreOf<AuthFeature>
 
     var body: some View {
         if store.isLoggedIn {
-            MainView(token: store.tokens!, authStore: store)
+        //    MainView(token: store.tokens!, authStore: store) MainViewから認証関連を削除したため、現在は引数不要
+        
         } else {
             NavigationStack(path: $store.scope(state: \.path, action: \.path)) {
                 VStack(spacing: 20) {
@@ -68,7 +69,7 @@ struct AuthScreenView: View {
 }
 
 #Preview {
-    AuthScreenView(
+    _AuthScreenView(
         store: Store(
             initialState: AuthFeature.State(),
             reducer: { AuthFeature() }
